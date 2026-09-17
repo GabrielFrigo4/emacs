@@ -13,13 +13,17 @@ MAKEFLAGS += --no-print-directory -s
 ### HELP & DOCUMENTATION
 ### ================================
 help:
-	echo "🔮 GNU Emacs — Ambiente Modular Elisp"
+	cmd() { printf "    \033[36mmake %-22s\033[0m %s\n" "$$1" "$$2"; }; \
+	sec() { printf "\n  \033[1;33m%s\033[0m\n" "$$1"; }; \
+	printf "\n  \033[1;37mGNU Emacs — Ambiente Modular Elisp & Produtividade\033[0m\n"; \
+	printf "  ============================================================\n"; \
+	sec "Qualidade & Formatação:"; \
+	cmd "test"           "Valida inicialização limpa em modo batch"; \
+	cmd "batch"          "Executa boot limpo batch do Emacs"; \
+	cmd "indent"         "Formata e indenta arquivos Elisp"; \
+	cmd "ci"             "Executa suíte de validação local do Emacs"; \
 	echo ""
-	echo "Comandos disponíveis:"
-	echo "  make test     - Valida inicialização limpa em modo batch"
-	echo "  make indent   - Formata/indenta arquivos Elisp"
-	echo "  make ci       - Executa suite de validação local"
-	echo ""
+
 
 ### ================================
 ### TESTING & FORMATTING

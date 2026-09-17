@@ -138,10 +138,17 @@
 (setq latex/enable   (getenv-bool "EMACS_LATEX" #'latex-detect-p))
 
 ;; ================================
-;; CORE LIBRARIES
+;; CORE LIBRARIES & LOCAL PACKAGES
 ;; ================================
 (add-to-list 'load-path lib-dir)
 (require 'core)
+
+;; Add user local packages (usr/local/*) to load-path
+(let ((local-pkgs-dir (expand-file-name "local" usr-dir)))
+  (when (file-directory-p local-pkgs-dir)
+    (dolist (pkg (directory-files local-pkgs-dir t "^[^.]"))
+      (when (file-directory-p pkg)
+        (add-to-list 'load-path pkg)))))
 
 ;; ================================
 ;; WARNINGS CONFIGURATION
@@ -198,7 +205,15 @@
 ;; --------------------------------
 ;; User Configuration
 ;; --------------------------------
-(load-directory-recursive usr-dir)
+(let ((user-init   (expand-file-name "init.el" usr-dir))
+      (user-config (expand-file-name "config.el" usr-dir)))
+  (cond
+   ((file-exists-p user-init)   (load user-init 'noerror))
+   ((file-exists-p user-config) (load user-config 'noerror))
+   (t
+    (dolist (file (directory-files usr-dir t "^[^.].*\\.el$"))
+      (unless (file-directory-p file)
+        (load file 'noerror))))))
 
 ;; ================================
 ;; EMACS SERVER

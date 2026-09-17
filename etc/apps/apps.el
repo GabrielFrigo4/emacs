@@ -50,7 +50,7 @@
 (use-package eww
   :ensure nil
   :config
-  (add-to-list 'load-path (expand-file-name "usr/local/aweww" user-emacs-directory))
-  (require 'aweww))
+  (when (locate-library "aweww")
+    (require 'aweww)))
 
 (provide 'feature-apps)

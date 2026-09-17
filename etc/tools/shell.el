@@ -8,12 +8,17 @@
   :defer t
   :bind ("C-c v" . vterm))
 
-(with-eval-after-load 'aweshell
+(use-package aweshell
+  :ensure nil
+  :commands (aweshell/new aweshell/toggle aweshell/dedicated-toggle aweshell/switch-buffer aweshell/next aweshell/prev)
+  :init
   (setq-default aweshell/validate-executable nil)
   (setq-default aweshell/auto-suggestion-p t)
   (if-windows
    (setq-default aweshell/validate-delay (expt 2 -0.5))
-   (setq-default aweshell/validate-delay (expt 2 -1))))
+   (setq-default aweshell/validate-delay (expt 2 -1)))
+  :config
+  (setq aweshell/theme 'aweshell/theme-theme-zshrc))
 
 (when-unix
  (setq-default explicit-shell-file-name (or (executable-find "zsh") "/bin/sh"))
