@@ -159,14 +159,26 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 
 - **O Environment é Exclusivamente Bancada de Desenvolvimento (`~/Documents/Environment`):** O repositório Environment existe para permitir o desenvolvimento conjunto, testes em lote, auditoria estática cruzada e governança do ecossistema. Absolutamente NADA dentro dele deve ser referenciado diretamente pelo sistema operacional hospedeiro.
 - **Runtimes de Produção Soberanos:** Cada componente opera de forma 100% autônoma em sua localização canônica recomendada:
-    - `Shell`: `/usr/local/share/shell` (ou `~/.local/share/shell` em modo rootless).
-    - `Profile`: `~/.config/profile` (de onde dispara a sincronização de dotfiles e skills).
-    - `Vault`: `~/.vault` (ou `%USERPROFILE%\.vault`).
+    - `Shell`: `/usr/local/share/shell` (padrão de sistema) ou `~/.local/share/shell` / `~/.config/shell` (recomendado rootless).
+    - `Profile`: `~/.config/profile` (ou `~/.local/share/profile`).
+    - `Vault`: `~/.local/share/vault`, `~/.config/vault` ou `~/.vault` (ou `%USERPROFILE%\.vault`).
     - `Emacs`: `~/.emacs.d`.
     - `Helix`: `~/.config/helix`.
     - `NeoVim`: `~/.config/nvim`.
     - `Vim`: `~/.vim`.
 - **Zero Symlinks para a Bancada de Desenvolvimento:** É estritamente proibido criar links simbólicos de sistema, configurações de shell (`.bashrc`, `.zshrc`) ou dotfiles que apontem para a pasta de desenvolvimento `~/Documents/Environment`. O provisionamento no SO deve ser feito exclusivamente clonando cada repositório em sua localização canônica via `make install`.
+- **Hierarquia de Resolução de Caminhos (XDG vs. FHS):**
+    - **Universal Shell:**
+        1. `/usr/local/share/shell` — Padrão prático para o par `root` + administrador do host.
+        2. `~/.local/share/shell` — **Recomendado** filosoficamente pela elegância, modularização e desacoplamento rootless.
+        3. `~/.config/shell` — Ergonomia unificada sob a pasta central de configurações.
+        4. `~/.shell` — Atalho clássico e ambiente Windows MSYS2.
+    - **Universal Profile & Universal Vault:**
+        1. `~/.local/share/<componente>` (XDG Data).
+        2. `~/.config/<componente>` (XDG Config).
+        3. `~/.<componente>` (Home direta).
+        4. `/usr/local/share/<componente>` — Suportado defensivamente pela cascata, mas **NÃO RECOMENDADO** por violar a segregação de privilégios e modularidade do usuário (especialmente crítico para o Vault, cujos segredos pertencem ao indivíduo).
+- **A Filosofia do "Recomendado vs. Padrão":** O termo "Recomendado" expressa o ideal arquitetural (desacoplamento e soberania do usuário sem sudo). O termo "Padrão de Sistema" atende à realidade pragmática de estações administradas onde `root` e usuário precisam do mesmo shell. O ecossistema não é dogmático e acolhe com robustez ambas as necessidades.
 
 ---
 

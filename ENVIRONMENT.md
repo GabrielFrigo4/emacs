@@ -55,9 +55,9 @@ O ecossistema adota dois axiomas fundamentais que governam a engenharia de todos
 1. **A Realidade Descentralizada de Produção (Zero-Coupling / Standalone First):**
     - Em máquinas de produção, servidores remotos, contêineres e estações finais, **o repositório Environment NÃO é utilizado diretamente como runtime**.
     - Cada ferramenta vive e opera diretamente em seu caminho canônico XDG/Unix no sistema operacional:
-        - **Shell:** `/usr/local/share/shell` (ou `~/.local/share/shell` em modo rootless)
-        - **Profile:** `~/.config/profile` (de onde dispara a sincronização de dotfiles e skills)
-        - **Vault:** `~/.vault` (ou `%USERPROFILE%\.vault`)
+        - **Shell:** `/usr/local/share/shell` (padrão de sistema) ou `~/.local/share/shell` / `~/.config/shell` (recomendado rootless)
+        - **Profile:** `~/.config/profile` ou `~/.local/share/profile`
+        - **Vault:** `~/.local/share/vault`, `~/.config/vault` ou `~/.vault` (ou `%USERPROFILE%\.vault`)
         - **GNU Emacs:** `~/.emacs.d`
         - **Helix:** `~/.config/helix`
         - **NeoVim:** `~/.config/nvim`
@@ -77,10 +77,10 @@ Inspirado no princípio UNIX da localidade e na 18ª Regra da Soberania do Usuá
 ```mermaid
 flowchart TD
     CLI["1. Linha de Comando (Flags Explícitas: --context, --yes)"]
-    ENV["2. Variáveis de Ambiente Explícitas ($SHELL_REPO_DIR, $VAULT_DIR, $NVIM_APPNAME)"]
+    ENV["2. Variáveis de Ambiente Explícitas ($SHELL_REPO_DIR, $PROFILE_DIR, $VAULT_DIR)"]
     PROJ["3. Contexto Local do Projeto (./.agents/skills, ./.git, ./Makefile)"]
-    USER["4. Escopo do Usuário ($HOME / XDG: ~/.shell, ~/.vault, ~/.gemini/config/skills)"]
-    SYS["5. Escopo Global do Sistema (/usr/local/share/shell, /usr/local/share/vault, /etc)"]
+    USER["4. Escopo do Usuário ($HOME / XDG: ~/.local/share, ~/.config, ~/.vault)"]
+    SYS["5. Escopo Global do Sistema (/usr/local/share/shell, /etc)"]
 
     CLI -->|sobrepõe| ENV
     ENV -->|sobrepõe| PROJ
@@ -89,9 +89,9 @@ flowchart TD
 ```
 
 - **Resolução em Scripts e Loaders:**
-    1. Variável explícita de ambiente (`$SHELL_REPO_DIR`, `$VAULT_DIR`).
-    2. Diretório local do usuário no `$HOME` (`~/.shell`, `~/.local/share/shell`, `~/.vault`).
-    3. Diretório global do sistema (`/usr/local/share/shell`, `/usr/local/share/vault`).
+    1. Variável explícita de ambiente (`$SHELL_REPO_DIR`, `$PROFILE_DIR`, `$VAULT_DIR`).
+    2. **Universal Shell:** `/usr/local/share/shell` (padrão de sistema) $\rightarrow$ `~/.local/share/shell` (recomendado rootless) $\rightarrow$ `~/.config/shell` $\rightarrow$ `~/.shell`.
+    3. **Universal Profile & Vault:** `~/.local/share/<repo>` (XDG Data) $\rightarrow$ `~/.config/<repo>` (XDG Config) $\rightarrow$ `~/.<repo>` $\rightarrow$ `/usr/local/share/<repo>` (global defensivo, não recomendado para dados do usuário).
 - **Resolução em Portable AI Skills & Agentes:**
     1. **Projeto Local (`<repo>/.agents/skills/`):** Máxima prioridade. Permite que um projeto defina runbooks e regras específicas que sobrescrevem qualquer padrão global sem poluir a máquina do usuário.
     2. **Usuário Global (`~/.gemini/config/skills/` via `Profile/skills/`):** Habilidades perenes da estação de trabalho, compartilhadas entre projetos.
