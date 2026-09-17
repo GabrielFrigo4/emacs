@@ -3,8 +3,9 @@
 > Configuração modular, declarativa e resiliente do GNU Emacs para desenvolvimento, edição modal, LSP e Org-mode.
 
 [![Environment](https://img.shields.io/badge/🏛️_Environment-Hub-blue)](https://github.com/GabrielFrigo4/environment)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![POSIX](https://img.shields.io/badge/shell-POSIX-orange)](bin/indent-all.sh)
+[![GNU Emacs](https://img.shields.io/badge/GNU_Emacs-29%2B-purple?logo=gnuemacs&logoColor=white)](https://www.gnu.org/software/emacs/)
+[![POSIX](https://img.shields.io/badge/POSIX-Shell_Scripts-orange?logo=gnubash&logoColor=white)](bin/indent-all.sh)
+[![License](https://img.shields.io/badge/License-MIT-green?logo=open-source-initiative&logoColor=white)](LICENSE)
 
 ---
 
