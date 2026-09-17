@@ -20,15 +20,18 @@ jobs:
         steps:
             - name: Checkout Code
               uses: actions/checkout@v7
+              with:
+                  submodules: recursive
 
-            - name: Install GNU Emacs
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y emacs-nox
+            - name: Install GNU Emacs 30+
+              uses: purcell/setup-emacs@master
+              with:
+                  version: 30.1
 
             - name: Validate Shell Scripts
               run: |
                   find bin -name "*.sh" -exec sh -n {} +
+                  sh -n emacs.sh
 
             - name: Test Emacs Batch Initialization
               run: |
