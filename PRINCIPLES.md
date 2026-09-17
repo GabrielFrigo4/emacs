@@ -5,11 +5,11 @@
 
 O **Quarteto de Produtividade** (`Setup`, `Shell`, `Vault`, `Profile`) é um ecossistema federado de 4 repositórios complementares e desacoplados, orquestrado pelo repositório **[Environment](https://github.com/GabrielFrigo4/environment)**. Cada componente é responsável por um domínio distinto: provisionamento de sistema operacional (_Setup_), motor interativo de terminal (_Shell_), cofre criptográfico de segredos (_Vault_) e dotfiles declarativos e skills de IA (_Profile_).
 
-Para garantir longevidade, idempotência e excelência técnica, toda contribuição a qualquer repositório do ecossistema deve obedecer aos **20 Princípios de Engenharia** (17 Princípios UNIX + Regra da Soberania do Usuário + Regra da Autonomia Reentrante + Regra do Hermetismo de Produção), às práticas de **Clean Code** adaptadas a scripts de infraestrutura, e às diretrizes arquiteturais unificadas.
+Para garantir longevidade, idempotência e excelência técnica, toda contribuição a qualquer repositório do ecossistema deve obedecer aos **21 Princípios de Engenharia** (17 Princípios UNIX + Regra da Soberania do Usuário + Regra da Autonomia Reentrante + Regra do Hermetismo de Produção + Regra do Desacoplamento Dev-Hub), às práticas de **Clean Code** adaptadas a scripts de infraestrutura, e às diretrizes arquiteturais unificadas.
 
 ---
 
-## 🏛️ Os 20 Princípios de Design (17 Princípios UNIX + Soberania do Usuário + Autonomia Reentrante + Hermetismo de Produção)
+## 🏛️ Os 21 Princípios de Design (17 Princípios UNIX + Soberania do Usuário + Autonomia Reentrante + Hermetismo de Produção + Desacoplamento Dev-Hub)
 
 ### 1. Regra da Modularidade (_Rule of Modularity_)
 
@@ -152,6 +152,21 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 - **A Invariante do Teste de Fogo (`rm -rf .agents`):** Qualquer repositório do ecossistema DEVE poder ter o diretório `.agents/` sumariamente deletado (`rm -rf .agents`) sem que nenhuma funcionalidade, rotina de compilação, script, teste, instalação, atualização ou comportamento operacional seja afetado. O ecossistema continua 100% íntegro e autônomo.
 - **Zero Acoplamento de IA em Runtime:** Nenhum script executável de produção, carregador de terminal (`shell.sh`, `profile.sh`, `vault.sh`, `setup.sh`), arquivo de ambiente (`*.env`, `*.rc`), Makefile, hook de Git (`.githooks/`), pipeline de CI, alias ou função interativa pode depender, referenciar, fazer `source` ou invocar arquivos residentes em diretórios de IA (`.agents/` ou pastas de skills).
 - **Natureza Cognitiva das Skills:** Skills e runbooks de IA são artefatos exclusivamente procedimentais e conceituais para auxílio da inteligência artificial e consulta humana. Jamais são bibliotecas de runtime, dependências de compilação ou geradores estruturais do ecossistema.
+
+### 21. Regra do Desacoplamento Dev-Hub vs. Runtime de Produção (_Rule of Production Sovereign Isolation_)
+
+> _A bancada de ferramentas do artesão não deve ser soldada ao produto final; desenvolva no hub, execute nos caminhos canônicos do sistema._
+
+- **O Environment é Exclusivamente Bancada de Desenvolvimento (`~/Documents/Environment`):** O repositório Environment existe para permitir o desenvolvimento conjunto, testes em lote, auditoria estática cruzada e governança do ecossistema. Absolutamente NADA dentro dele deve ser referenciado diretamente pelo sistema operacional hospedeiro.
+- **Runtimes de Produção Soberanos:** Cada componente opera de forma 100% autônoma em sua localização canônica recomendada:
+    - `Shell`: `/usr/local/share/shell` (ou `~/.local/share/shell` em modo rootless).
+    - `Profile`: `~/.config/profile` (de onde dispara a sincronização de dotfiles e skills).
+    - `Vault`: `~/.vault` (ou `%USERPROFILE%\.vault`).
+    - `Emacs`: `~/.emacs.d`.
+    - `Helix`: `~/.config/helix`.
+    - `NeoVim`: `~/.config/nvim`.
+    - `Vim`: `~/.vim`.
+- **Zero Symlinks para a Bancada de Desenvolvimento:** É estritamente proibido criar links simbólicos de sistema, configurações de shell (`.bashrc`, `.zshrc`) ou dotfiles que apontem para a pasta de desenvolvimento `~/Documents/Environment`. O provisionamento no SO deve ser feito exclusivamente clonando cada repositório em sua localização canônica via `make install`.
 
 ---
 

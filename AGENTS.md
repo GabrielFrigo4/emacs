@@ -31,8 +31,7 @@ O repositório `.emacs.d` provê um ambiente de desenvolvimento extensível, cen
 3. **Zero Secrets:** Credenciais e chaves de API NUNCA são salvas neste repositório. Use `auth-source` ou variáveis de ambiente injetadas pelo [Vault](https://github.com/GabrielFrigo4/vault).
 4. **Independência Git:** Este repositório é um Git Submodule no Environment. Commits feitos aqui pertencem ao repositório `.emacs.d`.
 5. **Hermetismo de Produção & Invariante `rm -rf .agents`:** Repositório 100% autônomo. Zero acoplamento de código de produção a `.agents/` ou `skills/` (o Emacs opera plenamente se `.agents/` for deletado).
-
----
+6. **Bancada de Desenvolvimento vs. Runtimes de Produção:** Em produção, o Emacs reside e opera soberanamente em `~/.emacs.d`. O repositório central `Environment` é exclusivamente uma bancada de desenvolvimento. NUNCA aponte symlinks ou diretórios de runtime para `~/Documents/Environment/Editor/Emacs`.
 
 ---
 
@@ -48,14 +47,16 @@ Se durante a execução de qualquer tarefa (seja criação de novas features, co
     - **Banners Estruturais:** Ajustar réguas para exatamente 64 hífens no topo ou 32 caracteres com `### ` no corpo.
     - **Portabilidade POSIX:** Substituir bashismos (`[[ ]]`, `&>`, arrays, `source`) por sintaxe estrita POSIX `/bin/sh`.
     - **Shebang Universal:** Garantir sempre `#!/usr/bin/env sh` ou `#!/usr/bin/env python3`.
-    - **Sequências ANSI:** Substituir octais crípticos (``) e `printf` desnecessário por `[ -t 1 ] && echo -n $'\e...'`.
+    - **Sequências ANSI:** Substituir octais crípticos (` `) e `printf` desnecessário por `[ -t 1 ] && echo -n $'\e...'`.
     - **Redirecionamento Seguro:** Envolver destinos em aspas duplas (ex: `> "/dev/null" 2>&1`).
     - **Makefiles:** Assegurar cabeçalho `.POSIX: .SILENT:`, `MAKEFLAGS += --no-print-directory -s`, alinhamento estético de variáveis e zero `@` redundante.
     - **Permissões Canônicas:** Aplicar 4 dígitos octais (`chmod 0755`, `chmod 0644`, `chmod 0700`, `chmod 0600`).
 
 ## 📖 Referências Obrigatórias
 
+Antes de qualquer modificação neste ecossistema, consulte:
+
 - **[ENVIRONMENT.md](ENVIRONMENT.md)**: Arquitetura global do ecossistema
-- **[PRINCIPLES.md](PRINCIPLES.md)**: Os 18 Princípios de Engenharia UNIX + Clean Code
+- **[PRINCIPLES.md](PRINCIPLES.md)**: Os 21 Princípios de Engenharia UNIX + Clean Code
 - **[.agents/rules/principles.md](.agents/rules/principles.md)**: Regras específicas de engenharia Elisp
 - **[.agents/skills/](.agents/skills/)**: Runbooks operacionais do Emacs

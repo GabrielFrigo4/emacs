@@ -53,22 +53,22 @@ O ecossistema adota dois axiomas fundamentais que governam a engenharia de todos
 ### 1. Dois Modos de Uso como Cidadãos de Primeira Classe
 
 1. **A Realidade Descentralizada de Produção (Zero-Coupling / Standalone First):**
-    - Em máquinas de produção, servidores remotos, contêineres e instalações limpas, **o repositório Environment NÃO precisa sequer existir clonado**.
-    - Cada ferramenta vive e opera diretamente em seu caminho canônico XDG/Unix:
-        - `~/.shell` (ou `/usr/local/share/shell`)
-        - `~/.emacs.d`
-        - `~/.config/nvim`
-        - `~/.config/helix`
-        - `~/vimfiles`
-        - `~/.vault`
-        - `~/.config/profile`
+    - Em máquinas de produção, servidores remotos, contêineres e estações finais, **o repositório Environment NÃO é utilizado diretamente como runtime**.
+    - Cada ferramenta vive e opera diretamente em seu caminho canônico XDG/Unix no sistema operacional:
+        - **Shell:** `/usr/local/share/shell` (ou `~/.local/share/shell` em modo rootless)
+        - **Profile:** `~/.config/profile` (de onde dispara a sincronização de dotfiles e skills)
+        - **Vault:** `~/.vault` (ou `%USERPROFILE%\.vault`)
+        - **GNU Emacs:** `~/.emacs.d`
+        - **Helix:** `~/.config/helix`
+        - **NeoVim:** `~/.config/nvim`
+        - **Vim:** `~/.vim` (ou `~/vimfiles` no Windows)
     - **Zero Dependências Obrigatórias:** Nenhum repositório exige que outro esteja presente para funcionar com perfeição.
     - **Zero Ruído:** Não há mensagens de erro, alertas de "módulo ausente" ou avisos se os outros repositórios não existirem. A experiência isolada é cidadã de primeira classe.
-2. **O Papel do Environment (Meta-Repositório de Engenharia & Hub do Arquiteto):**
-    - O **Environment** é um meta-repositório para desenvolvimento, manutenção contínua e governança arquitetural unificada.
-    - Ele centraliza os submódulos para que o desenvolvedor/arquiteto possa abrir todo o ecossistema de uma só vez em seu editor/IDE.
-    - Serve para executar suítes globais de testes (`make test`), auditorias estáticas cruzadas (`make audit`), validação de documentação (`make lint-md`) e sincronização canônica (`make sync-docs`).
-    - O comando `make deploy` é estritamente uma **conveniência opcional de fluxo de desenvolvimento**: em uma estação onde você clonou o hub para trabalhar nele, ele cria symlinks do seu `$HOME` apontando para os submódulos dentro do checkout do Environment, permitindo que alterações nos editores ou no shell tenham efeito imediato sem necessidade de cópia manual de arquivos.
+2. **O Papel do Environment (Bancada de Desenvolvimento & Hub do Arquiteto):**
+    - O **Environment** (`~/Documents/Environment`) é **estritamente uma bancada de desenvolvimento e orquestração**. Ele **NÃO** deve ser referenciado diretamente por inicializadores de shell (`.bashrc`, `.zshrc`) ou dotfiles.
+    - Ele centraliza os submódulos para que o desenvolvedor/arquiteto possa inspecionar e evoluir todo o ecossistema de forma unificada.
+    - Serve para executar suítes globais de testes (`make test`), auditorias estáticas cruzadas (`make audit`), validação de formatação (`make lint-md`), normalização de banners (`make fix-banners`) e propagação da documentação canônica (`make sync-docs`).
+    - O comando `make install` (ou `./environment.sh install`) é o ponto de entrada canônico para provisionar a máquina: ele clona cada repositório em suas localizações canônicas de sistema e dispara a sincronização a partir do clone soberano do Profile (`~/.config/profile/profile.sh sync`), garantindo zero acoplamento com a pasta de desenvolvimento.
 
 ### 2. O Axioma da Precedência Local sobre Global (Local > Global)
 
