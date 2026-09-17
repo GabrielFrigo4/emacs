@@ -22,18 +22,19 @@ Este repositório contém a configuração pessoal do **GNU Emacs** de Gabriel F
 
 ## 📁 Catálogo da Estrutura
 
-| Diretório / Arquivo                      | Descrição                                                         |
-| :--------------------------------------- | :---------------------------------------------------------------- |
-| [`emacs.sh`](emacs.sh)                   | Interface unificada de componente (CLI para test, doctor, indent) |
-| [`init.el`](init.el)                     | Ponto de entrada, feature toggles e carregamento central          |
-| [`early-init.el`](early-init.el)         | Otimizações de boot e caminhos do native-comp cache               |
-| [`lib/core.el`](lib/core.el)             | Macros de detecção de SO e rotinas de auto-indentação             |
-| [`etc/init/`](etc/init/)                 | Bootstrap do Elpaca, atalhos globais e interface visual           |
-| [`etc/editor/`](etc/editor/)             | Módulos de LSP, scroll suave, tree-sitter e conclusão             |
-| [`etc/apps/`](etc/apps/)                 | Extensões opcionais: Org-mode, IA (gptel/ellama), EAF             |
-| [`etc/lang/`](etc/lang/)                 | Configurações específicas para LaTeX, Lisp, Markdown              |
-| [`etc/tools/`](etc/tools/)               | Ferramentas de Git, GitHub, manpages e shell interativo           |
-| [`bin/indent-all.sh`](bin/indent-all.sh) | Script POSIX de auto-indentação de arquivos de configuração       |
+| Diretório / Arquivo                      | Descrição                                                                          |
+| :--------------------------------------- | :--------------------------------------------------------------------------------- |
+| [`emacs.sh`](emacs.sh)                   | Interface unificada de componente (CLI para test, doctor, indent)                  |
+| [`init.el`](init.el)                     | Ponto de entrada, feature toggles e carregamento central                           |
+| [`early-init.el`](early-init.el)         | Otimizações de boot e caminhos do native-comp cache                                |
+| [`lib/core.el`](lib/core.el)             | Macros de detecção de SO e rotinas de auto-indentação                              |
+| [`etc/init/`](etc/init/)                 | Bootstrap do Elpaca, atalhos globais e interface visual                            |
+| [`etc/editor/`](etc/editor/)             | Módulos de LSP, scroll suave, tree-sitter e conclusão                              |
+| [`etc/apps/`](etc/apps/)                 | Extensões opcionais: Org-mode, IA (gptel/ellama), EAF                              |
+| [`etc/lang/`](etc/lang/)                 | Configurações específicas para LaTeX, Lisp, Markdown                               |
+| [`etc/tools/`](etc/tools/)               | Ferramentas de Git, GitHub, manpages e shell interativo                            |
+| [`usr/local/`](usr/local/)               | Submódulos Git de modos Elisp pessoais (`aweshell`, `aweww`, `emacs-lisp-ts-mode`) |
+| [`bin/indent-all.sh`](bin/indent-all.sh) | Script POSIX de auto-indentação de arquivos de configuração                        |
 
 ---
 

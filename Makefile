@@ -22,7 +22,17 @@ help:
 	cmd "batch"          "Executa boot limpo batch do Emacs"; \
 	cmd "indent"         "Formata e indenta arquivos Elisp"; \
 	cmd "ci"             "Executa suíte de validação local do Emacs"; \
+	sec "Modos & Submódulos Elisp:"; \
+	cmd "upmodes"        "Atualiza submódulos de modos locais (usr/local/*)"; \
 	echo ""
+
+
+### ================================
+### SUBMODULES
+### ================================
+upmodes:
+	echo "🔄 Atualizando submódulos Elisp locais..."
+	git submodule update --init --recursive --remote --merge && echo "  ✅ Submódulos Elisp atualizados!"
 
 
 ### ================================

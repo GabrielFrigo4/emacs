@@ -45,7 +45,9 @@
 
 (when treesit/enable
   (use-package yaml-ts-mode :ensure nil :hook (yaml-ts-mode . apheleia-mode))
-  (use-package emacs-lisp-ts-mode :ensure (:type git :host github :repo "GabrielFrigo4/emacs-lisp-ts-mode"))
+  (if (locate-library "emacs-lisp-ts-mode")
+      (use-package emacs-lisp-ts-mode :ensure nil)
+    (use-package emacs-lisp-ts-mode :ensure (:type git :host github :repo "GabrielFrigo4/emacs-lisp-ts-mode")))
   (use-package common-lisp-ts-mode :ensure (:type git :host github :repo "GabrielFrigo4/common-lisp-ts-mode"))
   (use-package zig-ts-mode :ensure t)
   (use-package scala-ts-mode :ensure t)

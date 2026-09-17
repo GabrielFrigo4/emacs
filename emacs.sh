@@ -17,8 +17,15 @@ _emacs_help() {
 		  test      Valida inicializacao batch limpa do Emacs
 		  doctor    Verifica presenca do binario emacs e ambiente
 		  indent    Formata e indenta arquivos Elisp
+		  upmodes   Atualiza submodulos Elisp em usr/local/
 		  help      Exibe esta mensagem de ajuda
 	EOF
+}
+
+_emacs_upmodes() {
+	echo "🔄 [Emacs] Atualizando submódulos Elisp locais..."
+	git -C "${_EMACS_ROOT}" submodule update --init --recursive --remote --merge
+	echo "  ✅ Submódulos Elisp atualizados com sucesso!"
 }
 
 _emacs_test() {
@@ -53,6 +60,7 @@ case "${_cmd}" in
 	test|batch) _emacs_test ;;
 	doctor)     _emacs_doctor ;;
 	indent)     _emacs_indent ;;
+	upmodes)    _emacs_upmodes ;;
 	help|-h|--help) _emacs_help ;;
 	*)
 		echo "❌ Comando desconhecido: ${_cmd}" >&2
