@@ -62,10 +62,10 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 - Antes de tentar instalar pacotes ou aplicar configurações, os scripts validam pré-requisitos (`command -v`, variáveis de ambiente necessárias, privilégios).
 - Uso extensivo do **ZFS** para snapshots automáticos antes de mudanças críticas no sistema.
 - **Sincronização Resiliente & Auto-Cura de Repositórios:** Utilitários e comandos de atualização (`update-*`, `upsh`, `uprc`, `upvt`, etc.) nunca devem abortar nem entrar em loops infinitos causados por discrepâncias de atributos POSIX (`filemode` 0755 vs 0644). Adotam a estratégia em 4 etapas:
-    1. _Auto-cura de Atributos:_ Se o repositório estiver sujo apenas por divergências de permissão executável (`_content_diff` vazio e zero untracked), restaura o índice (`checkout -- .`) imediatamente, sem poluir a pilha com stashes desnecessários.
-    2. _Isolamento Defensivo:_ Cria auto-stash rastreável (`autostash-before-update-<timestamp>`) apenas se existirem modificações reais de código ou arquivos novos.
+    1. _Auto-cura Cirúrgica de Atributos:_ Inspeciona modificações via `git diff --numstat`. Qualquer arquivo com 0 adições e 0 deleções (`0 0 <arquivo>`) representa puramente alteração de permissão ou metadados POSIX, sendo restaurado imediatamente via `checkout -- <arquivo>`, sem criar stashes desnecessários e sem interferir em arquivos com código real.
+    2. _Isolamento Defensivo:_ Cria auto-stash rastreável (`autostash-before-update-<timestamp>`) apenas se restarem modificações reais de código ou arquivos novos.
     3. _Cascata de Sincronização:_ Tentativa sequencial de `--ff-only` $\rightarrow$ `--rebase` $\rightarrow$ `pull`.
-    4. _Garantia Canônica Pós-Pull:_ Restaura `chmod 0755` em todos os executáveis e `.githooks/` para prevenir drift futuro de atributos.
+    4. _Restauração & Proteção de Ganchos:_ Restaura alterações salvas via `stash pop` (reaplicando a auto-cura cirúrgica caso o stash continha permissões antigas) e assegura permissão `chmod 0755` estritamente nos ganchos de `.githooks/`, preservando os modos canônicos de arquivos do repositório.
 
 ### 9. Regra da Representação (_Rule of Representation_)
 
