@@ -24,7 +24,21 @@ help:
 	cmd "ci"             "Executa suíte de validação local do Emacs"; \
 	sec "Modos & Submódulos Elisp:"; \
 	cmd "upmodes"        "Atualiza submódulos de modos locais (usr/local/*)"; \
+	sec "Tree-sitter & Gramáticas:"; \
+	cmd "treesit"        "Instala e compila as gramáticas Tree-sitter essenciais"; \
 	echo ""
+
+
+### ================================
+### TREE-SITTER
+### ================================
+treesit:
+	echo "🌳 Compilando gramáticas Tree-sitter para GNU Emacs..."
+	emacs -Q --batch -l early-init.el -l init.el --eval '\
+		(dolist (lang (quote (elisp c cpp python bash rust go json toml yaml)))\
+		  (condition-case err\
+		      (progn (message "Compilando gramatica: %s..." lang) (treesit-install-language-grammar lang))\
+		    (error (message "Erro ao compilar %s: %s" lang err))))' && echo "  ✅ Gramáticas Tree-sitter compiladas!"
 
 
 ### ================================

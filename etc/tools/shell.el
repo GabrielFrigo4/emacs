@@ -12,6 +12,8 @@
   :ensure nil
   :commands (aweshell/new aweshell/toggle aweshell/dedicated-toggle aweshell/switch-buffer aweshell/next aweshell/prev)
   :init
+  (defalias 'esh 'aweshell/new)
+  (defalias 'eshell 'aweshell/new)
   (setq-default aweshell/validate-executable nil)
   (setq-default aweshell/auto-suggestion-p t)
   (if-windows
@@ -49,6 +51,8 @@
   (defalias 'eshell/op        'find-file)
   (defalias 'eshell/buff 'switch-to-buffer)
   (defalias 'eshell/s2b  'switch-to-buffer)
-  (defalias 'eshell/sb   'switch-to-buffer))
+  (defalias 'eshell/sb   'switch-to-buffer)
+  (defalias 'eshell/esh  'aweshell/new)
+  (defalias 'eshell/aweshell 'aweshell/new))
 
 (provide 'feature-shell)

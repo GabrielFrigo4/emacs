@@ -18,8 +18,19 @@ _emacs_help() {
 		  doctor    Verifica presenca do binario emacs e ambiente
 		  indent    Formata e indenta arquivos Elisp
 		  upmodes   Atualiza submodulos Elisp em usr/local/
+		  treesit   Compila gramaticas Tree-sitter para GNU Emacs
 		  help      Exibe esta mensagem de ajuda
 	EOF
+}
+
+_emacs_treesit() {
+	echo "🌳 [Emacs] Compilando gramáticas Tree-sitter essenciais..."
+	emacs -Q --batch -l "${_EMACS_ROOT}/early-init.el" -l "${_EMACS_ROOT}/init.el" --eval '
+		(dolist (lang (quote (elisp c cpp python bash rust go json toml yaml)))
+		  (condition-case err
+		      (progn (message "Compilando gramatica: %s..." lang) (treesit-install-language-grammar lang))
+		    (error (message "Erro ao compilar %s: %s" lang err))))'
+	echo "  ✅ Gramáticas Tree-sitter compiladas com sucesso!"
 }
 
 _emacs_upmodes() {
@@ -61,6 +72,7 @@ case "${_cmd}" in
 	doctor)     _emacs_doctor ;;
 	indent)     _emacs_indent ;;
 	upmodes)    _emacs_upmodes ;;
+	treesit)    _emacs_treesit ;;
 	help|-h|--help) _emacs_help ;;
 	*)
 		echo "❌ Comando desconhecido: ${_cmd}" >&2
