@@ -16,6 +16,7 @@
   (defalias 'eshell 'aweshell/new)
   (setq-default aweshell/validate-executable nil)
   (setq-default aweshell/auto-suggestion-p t)
+  (setq-default aweshell/banner-message "Welcome to the Awesome Emacs Shell\n")
   (if-windows
    (setq-default aweshell/validate-delay (expt 2 -0.5))
    (setq-default aweshell/validate-delay (expt 2 -1)))
@@ -37,6 +38,7 @@
 (use-package eshell
   :ensure nil
   :config
+  (setq-default eshell-banner-message "Welcome to the Awesome Emacs Shell\n")
   (setq-default epe-git-enable t)
   (setq-default eshell-bad-command-tolerance (expt 2 64))
 
