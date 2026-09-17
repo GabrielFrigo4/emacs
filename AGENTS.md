@@ -30,6 +30,7 @@ O repositório `.emacs.d` provê um ambiente de desenvolvimento extensível, cen
 2. **Zero Comentários Narrativos:** Use a arquitetura de comentários em 3 camadas (`#` ou `;;` com régua de 64 `-` no topo, 32 `=` para seções e 32 `-` para subseções).
 3. **Zero Secrets:** Credenciais e chaves de API NUNCA são salvas neste repositório. Use `auth-source` ou variáveis de ambiente injetadas pelo [Vault](https://github.com/GabrielFrigo4/vault).
 4. **Independência Git:** Este repositório é um Git Submodule no Environment. Commits feitos aqui pertencem ao repositório `.emacs.d`.
+5. **Hermetismo de Produção & Invariante `rm -rf .agents`:** Repositório 100% autônomo. Zero acoplamento de código de produção a `.agents/` ou `skills/` (o Emacs opera plenamente se `.agents/` for deletado).
 
 ---
 

@@ -5,11 +5,11 @@
 
 O **Quarteto de Produtividade** (`Setup`, `Shell`, `Vault`, `Profile`) é um ecossistema federado de 4 repositórios complementares e desacoplados, orquestrado pelo repositório **[Environment](https://github.com/GabrielFrigo4/environment)**. Cada componente é responsável por um domínio distinto: provisionamento de sistema operacional (_Setup_), motor interativo de terminal (_Shell_), cofre criptográfico de segredos (_Vault_) e dotfiles declarativos e skills de IA (_Profile_).
 
-Para garantir longevidade, idempotência e excelência técnica, toda contribuição a qualquer repositório do ecossistema deve obedecer aos **19 Princípios de Engenharia** (17 Princípios UNIX + Regra da Soberania do Usuário + Regra da Autonomia Reentrante), às práticas de **Clean Code** adaptadas a scripts de infraestrutura, e às diretrizes arquiteturais unificadas.
+Para garantir longevidade, idempotência e excelência técnica, toda contribuição a qualquer repositório do ecossistema deve obedecer aos **20 Princípios de Engenharia** (17 Princípios UNIX + Regra da Soberania do Usuário + Regra da Autonomia Reentrante + Regra do Hermetismo de Produção), às práticas de **Clean Code** adaptadas a scripts de infraestrutura, e às diretrizes arquiteturais unificadas.
 
 ---
 
-## 🏛️ Os 19 Princípios de Design (17 Princípios UNIX + Soberania do Usuário + Autonomia Reentrante)
+## 🏛️ Os 20 Princípios de Design (17 Princípios UNIX + Soberania do Usuário + Autonomia Reentrante + Hermetismo de Produção)
 
 ### 1. Regra da Modularidade (_Rule of Modularity_)
 
@@ -145,6 +145,14 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 - **Cidadão de Primeira Classe Isolado:** Qualquer repositório do ecossistema (`Shell`, `Profile`, `Vault`, `Setup`, `Editor/*`) DEVE poder ser clonado e operado sozinho sem requerer a existência de nenhum outro componente. A ausência de módulos pares NUNCA deve gerar erros, falhas ou avisos ao usuário.
 - **Sinergia Oportunística Silenciosa:** Se um componente detectar a presença de outro no ambiente hospedeiro (`Emacs` detectando `Vault`, `Shell` detectando `Vault`, `Profile` sincronizando `Skills`), ele se conecta e ativa recursos avançados imediatamente e em silêncio absoluto.
 
+### 20. Regra do Hermetismo de Produção & Autonomia Soberana (_Rule of Production Hermeticity_)
+
+> _O software é construído para humanos e sistemas operacionais; a inteligência artificial é exclusivamente uma copiloto sob demanda. Nenhum código de produção deve depender de ferramentas de IA._
+
+- **A Invariante do Teste de Fogo (`rm -rf .agents`):** Qualquer repositório do ecossistema DEVE poder ter o diretório `.agents/` sumariamente deletado (`rm -rf .agents`) sem que nenhuma funcionalidade, rotina de compilação, script, teste, instalação, atualização ou comportamento operacional seja afetado. O ecossistema continua 100% íntegro e autônomo.
+- **Zero Acoplamento de IA em Runtime:** Nenhum script executável de produção, carregador de terminal (`shell.sh`, `profile.sh`, `vault.sh`, `setup.sh`), arquivo de ambiente (`*.env`, `*.rc`), Makefile, hook de Git (`.githooks/`), pipeline de CI, alias ou função interativa pode depender, referenciar, fazer `source` ou invocar arquivos residentes em diretórios de IA (`.agents/` ou pastas de skills).
+- **Natureza Cognitiva das Skills:** Skills e runbooks de IA são artefatos exclusivamente procedimentais e conceituais para auxílio da inteligência artificial e consulta humana. Jamais são bibliotecas de runtime, dependências de compilação ou geradores estruturais do ecossistema.
+
 ---
 
 ## 🧼 Princípios de Clean Code para Receitas de Infraestrutura
@@ -215,10 +223,13 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 - Áreas de sistema & processos $\rightarrow$ SINGULAR (`system/`, `desktop/`, `server/`, `container/`, `security/`).
 - Nomes próprios $\rightarrow$ CANÔNICO (`linux/`, `freebsd/`, `windows/`, `fedora/`, `arch/`, `debian/`).
 
-### 10. Orçamento de Linhas (Regra 8 - 128)
+### 10. Orçamento de Linhas (Regra 8 - 16 - 128 - 256)
 
-- **Piso:** Nenhum script isolado deve possuir menos de 8 linhas úteis.
-- **Teto:** Nenhum script deve ultrapassar 128 linhas úteis (evitar monólitos e manter coesão temática).
+- **Piso Rígido (Erro Fatal < 8 linhas):** Nenhum script isolado deve possuir menos de 8 linhas úteis. Scripts de 1 a 7 linhas são terminantemente proibidos como nano-scripts órfãos ou vazios, gerando erro fatal e bloqueio de commit no pre-commit e CI (`sys.exit(1)`).
+- **Averiguação Inferior (Aviso <= 16 linhas):** Scripts com 8 a 16 linhas são sinalizados pelos auditores estáticos como candidatos à averiguação e consolidação temática em seus respectivos módulos, evitando fragmentação excessiva.
+- **Faixa Canônica (Sweet Spot 17 a 128 linhas):** Faixa de equilíbrio arquitetural ideal entre granularidade atômica, legibilidade UNIX e manutenibilidade Clean Code.
+- **Averiguação Superior (Aviso 129 a 255 linhas):** Scripts com 129 a 255 linhas são sinalizados pelos auditores estáticos como candidatos à averiguação e modularização.
+- **Teto Rígido (Erro Fatal > 256 linhas):** Nenhum script deve ultrapassar 256 linhas úteis (monólito inaceitável), gerando erro fatal e bloqueio de commit no pre-commit e CI (`sys.exit(1)`), salvo exceções técnicas raras devidamente documentadas na Whitelist dos auditores com justificativa explícita.
 
 ### 11. Execução pelo Shell Ativo (_Active Shell Invocation_)
 
