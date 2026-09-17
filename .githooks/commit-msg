@@ -1,0 +1,44 @@
+#!/usr/bin/env sh
+# ----------------------------------------------------------------
+# Hook: Git Semantic Commit-Message Validator
+# License: MIT (c) 2026 GabrielFrigo
+# ----------------------------------------------------------------
+
+set -e
+
+_msg_file="${1:-}"
+if [ -z "${_msg_file}" ] || [ ! -f "${_msg_file}" ]; then
+	exit 0
+fi
+
+_clean_msg=$(grep -v '^[[:space:]]*#' "${_msg_file}" | tr '\n' ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+case "${_clean_msg}" in
+	Merge*|Revert*|fixup!*|squash!*)
+		exit 0
+		;;
+esac
+
+if [ -z "${_clean_msg}" ]; then
+	echo "❌ [commit-msg] Commit message cannot be empty!" >&2
+	exit 1
+fi
+
+_char_count=$(printf "%s" "${_clean_msg}" | wc -m)
+if [ "${_char_count}" -lt 8 ]; then
+	echo "❌ [commit-msg] Commit message too short (minimum 8 characters)." >&2
+	exit 1
+fi
+
+_pattern='^(add|update|fix|docs|feat|chore|refactor|style|ci|test)(\([a-zA-Z0-9_-]+\))?:[[:space:]]+.+'
+if ! echo "${_clean_msg}" | grep -E -q "${_pattern}"; then
+	echo "❌ [commit-msg] Semantic prefix convention violated!" >&2
+	echo "   Allowed formats:" >&2
+	echo "     <type>: <description>" >&2
+	echo "     <type>(<scope>): <description>" >&2
+	echo "   Allowed types: add, update, fix, docs, feat, chore, refactor, style, ci, test" >&2
+	echo "   Example: 'feat(org): configure org-modern appearance'" >&2
+	exit 1
+fi
+
+exit 0
