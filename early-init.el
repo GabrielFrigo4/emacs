@@ -2,6 +2,9 @@
 ;; Module: GNU Emacs Early Initialization
 ;; ----------------------------------------------------------------
 
+(when (< emacs-major-version 30)
+  (error "Este ambiente requer GNU Emacs 30+ (versao detectada: %s)" emacs-version))
+
 (let ((file (or load-file-name (buffer-file-name))))
   (when file
     (setq user-emacs-directory (file-name-as-directory (file-truename (file-name-directory file))))))

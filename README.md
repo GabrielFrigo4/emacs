@@ -3,7 +3,8 @@
 > Configuração modular, declarativa e resiliente do GNU Emacs para desenvolvimento, edição modal, LSP e Org-mode.
 
 [![Environment](https://img.shields.io/badge/🏛️_Environment-Hub-blue)](https://github.com/GabrielFrigo4/environment)
-[![GNU Emacs](https://img.shields.io/badge/GNU_Emacs-29%2B-purple?logo=gnuemacs&logoColor=white)](https://www.gnu.org/software/emacs/)
+[![GNU Emacs](https://img.shields.io/badge/GNU_Emacs-30%2B-purple?logo=gnuemacs&logoColor=white)](https://www.gnu.org/software/emacs/)
+[![Tree-sitter](https://img.shields.io/badge/Tree--sitter-ABI_14%2B-forestgreen?logo=tree-sitter&logoColor=white)](https://tree-sitter.github.io/tree-sitter/)
 [![POSIX](https://img.shields.io/badge/POSIX-Shell_Scripts-orange?logo=gnubash&logoColor=white)](bin/indent-all.sh)
 [![License](https://img.shields.io/badge/License-MIT-green?logo=open-source-initiative&logoColor=white)](LICENSE)
 
@@ -11,12 +12,14 @@
 
 ## 🧭 Visão Geral
 
-Este repositório contém a configuração pessoal do **GNU Emacs** de Gabriel Frigo, integrando a **Suíte de Editores** do [Universal Environment](https://github.com/GabrielFrigo4/environment). A arquitetura prioriza:
+Este repositório contém a configuração pessoal do **GNU Emacs (versão 30+, preparado para 31+)** de Gabriel Frigo, integrando a **Suíte de Editores** do [Universal Environment](https://github.com/GabrielFrigo4/environment). A arquitetura prioriza:
 
+- **Baseline Moderno (GNU Emacs 30+):** Exige GNU Emacs 30.1+ com Tree-sitter nativo no core C (ABI ≥ 14) e suporte opcional a compilação nativa AOT/JIT (`libgccjit`).
 - **Startup Instantâneo & Resiliente:** Feature toggles defensivos e isolamento de módulos com `condition-case`.
 - **Controle Dinâmico:** Flags customizáveis via variáveis de ambiente (`EMACS_AI`, `EMACS_LSP`, `EMACS_TREESIT`).
 - **LSP Integrado:** Eglot nativo de alta performance para linguagens compiladas e interpretadas.
 - **Gerenciador Elpaca:** Gestão assíncrona e declarativa de pacotes.
+- **Modos Pessoais Federados:** Submódulos Git integrados em `usr/local/` (`aweshell`, `aweww`, `emacs-lisp-ts-mode`).
 
 ---
 
@@ -127,6 +130,16 @@ emacs
 # Habilitar IA sob demanda
 EMACS_AI=1 emacs
 
-# Modo diagnóstico e teste de sintaxe
-emacs -Q --batch -l early-init.el -l init.el --eval '(message "Boot OK")'
+# Modo diagnóstico e teste de sintaxe via script CLI
+./emacs.sh test
+
+# Compilar todas as gramáticas Tree-sitter essenciais
+make treesit
+# ou: ./emacs.sh treesit
+
+# Atualizar os submódulos de modos Elisp federados (usr/local/*)
+make upmodes
+
+# Lançar diretamente uma nova janela com Eshell/aweshell (se no ambiente desktop)
+esh
 ```
