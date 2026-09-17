@@ -167,14 +167,15 @@ sequenceDiagram
 
 Cada módulo possui seu próprio utilitário de atualização individual, garantindo total desacoplamento:
 
-| Comando | Alias            | Repositório Alvo          | Escopo & Comportamento                                                                                             |
-| :------ | :--------------- | :------------------------ | :----------------------------------------------------------------------------------------------------------------- |
-| `upsh`  | `update-shell`   | **Shell**                 | Atualiza o repositório ativo (`$SHELL_REPO_DIR`, `~/.shell` local ou `/usr/local/share/shell` global) e recarrega. |
-| `upvt`  | `update-vault`   | **Vault**                 | Atualiza o cofre (`$VAULT_DIR`, `~/.vault` local ou `/usr/local/share/vault` global) e recarrega chaves SSH.       |
-| `uped`  | `update-editors` | **Editores**              | Inspeciona e atualiza individualmente `~/.emacs.d`, `~/.config/nvim`, `~/.config/helix`, `~/vimfiles`.             |
-| `uprc`  | `update-profile` | **Profile**               | Atualiza `~/.config/profile` e reaplica links de dotfiles e skills de IA.                                          |
-| `upgit` | `update-git`     | **Todos Git**             | Busca e atualiza recursivamente todos os repositórios Git no diretório corrente.                                   |
-| `upall` | `update-all`     | **Sistema + Ecossistema** | Atualiza pacotes do SO (`dnf`, `apt`, `pkg`, `aur`) e, oportunisticamente, os módulos instalados.                  |
+| Comando   | Alias                | Repositório Alvo          | Escopo & Comportamento                                                                                             |
+| :-------- | :------------------- | :------------------------ | :----------------------------------------------------------------------------------------------------------------- |
+| `upsh`    | `update-shell`       | **Shell**                 | Atualiza o repositório ativo (`$SHELL_REPO_DIR`, `~/.shell` local ou `/usr/local/share/shell` global) e recarrega. |
+| `upvt`    | `update-vault`       | **Vault**                 | Atualiza o cofre (`$VAULT_DIR`, `~/.vault` local ou `/usr/local/share/vault` global) e recarrega chaves SSH.       |
+| `uped`    | `update-editors`     | **Editores**              | Inspeciona e atualiza individualmente `~/.emacs.d`, `~/.config/nvim`, `~/.config/helix`, `~/vimfiles`.             |
+| `upmodes` | `update-emacs-modes` | **Modos Elisp**           | Sincroniza diretamente os submódulos Elisp locais (`~/.emacs.d/usr/local/*`) com os branches upstream remotos.     |
+| `uprc`    | `update-profile`     | **Profile**               | Atualiza `~/.config/profile` e reaplica links de dotfiles e skills de IA.                                          |
+| `upgit`   | `update-git`         | **Todos Git**             | Busca e atualiza recursivamente todos os repositórios Git no diretório corrente.                                   |
+| `upall`   | `update-all`         | **Sistema + Ecossistema** | Atualiza pacotes do SO (`dnf`, `apt`, `pkg`, `aur`) e, oportunisticamente, os módulos instalados.                  |
 
 ---
 

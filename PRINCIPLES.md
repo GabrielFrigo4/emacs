@@ -61,6 +61,11 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 
 - Antes de tentar instalar pacotes ou aplicar configurações, os scripts validam pré-requisitos (`command -v`, variáveis de ambiente necessárias, privilégios).
 - Uso extensivo do **ZFS** para snapshots automáticos antes de mudanças críticas no sistema.
+- **Sincronização Resiliente & Auto-Cura de Repositórios:** Utilitários e comandos de atualização (`update-*`, `upsh`, `uprc`, `upvt`, etc.) nunca devem abortar nem entrar em loops infinitos causados por discrepâncias de atributos POSIX (`filemode` 0755 vs 0644). Adotam a estratégia em 4 etapas:
+    1. _Auto-cura de Atributos:_ Se o repositório estiver sujo apenas por divergências de permissão executável (`_content_diff` vazio e zero untracked), restaura o índice (`checkout -- .`) imediatamente, sem poluir a pilha com stashes desnecessários.
+    2. _Isolamento Defensivo:_ Cria auto-stash rastreável (`autostash-before-update-<timestamp>`) apenas se existirem modificações reais de código ou arquivos novos.
+    3. _Cascata de Sincronização:_ Tentativa sequencial de `--ff-only` $\rightarrow$ `--rebase` $\rightarrow$ `pull`.
+    4. _Garantia Canônica Pós-Pull:_ Restaura `chmod 0755` em todos os executáveis e `.githooks/` para prevenir drift futuro de atributos.
 
 ### 9. Regra da Representação (_Rule of Representation_)
 
@@ -162,23 +167,30 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 - `chmod 0644` para arquivos de configuração e documentações.
 - `chmod 0440` para arquivos de autorização do sistema (ex: `/etc/sudoers.d/*`, `doas.conf`).
 
-### 5. Template Canônico de Receitas (Cookbook Header)
+### 5. Template Canônico de Receitas & Emissão Semântica
 
-Os scripts de provisionamento adotam um cabeçalho compacto de 3 linhas com modo defensivo:
+- **Receitas de Provisionamento (`Setup`):** Adotam um cabeçalho compacto de 3 linhas com modo defensivo e emissão pontual:
+    ```sh
+    #!/usr/bin/env sh
+    # ----------------------------------------------------------------
+    # Recipe: [Nome do Software / Funcionalidade]
+    # ----------------------------------------------------------------
+    set -eu
 
-```sh
-#!/usr/bin/env sh
-# ----------------------------------------------------------------
-# Recipe: [Nome do Software / Funcionalidade]
-# ----------------------------------------------------------------
-set -eu
+    echo "📦 [Nome]: Iniciando configuração..."
 
-echo "📦 [Nome]: Iniciando configuração..."
+    ELEVATE="$( [ "$(id -u)" -ne 0 ] && { command -v doas > "/dev/null" 2>&1 && echo "doas" || { command -v sudo > "/dev/null" 2>&1 && echo "sudo"; }; } )"
 
-ELEVATE="$( [ "$(id -u)" -ne 0 ] && { command -v doas > "/dev/null" 2>&1 && echo "doas" || { command -v sudo > "/dev/null" 2>&1 && echo "sudo"; }; } )"
-
-echo "✅ [Nome]: Configurado com sucesso!"
-```
+    echo "✅ [Nome]: Configurado com sucesso!"
+    ```
+- **Utilitários e Orquestradores (`Shell`, `Profile`, `Environment`):** Adotam a biblioteca semântica de emissão (`ui.sh` / `_ui_*`), garantindo TUI ANSI em terminais interativos (`[ -t 1 ]`) e fallback gracioso em texto plano para pipelines e modo batch:
+    - `_ui_step`: Marcador de etapa primária em Ciano (`==>`).
+    - `_ui_sub`: Subtarefa ou item inspecionado em Azul (`↳`).
+    - `_ui_ok`: Conclusão bem-sucedida em Verde (`✅`).
+    - `_ui_warn`: Alerta preventivo não-bloqueante em Amarelo (`⚠️ `).
+    - `_ui_err`: Notificação de falha direcionada a `stderr` em Vermelho (`❌`).
+    - `_ui_info`: Informação contextual ou nota de recarga em Magenta (`ℹ️ `).
+    - `_ui_banner`: Delimitador estrutural com réguas duplas de 64 caracteres `=` em Ciano.
 
 ### 6. Padrão Exclusivo de Comentários Estruturais (Regra do Não-Vazamento)
 
