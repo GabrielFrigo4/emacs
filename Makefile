@@ -7,7 +7,7 @@ MAKEFLAGS += --no-print-directory -s
 # Makefile: Emacs Lisp Suite
 # ----------------------------------------------------------------
 
-.PHONY: help test batch indent ci
+.PHONY: help test batch indent ci upmodes treesit update
 
 ### ================================
 ### HELP & DOCUMENTATION
@@ -22,7 +22,8 @@ help:
 	cmd "batch"          "Executa boot limpo batch do Emacs"; \
 	cmd "indent"         "Formata e indenta arquivos Elisp"; \
 	cmd "ci"             "Executa suíte de validação local do Emacs"; \
-	sec "Modos & Submódulos Elisp:"; \
+	sec "Sincronização & Modos Elisp:"; \
+	cmd "update"         "Atualiza repositório GNU Emacs e submódulos Elisp"; \
 	cmd "upmodes"        "Atualiza submódulos de modos locais (usr/local/*)"; \
 	sec "Tree-sitter & Gramáticas:"; \
 	cmd "treesit"        "Instala e compila as gramáticas Tree-sitter essenciais"; \
@@ -42,8 +43,13 @@ treesit:
 
 
 ### ================================
-### SUBMODULES
+### SUBMODULES & UPDATES
 ### ================================
+update:
+	echo "⬇️  Atualizando repositório GNU Emacs..."
+	git pull --ff-only 2> "/dev/null" || git pull || echo "⚠️  git pull falhou."
+	$(MAKE) upmodes
+
 upmodes:
 	echo "🔄 Atualizando submódulos Elisp locais..."
 	git submodule update --init --recursive --remote --merge && echo "  ✅ Submódulos Elisp atualizados!"

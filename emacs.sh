@@ -14,6 +14,7 @@ _emacs_help() {
 		  emacs.sh [comando]
 
 		Comandos:
+		  update    Atualiza o Emacs e sincroniza os submodulos Elisp
 		  test      Valida inicializacao batch limpa do Emacs
 		  doctor    Verifica presenca do binario emacs e ambiente
 		  indent    Formata e indenta arquivos Elisp
@@ -66,8 +67,15 @@ _emacs_indent() {
 	fi
 }
 
+_emacs_update() {
+	echo "🔄 [Emacs] Atualizando repositório GNU Emacs..."
+	git -C "${_EMACS_ROOT}" pull --ff-only 2> "/dev/null" || git -C "${_EMACS_ROOT}" pull || true
+	_emacs_upmodes
+}
+
 _cmd="${1:-help}"
 case "${_cmd}" in
+	update)     _emacs_update ;;
 	test|batch) _emacs_test ;;
 	doctor)     _emacs_doctor ;;
 	indent)     _emacs_indent ;;
