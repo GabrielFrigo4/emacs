@@ -5,11 +5,11 @@
 
 O **Quarteto de Produtividade** (`Setup`, `Shell`, `Vault`, `Profile`) é um ecossistema federado de 4 repositórios complementares e desacoplados, orquestrado pelo repositório **[Environment](https://github.com/GabrielFrigo4/environment)**. Cada componente é responsável por um domínio distinto: provisionamento de sistema operacional (_Setup_), motor interativo de terminal (_Shell_), cofre criptográfico de segredos (_Vault_) e dotfiles declarativos e skills de IA (_Profile_).
 
-Para garantir longevidade, idempotência e excelência técnica, toda contribuição a qualquer repositório do ecossistema deve obedecer aos **21 Princípios de Engenharia** (17 Princípios UNIX + Regra da Soberania do Usuário + Regra da Autonomia Reentrante + Regra do Hermetismo de Produção + Regra do Desacoplamento Dev-Hub), às práticas de **Clean Code** adaptadas a scripts de infraestrutura, e às diretrizes arquiteturais unificadas.
+Para garantir longevidade, idempotência e excelência técnica, toda contribuição a qualquer repositório do ecossistema deve obedecer aos **22 Princípios de Engenharia** (17 Princípios UNIX + Regra da Soberania do Usuário + Regra da Autonomia Reentrante + Regra do Hermetismo de Produção + Regra do Desacoplamento Dev-Hub + Regra da Antifragilidade & Resiliência Ativa), às práticas de **Clean Code** adaptadas a scripts de infraestrutura, e às diretrizes arquiteturais unificadas.
 
 ---
 
-## 🏛️ Os 21 Princípios de Design (17 Princípios UNIX + Soberania do Usuário + Autonomia Reentrante + Hermetismo de Produção + Desacoplamento Dev-Hub)
+## 🏛️ Os 22 Princípios de Design (17 Princípios UNIX + Soberania do Usuário + Autonomia Reentrante + Hermetismo de Produção + Desacoplamento Dev-Hub + Antifragilidade & Resiliência Ativa)
 
 ### 1. Regra da Modularidade (_Rule of Modularity_)
 
@@ -179,6 +179,28 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
         3. `~/.<componente>` (Home direta).
         4. `/usr/local/share/<componente>` — Suportado defensivamente pela cascata, mas **NÃO RECOMENDADO** por violar a segregação de privilégios e modularidade do usuário (especialmente crítico para o Vault, cujos segredos pertencem ao indivíduo).
 - **A Filosofia do "Recomendado vs. Padrão":** O termo "Recomendado" expressa o ideal arquitetural (desacoplamento e soberania do usuário sem sudo). O termo "Padrão de Sistema" atende à realidade pragmática de estações administradas onde `root` e usuário precisam do mesmo shell. O ecossistema não é dogmático e acolhe com robustez ambas as necessidades.
+
+### 22. Regra da Antifragilidade & Resiliência Ativa (_Rule of Antifragility & Active Self-Healing_)
+
+> _O que é frágil quebra com a mudança de caminho ou desordem de ambiente; o que é robusto apenas resiste estaticamente; o que é antifrágil auto-descobre, cura em tempo de voo e opera com excelência diante de relocação dinâmica e ausência de recursos._
+
+- **O Triângulo da Resiliência Sistêmica (Taleb):**
+    - **Frágil:** Assume um único caminho rígido (`~/.vault/keys/...`). Quebra catastroficamente se o usuário migrar para o padrão XDG (`~/.local/share/vault`), se uma variável de ambiente estiver nula ou se um caminho não existir.
+    - **Robusto:** Possui um fallback estático alternativo, mas falha se o contexto diferir do previsto.
+    - **Antifrágil:** Adapta-se ativamente à desordem, descobre recursos através de cascata dinâmica de inspeção, auto-cura permissões incorretas em tempo de voo, repara variáveis de ambiente na sessão ativa e opera em qualquer estação de trabalho sem atrito.
+- **Cascata Ativa de Descoberta (Active Discovery Cascade):** Nenhuma função, alias, script executável ou loader deve depender cegamente de caminhos fixos ou variáveis desatualizadas. Toda resolução de chaves, segredos ou dependências de runtime inspeciona defensivamente:
+    1. Variável de ambiente explícita (se o arquivo apontado existir e for legível).
+    2. Diretório ativo do componente (`$VAULT_DIR/keys/...`, `$SHELL_REPO_DIR/...`).
+    3. Padrão canônico XDG Data (`${XDG_DATA_HOME:-~/.local/share}/<componente>/...`).
+    4. Padrão canônico XDG Config (`${XDG_CONFIG_HOME:-~/.config}/<componente>/...`).
+    5. Fallback clássico UNIX no `$HOME` (`~/.<componente>/...`).
+    6. Escopo global do sistema (`/usr/local/share/<componente>/...`).
+    7. Agente de chaves em memória (`ssh-agent` / `ssh-add -l`).
+- **Auto-Cura de Permissões em Tempo de Voo (In-flight Permission Self-Healing):** Se um arquivo de segurança crítica (chave SSH `*.key`, certificado ou arquivo `.env`) for localizado com permissões permissivas demais (ex: `0644`), os utilitários realizam a auto-cura imediata (`chmod 0600 "${key}" 2> "/dev/null" || true`) antes de invocar comandos sensíveis como `ssh`, impedindo que o cliente remoto rejeite a chave com avisos ou recusas de autenticação.
+- **Auto-Correção da Sessão (Session Self-Correction):** Ao identificar a localização real e validada de um recurso através da cascata de descoberta, as funções interativas exportam imediatamente a variável corrigida para a sessão ativa (`export FRIGO_SERVER_KEY="${_key}"`), curando o ambiente do usuário para invocações subsequentes e processos-filhos.
+- **Zero Falha Cega & Argument Forwarding:** Utilitários e wrappers antifrágeis nunca omitem falhas silenciosamente nem engolem argumentos:
+    - Se a chave física não for encontrada no disco, tentam conexão delegada para o agente SSH em execução em vez de passar `-i <caminho_inexistente>`.
+    - Encaminham transparentemente todos os parâmetros adicionais (`"$@"`) para o comando subjacente, permitindo execução remota de comandos, flags de porta e modo batch sem atrito.
 
 ---
 

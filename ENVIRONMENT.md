@@ -101,7 +101,7 @@ flowchart TD
 
 Quando os repositórios coexistem no mesmo sistema, eles **detectam-se automaticamente e ativam capacidades adicionais em silêncio absoluto**:
 
-- **Emacs ↔ Vault / IA:** Se o Emacs detectar o Vault em `~/.vault` ou `/usr/local/share/vault` (ou credenciais em variáveis de ambiente), ativa automaticamente seus módulos de IA (`gptel`, `ellama`, `minuet`, `org-ai`). Se ausente, inicializa instantaneamente em modo limpo (< 50ms) sem erros.
+- **Emacs ↔ Vault / IA:** Se o Emacs detectar o Vault em `~/.local/share/vault`, `~/.config/vault`, `~/.vault` ou `/usr/local/share/vault` (ou credenciais em variáveis de ambiente), ativa automaticamente seus módulos de IA (`gptel`, `ellama`, `minuet`, `org-ai`). Se ausente, inicializa instantaneamente em modo limpo (< 50ms) sem erros.
 - **Emacs ↔ EAF:** Se o Emacs estiver em modo gráfico com a pasta do EAF e `python3` disponíveis, ativa a integração. Caso contrário, opera normalmente em modo texto ou terminal sem falhas de D-Bus.
 - **Shell ↔ Vault:** O Shell detecta silenciosamente o cofre e injeta chaves SSH e variáveis. Se o cofre não for encontrado, roda normalmente em modo anônimo.
 - **Profile ↔ Skills de IA:** O Profile cria um link simbólico unificado de diretório (`~/.gemini/config/skills -> Profile/skills`). Qualquer nova skill adicionada ao repositório fica imediatamente disponível no IDE após um `git pull`, sem necessidade de novos links manuais.

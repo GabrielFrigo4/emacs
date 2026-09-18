@@ -34,11 +34,15 @@
 (setq download-directory (expand-file-name "Downloads" home-dir))
 
 (setq vault-dir (or (getenv "VAULT_DIR")
-                    (let ((v-local (expand-file-name ".vault" home-dir))
-                          (v-global "/usr/local/share/vault"))
-                      (cond ((file-directory-p v-local) v-local)
-                            ((file-directory-p v-global) v-global)
-                            (t v-local)))))
+                    (let ((v-xdg-data (expand-file-name ".local/share/vault" home-dir))
+                          (v-xdg-cfg  (expand-file-name ".config/vault" home-dir))
+                          (v-local    (expand-file-name ".vault" home-dir))
+                          (v-global   "/usr/local/share/vault"))
+                      (cond ((file-directory-p v-xdg-data) v-xdg-data)
+                            ((file-directory-p v-xdg-cfg)  v-xdg-cfg)
+                            ((file-directory-p v-local)    v-local)
+                            ((file-directory-p v-global)   v-global)
+                            (t v-xdg-data)))))
 
 (setq auth-sources
       (delete-dups
