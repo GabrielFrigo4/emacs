@@ -202,6 +202,28 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
     - Se a chave física não for encontrada no disco, tentam conexão delegada para o agente SSH em execução em vez de passar `-i <caminho_inexistente>`.
     - Encaminham transparentemente todos os parâmetros adicionais (`"$@"`) para o comando subjacente, permitindo execução remota de comandos, flags de porta e modo batch sem atrito.
 
+### 22. Regra da Antifragilidade & Resiliência Ativa (_Rule of Antifragility & Active Self-Healing_)
+
+> _O que é frágil quebra com a mudança de caminho ou desordem de ambiente; o que é robusto apenas resiste estaticamente; o que é antifrágil auto-descobre, cura em tempo de voo e opera com excelência diante de relocação dinâmica e ausência de recursos._
+
+- **O Triângulo da Resiliência Sistêmica (Taleb):**
+    - **Frágil:** Assume um único caminho rígido (`~/.vault/keys/...`). Quebra catastroficamente se o usuário migrar para o padrão XDG (`~/.local/share/vault`), se uma variável de ambiente estiver nula ou se um caminho não existir.
+    - **Robusto:** Possui um fallback estático alternativo, mas falha se o contexto diferir do previsto.
+    - **Antifrágil:** Adapta-se ativamente à desordem, descobre recursos através de cascata dinâmica de inspeção, auto-cura permissões incorretas em tempo de voo, repara variáveis de ambiente na sessão ativa e opera em qualquer estação de trabalho sem atrito.
+- **Cascata Ativa de Descoberta (Active Discovery Cascade):** Nenhuma função, alias, script executável ou loader deve depender cegamente de caminhos fixos ou variáveis desatualizadas. Toda resolução de chaves, segredos ou dependências de runtime inspeciona defensivamente:
+    1. Variável de ambiente explícita (se o arquivo apontado existir e for legível).
+    2. Diretório ativo do componente (`$VAULT_DIR/keys/...`, `$SHELL_REPO_DIR/...`).
+    3. Padrão canônico XDG Data (`${XDG_DATA_HOME:-~/.local/share}/<componente>/...`).
+    4. Padrão canônico XDG Config (`${XDG_CONFIG_HOME:-~/.config}/<componente>/...`).
+    5. Fallback clássico UNIX no `$HOME` (`~/.<componente>/...`).
+    6. Escopo global do sistema (`/usr/local/share/<componente>/...`).
+    7. Agente de chaves em memória (`ssh-agent` / `ssh-add -l`).
+- **Auto-Cura de Permissões em Tempo de Voo (In-flight Permission Self-Healing):** Se um arquivo de segurança crítica (chave SSH `*.key`, certificado ou arquivo `.env`) for localizado com permissões permissivas demais (ex: `0644`), os utilitários realizam a auto-cura imediata (`chmod 0600 "${key}" 2> "/dev/null" || true`) antes de invocar comandos sensíveis como `ssh`, impedindo que o cliente remoto rejeite a chave com avisos ou recusas de autenticação.
+- **Auto-Correção da Sessão (Session Self-Correction):** Ao identificar a localização real e validada de um recurso através da cascata de descoberta, as funções interativas exportam imediatamente a variável corrigida para a sessão ativa (`export FRIGO_SERVER_KEY="${_key}"`), curando o ambiente do usuário para invocações subsequentes e processos-filhos.
+- **Zero Falha Cega & Argument Forwarding:** Utilitários e wrappers antifrágeis nunca omitem falhas silenciosamente nem engolem argumentos:
+    - Se a chave física não for encontrada no disco, tentam conexão delegada para o agente SSH em execução em vez de passar `-i <caminho_inexistente>`.
+    - Encaminham transparentemente todos os parâmetros adicionais (`"$@"`) para o comando subjacente, permitindo execução remota de comandos, flags de porta e modo batch sem atrito.
+
 ---
 
 ## 🧼 Princípios de Clean Code para Receitas de Infraestrutura
@@ -227,6 +249,7 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 ### 5. Template Canônico de Receitas & Emissão Semântica
 
 - **Receitas de Provisionamento (`Setup`):** Adotam um cabeçalho compacto de 3 linhas com modo defensivo e emissão pontual:
+
     ```sh
     #!/usr/bin/env sh
     # ----------------------------------------------------------------
@@ -240,6 +263,7 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 
     echo "✅ [Nome]: Configurado com sucesso!"
     ```
+
 - **Utilitários e Orquestradores (`Shell`, `Profile`, `Environment`):** Adotam a biblioteca semântica de emissão (`ui.sh` / `_ui_*`), garantindo TUI ANSI em terminais interativos (`[ -t 1 ]`) e fallback gracioso em texto plano para pipelines e modo batch:
     - `_ui_step`: Marcador de etapa primária em Ciano (`==>`).
     - `_ui_sub`: Subtarefa ou item inspecionado em Azul (`↳`).
