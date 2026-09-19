@@ -7,6 +7,7 @@
 [![Tree-sitter](https://img.shields.io/badge/Tree--sitter-ABI_14%2B-forestgreen?logo=tree-sitter&logoColor=white)](https://tree-sitter.github.io/tree-sitter/)
 [![POSIX](https://img.shields.io/badge/POSIX-Shell_Scripts-orange?logo=gnubash&logoColor=white)](bin/indent-all.sh)
 [![License](https://img.shields.io/badge/License-MIT-green?logo=open-source-initiative&logoColor=white)](LICENSE)
+[![Roadmap](https://img.shields.io/badge/🗺️_Roadmap-TODO.md-teal)](TODO.md)
 
 ---
 
@@ -25,8 +26,9 @@ Este repositório contém a configuração pessoal do **GNU Emacs (versão 30+, 
 
 ## 📁 Catálogo da Estrutura
 
-| Diretório / Arquivo                      | Descrição                                                                          |
+| Arquivo / Diretório                      | Descrição                                                                          |
 | :--------------------------------------- | :--------------------------------------------------------------------------------- |
+| [`TODO.md`](TODO.md)                     | Roadmap estratégico, matriz de status e backlog de evolução                        |
 | [`emacs.sh`](emacs.sh)                   | Interface unificada de componente (CLI para test, doctor, indent)                  |
 | [`init.el`](init.el)                     | Ponto de entrada, feature toggles e carregamento central                           |
 | [`early-init.el`](early-init.el)         | Otimizações de boot e caminhos do native-comp cache                                |
