@@ -1,9 +1,12 @@
 [submodule "usr/local/aweshell"]
 	path = usr/local/aweshell
 	url = https://github.com/GabrielFrigo4/aweshell.git
+	branch = main
 [submodule "usr/local/aweww"]
 	path = usr/local/aweww
 	url = https://github.com/GabrielFrigo4/aweww.git
+	branch = main
 [submodule "usr/local/emacs-lisp-ts-mode"]
 	path = usr/local/emacs-lisp-ts-mode
 	url = https://github.com/GabrielFrigo4/emacs-lisp-ts-mode.git
+	branch = main
