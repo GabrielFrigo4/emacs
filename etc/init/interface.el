@@ -217,8 +217,14 @@
 ;; SERVER CONFIGURATION
 ;; --------------------------------
 
-(setq server-socket-dir (expand-file-name "var/server/auth/" emacs-dir))
-(setq server-auth-dir (expand-file-name "var/server/auth/" emacs-dir))
 (setq server-name "server")
+
+(when-windows
+  (setq server-auth-dir (expand-file-name "var/server/auth/" emacs-dir)))
+
+(when-unix
+  (let ((auth-dir (expand-file-name "var/server/auth/" emacs-dir)))
+    (unless (file-directory-p auth-dir)
+      (make-directory auth-dir t))))
 
 (provide 'init-interface)

@@ -224,7 +224,14 @@
 ;; ================================
 (require 'server)
 (unless (server-running-p)
-  (server-start))
+  (server-start)
+  (when-unix
+    (let ((sock-file (expand-file-name server-name (or server-socket-dir (expand-file-name (format "emacs%d" (user-uid)) temporary-file-directory))))
+          (link-file (expand-file-name "var/server/auth/server" emacs-dir)))
+      (when (and (file-exists-p sock-file) (not (string= sock-file link-file)))
+        (ignore-errors
+          (delete-file link-file)
+          (make-symbolic-link sock-file link-file t))))))
 
 ;; ================================
 ;; RESTORE GC DEFAULTS

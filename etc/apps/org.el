@@ -2,48 +2,42 @@
 ;; Module: Emacs Org Mode Feature
 ;; ----------------------------------------------------------------
 
+(defun org-align-all-tags ()
+  "Align all tags in the buffer according to `org-tags-column'."
+  (interactive)
+  (if (derived-mode-p 'org-mode)
+      (org-align-tags t)
+    (message "Not in an Org buffer.")))
+
+(defalias 'org-align-tags-all #'org-align-all-tags)
+
 (use-package org
   :ensure nil
   :bind (("C-c l" . org-store-link)
          ("C-c a" . org-agenda)
-         ("C-c c" . org-capture))
+         ("C-c c" . org-capture)
+         :map org-mode-map
+         ("C-c t a" . org-align-all-tags))
   :custom
   (org-support-shift-select t)
   (org-src-fontify-natively t)
   (org-src-preserve-indentation t)
   (org-hide-emphasis-markers t)
   (org-confirm-babel-evaluate nil)
-  (org-todo-keywords '((sequence "TODO" "|" "WORK" "|" "DONE")))
+  (org-auto-align-tags t)
   :config
 ;; --------------------------------
-;; CHECKBOX FACES
+;; TAG ALIGNMENT & ERGONOMICS
 ;; --------------------------------
-  (set-face-attribute 'org-checkbox nil :weight 'bold)
-  (defface org-todo-custom-face '((t (:inherit 'org-todo :weight bold))) "")
-  (defface org-work-custom-face '((t (:foreground "goldenrod4" :weight bold))) "")
-  (defface org-done-custom-face '((t (:inherit 'org-done :weight bold))) "")
-
-  (setq org-todo-keyword-faces
-        '(("TODO" . org-todo-custom-face)
-          ("WORK" . org-work-custom-face)
-          ("DONE" . org-done-custom-face)))
-
-  (defun org-checkbox-colorizer (start end)
-    (save-excursion
-      (goto-char start)
-      (while (re-search-forward "^ *[-+*] +\\(\\[ \\]\\|\\[-\\]\\|\\[X\\]\\)" end t)
-        (unless (org-in-src-block-p)
-          (let ((match (match-string 1)))
-            (add-text-properties
-             (match-beginning 1) (match-end 1)
-             (cond
-              ((string= match "[ ]") '(face org-todo-custom-face))
-              ((string= match "[-]") '(face org-work-custom-face))
-              ((string= match "[X]") '(face org-done-custom-face)))))))))
-
-  (add-hook 'org-mode-hook (lambda () (jit-lock-register #'org-checkbox-colorizer)))
+  (add-hook 'org-mode-hook
+            (lambda ()
+              (add-hook 'before-save-hook #'org-align-all-tags nil t)))
   (add-hook 'org-mode-hook #'visual-line-mode)
 
+;; --------------------------------
+;; CHECKBOXES & HIGHLIGHTING
+;; --------------------------------
+  (set-face-attribute 'org-checkbox nil :weight 'bold)
   (font-lock-add-keywords 'org-mode '(("^ *[-+*] +\\[X\\] \\(.*\\)" (1 'shadow prepend))))
 
 ;; --------------------------------
