@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t -*-
 ;; ----------------------------------------------------------------
 ;; Module: Emacs Tree-sitter Feature
 ;; ----------------------------------------------------------------
@@ -125,7 +126,6 @@
                   (conf-toml-mode   . toml-ts-mode)
                   (yaml-mode        . yaml-ts-mode)
 
-                  (haskell-mode     . haskell-ts-mode)
                   (zig-mode         . zig-ts-mode)
                   (glsl-ts-mode     . glsl-mode)
                   (markdown-ts-mode . markdown-mode)
@@ -134,6 +134,9 @@
                   (common-lisp-mode . common-lisp-ts-mode)
                   (emacs-lisp-mode  . emacs-lisp-ts-mode)
                   )))
+  (when (and (fboundp 'treesit-language-available-p)
+             (treesit-language-available-p 'haskell))
+    (add-to-list 'major-mode-remap-alist '(haskell-mode . haskell-ts-mode)))
 
 ;; --------------------------------
 ;; SETUP COMMANDS

@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t -*-
 ;; ----------------------------------------------------------------
 ;; Module: Emacs Languages Feature
 ;; ----------------------------------------------------------------
@@ -49,10 +50,10 @@
       (use-package emacs-lisp-ts-mode :ensure nil)
     (use-package emacs-lisp-ts-mode :ensure (:type git :host github :repo "GabrielFrigo4/emacs-lisp-ts-mode")))
   (use-package common-lisp-ts-mode :ensure (:type git :host github :repo "GabrielFrigo4/common-lisp-ts-mode"))
-  (use-package zig-ts-mode :ensure t)
-  (use-package scala-ts-mode :ensure t)
-  (use-package clojure-ts-mode :ensure t)
-  (use-package haskell-ts-mode :ensure t))
+  (use-package zig-ts-mode :ensure t :defer t)
+  (use-package scala-ts-mode :ensure t :defer t)
+  (use-package clojure-ts-mode :ensure t :defer t)
+  (use-package haskell-ts-mode :ensure nil :defer t))
 
 (use-package pyvenv
   :ensure (:type git :host github :repo "emacsmirror/pyvenv" :branch "master")

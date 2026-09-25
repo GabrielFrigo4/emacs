@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t -*-
 ;; ----------------------------------------------------------------
 ;; Module: Emacs Github Feature
 ;; ----------------------------------------------------------------
@@ -79,7 +80,7 @@ Returns the tag name as a string or nil on failure."
         (let* ((assets (cdr (assoc 'assets json-data)))
                (tag-name (cdr (assoc 'tag_name json-data)))
                (repo-name
-                (when-let ((api-url (cdr (assoc 'url json-data))))
+                (when-let* ((api-url (cdr (assoc 'url json-data))))
                   (when (string-match "api\\.github\\.com/repos/[^/]+/\\([^/]+\\)" api-url)
                     (match-string 1 api-url))))
                (download-items
@@ -119,7 +120,7 @@ Returns the tag name as a string or nil on failure."
                       (condition-case err
                           (progn
                             (let ((url-request-extra-headers
-                                   (when-let ((token-value (let ((secrets (auth-source-search :host "api.github.com")))
+                                   (when-let* ((token-value (let ((secrets (auth-source-search :host "api.github.com")))
                                                              (when secrets
                                                                (let ((token (plist-get (car secrets) :secret)))
                                                                  (if (functionp token) (funcall token) token))))))

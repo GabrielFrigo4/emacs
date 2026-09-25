@@ -1,3 +1,4 @@
+;;; -*- lexical-binding: t -*-
 ;; ----------------------------------------------------------------
 ;; Module: Emacs User Interface Configuration
 ;; ----------------------------------------------------------------
@@ -16,7 +17,21 @@
 
 (use-package doom-themes
   :ensure (:type git :host github :repo "doomemacs/themes" :branch "master")
+  :init
+  ;; Corrigir ciclo de heranca de faces no GNU Emacs 31+ (gnus-group-news-low <-> gnus-group-news-low-empty)
+  (with-eval-after-load 'doom-themes-base
+    (when (boundp 'doom-themes-base-faces)
+      (when-let* ((face-entry (assoc 'gnus-group-news-low-empty doom-themes-base-faces)))
+        (setcdr face-entry '(:inherit 'gnus-group-mail-1-empty :weight 'normal)))))
   :config
+  (require 'doom-themes-base nil t)
+  (when (boundp 'doom-themes-base-faces)
+    (when-let* ((face-entry (assoc 'gnus-group-news-low-empty doom-themes-base-faces)))
+      (setcdr face-entry '(:inherit 'gnus-group-mail-1-empty :weight 'normal))))
+  (when (facep 'gnus-group-news-low)
+    (set-face-attribute 'gnus-group-news-low nil :inherit nil))
+  (when (facep 'gnus-group-news-low-empty)
+    (set-face-attribute 'gnus-group-news-low-empty nil :inherit nil))
   (setq doom-themes-enable-bold t
         doom-themes-enable-italic t)
   (load-theme 'doom-dark+ t)
