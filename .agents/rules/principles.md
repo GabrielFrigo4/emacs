@@ -18,3 +18,6 @@
 4. **Performance de Inicialização:**
     - Adiar carregamento de pacotes pesados (`:defer t`, `with-eval-after-load`).
     - Tempo de carregamento interativo deve ser monitorado e mantido enxuto.
+5. **Lexical Binding Obrigatório (Linha 1):**
+    - Todo arquivo `.el` DEVE começar estritamente com `;;; -*- lexical-binding: t -*-` na Linha 1.
+    - Evita warnings do compilador nativo e byte-compiler no Emacs 30/31+, previne vazamento de escopo dinâmico e otimiza compilação `.eln`.

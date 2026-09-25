@@ -36,6 +36,7 @@ O repositório `.emacs.d` provê um ambiente de desenvolvimento extensível, cen
 8. **Tipografia Adaptativa & Resiliente:** Configurar DirectWrite no Windows e HarfBuzz/Fontconfig no Linux/FreeBSD com fallback automático de fontes sem lançar warnings.
 9. **Invariante de Clonagem "Out-of-the-Box" (Zero-Tweaks Git Invariant):** O Emacs deve funcionar imediatamente após `git clone`. Modos octais no Git Index DEVEM ser rigorosamente `0755` para scripts executáveis em `bin/` e hooks, e `0644` para arquivos Elisp e documentação.
 10. **Governança de Roadmap (Opção C):** O repositório mantém seu [TODO.md](TODO.md) atualizado com a Matriz de Status e Backlog de Evolução, sincronizado com o badge no `README.md`.
+11. **Invariante de `lexical-binding` na Linha 1:** TODO e qualquer arquivo Emacs Lisp (`.el`) criado ou mantido DEVE conter obrigatoriamente a declaração `;;; -*- lexical-binding: t -*-` estritamente na **primeira linha absoluta** (Linha 1), antes de qualquer régua ou cabeçalho. Isso previne warnings do byte-compiler e compilação nativa no Emacs 30/31+, assegura escopo léxico previsível e otimiza a geração de código nativo (`.eln`).
 
 ---
 
@@ -47,6 +48,7 @@ Se durante a execução de qualquer tarefa (seja criação de novas features, co
 
 1. **Notificar concisamente** o usuário sobre a divergência encontrada.
 2. **Corrigir imediatamente a inconformidade**, aplicando o padrão canônico correspondente:
+    - **Lexical Binding Obrigatório:** Garantir `;;; -*- lexical-binding: t -*-` rigorosamente na linha 1 de todos os arquivos `.el`.
     - **Comentários Narrativos:** Eliminar imediatamente comentários óbvios que apenas narram código executável.
     - **Banners Estruturais:** Ajustar réguas para exatamente 64 hífens no topo ou 32 caracteres com `### ` no corpo.
     - **Portabilidade POSIX:** Substituir bashismos (`[[ ]]`, `&>`, arrays, `source`) por sintaxe estrita POSIX `/bin/sh`.

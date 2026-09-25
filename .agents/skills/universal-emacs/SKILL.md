@@ -19,6 +19,7 @@ Este runbook orienta desenvolvedores e agentes de inteligência artificial no ge
     - `usr/local/`: Submódulos Git de modos Elisp pessoais (`aweshell`, `aweww`, `emacs-lisp-ts-mode`).
     - `var/`: Estado mutável de runtime (`cache/`, `run/`, `backup/`) — 100% ignorado no Git.
 3. **Zero Symlinks Manuais:** O repositório é clonado como árvore canônica diretamente em `${HOME}/.emacs.d`.
+4. **Lexical Binding Obrigatório (Linha 1):** Todo e qualquer arquivo `.el` deve conter impreterivelmente `;;; -*- lexical-binding: t -*-` como primeira linha absoluta (Linha 1), antes de qualquer régua ou cabeçalho. Isso elimina warnings de compilação no Emacs 30/31+, previne bugs de escopo dinâmico e potencializa a compilação nativa (`.eln`).
 
 ---
 
