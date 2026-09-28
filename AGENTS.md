@@ -67,7 +67,7 @@ Se durante a execução de qualquer tarefa (seja criação de novas features, co
 Antes de qualquer modificação neste ecossistema, consulte:
 
 - **[ENVIRONMENT.md](ENVIRONMENT.md)**: Arquitetura global do ecossistema
-- **[PRINCIPLES.md](PRINCIPLES.md)**: Os 21 Princípios de Engenharia UNIX + Clean Code
+- **[PRINCIPLES.md](PRINCIPLES.md)**: Os 22 Princípios de Engenharia UNIX + Clean Code
 - **[TODO.md](TODO.md)**: Planejamento estratégico e matriz de status operacional
 - **[.agents/rules/principles.md](.agents/rules/principles.md)**: Regras específicas de engenharia Elisp
 - **[.agents/skills/](.agents/skills/)**: Runbooks operacionais do Emacs
