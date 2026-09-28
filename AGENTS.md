@@ -53,7 +53,7 @@ Se durante a execução de qualquer tarefa (seja criação de novas features, co
     - **Banners Estruturais:** Ajustar réguas para exatamente 64 hífens no topo ou 32 caracteres com `### ` no corpo.
     - **Portabilidade POSIX:** Substituir bashismos (`[[ ]]`, `&>`, arrays, `source`) por sintaxe estrita POSIX `/bin/sh`.
     - **Shebang Universal:** Garantir sempre `#!/usr/bin/env sh` ou `#!/usr/bin/env python3`.
-    - **Sequências ANSI:** Substituir octais crípticos (`\033`) e `printf` desnecessário por `[ -t 1 ] && echo -n $'\e...'`.
+    - **Sequências ANSI & Escapes:** Eliminar terminantemente octais (`\033`, `\001`) para caracteres ou bytes. Usar `[ -t 1 ] && echo -n $'\e...'` para sequências de escape, notação hexadecimal (`\x01`, `\x1b`) para bytes/controles e fugir de `printf` desnecessário. Notação octal é estritamente aceita apenas onde o sistema operacional a exige nativamente (permissões POSIX: `chmod 0755`, `chmod 0644`, `umask`).
     - **Redirecionamento Seguro:** Envolver destinos em aspas duplas (ex: `> "/dev/null" 2>&1`).
     - **Makefiles:** Assegurar cabeçalho `.POSIX: .SILENT:`, `MAKEFLAGS += --no-print-directory -s`, alinhamento estético de variáveis e zero `@` redundante.
     - **Permissões Canônicas:** Aplicar 4 dígitos octais (`chmod 0755`, `chmod 0644`, `chmod 0700`, `chmod 0600`).
