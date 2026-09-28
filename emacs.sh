@@ -6,6 +6,17 @@ set -eu
 
 _EMACS_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
+_self_heal_perms() {
+	if [ -d "${_EMACS_ROOT}/.git" ] && command -v git > "/dev/null" 2>&1; then
+		git -C "${_EMACS_ROOT}" config core.hooksPath .githooks 2> "/dev/null" || true
+	fi
+	if [ -d "${_EMACS_ROOT}/.githooks" ]; then
+		chmod 0755 "${_EMACS_ROOT}/.githooks/"* 2> "/dev/null" || true
+	fi
+	[ -f "${_EMACS_ROOT}/emacs.sh" ] && chmod 0755 "${_EMACS_ROOT}/emacs.sh" 2> "/dev/null" || true
+}
+_self_heal_perms
+
 _emacs_help() {
 	cat <<- EOF
 		GNU Emacs — Interface Unificada de Componente

@@ -8,6 +8,7 @@
 [![POSIX](https://img.shields.io/badge/POSIX-Shell_Scripts-orange?logo=gnubash&logoColor=white)](bin/indent-all.sh)
 [![License](https://img.shields.io/badge/License-MIT-green?logo=open-source-initiative&logoColor=white)](LICENSE)
 [![Roadmap](https://img.shields.io/badge/🗺️_Roadmap-TODO.md-teal)](TODO.md)
+[![Contributing](https://img.shields.io/badge/🤝_Contributing-CONTRIBUTING.md-orange)](CONTRIBUTING.md)
 
 ---
 
@@ -29,6 +30,7 @@ Este repositório contém a configuração pessoal do **GNU Emacs (versão 30+, 
 | Arquivo / Diretório                      | Descrição                                                                          |
 | :--------------------------------------- | :--------------------------------------------------------------------------------- |
 | [`TODO.md`](TODO.md)                     | Roadmap estratégico, matriz de status e backlog de evolução                        |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md)     | Guia de contribuição, configuração de ganchos Git e quality gates                  |
 | [`emacs.sh`](emacs.sh)                   | Interface unificada de componente (CLI para test, doctor, indent)                  |
 | [`init.el`](init.el)                     | Ponto de entrada, feature toggles e carregamento central                           |
 | [`early-init.el`](early-init.el)         | Otimizações de boot e caminhos do native-comp cache                                |
@@ -145,3 +147,18 @@ make upmodes
 # Lançar diretamente uma nova janela com Eshell/aweshell (se no ambiente desktop)
 esh
 ```
+
+---
+
+## 🚀 Setup do Projeto & Ganchos Git
+
+Para configurar o ambiente de desenvolvimento local, ativar os quality gates automáticos e validar a integridade da suíte:
+
+```sh
+make hooks   # Configura .githooks e permissões canônicas
+make test    # Valida inicialização limpa em modo batch (make batch)
+make treesit # Compila gramáticas Tree-sitter essenciais
+make ci      # Bateria completa de validação local
+```
+
+> 🤝 **Instruções Detalhadas:** Consulte o [CONTRIBUTING.md](CONTRIBUTING.md) para convenções de commits, arquitetura modular Elisp, diretrizes de lazy-loading e quality gates.

@@ -22,6 +22,71 @@ if ! git diff --check --cached; then
 fi
 
 ### --------------------------------
+### Git Index File Modes Check
+### --------------------------------
+echo "  ↳ Validating Git Index file modes (0755 vs 0644)..."
+_staged_files=$(git diff --cached --name-only --diff-filter=d 2> "/dev/null" || true)
+if [ -n "${_staged_files}" ]; then
+	_bad_modes=0
+	for _f in ${_staged_files}; do
+		[ ! -f "${_f}" ] && continue
+		_meta=$(git ls-files -s -- "${_f}" 2> "/dev/null" || true)
+		[ -z "${_meta}" ] && continue
+		_mode=$(echo "${_meta}" | awk '{print $1}')
+		case "${_mode}" in
+			160000|120000) continue ;;
+		esac
+
+		_has_shebang=0
+		read -r _first_line < "${_f}" 2> "/dev/null" || _first_line=""
+		case "${_first_line}" in
+			"#!"*) _has_shebang=1 ;;
+		esac
+
+		case "${_f}" in
+			.githooks/*) _is_hook=1 ;;
+			*) _is_hook=0 ;;
+		esac
+
+		case "${_f}" in
+			*.md|*.txt|*.json|*.yaml|*.yml|*.toml|*.el|*.lua|*.vim|*.ini|*.conf|*.css|*.html|*.svg|*.png|*.jpg|*.sample|.gitignore|.gitmodules|.gitattributes)
+				_is_doc=1 ;;
+			*) _is_doc=0 ;;
+		esac
+
+		if [ "${_mode}" = "100755" ]; then
+			if [ "${_is_doc}" -eq 1 ] && [ "${_is_hook}" -eq 0 ]; then
+				echo "❌ [pre-commit] Arquivo de documentação/dados com bit executável no Git Index: ${_f}" >&2
+				echo "   Execute: git update-index --chmod=-x \"${_f}\"" >&2
+				_bad_modes=$((_bad_modes + 1))
+			elif [ "${_has_shebang}" -eq 0 ] && [ "${_is_hook}" -eq 0 ]; then
+				case "${_f}" in
+					*.cmd|*.ps1|*.nu|*.bat) ;;
+					*)
+						echo "❌ [pre-commit] Arquivo sem shebang com bit executável no Git Index: ${_f}" >&2
+						echo "   Execute: git update-index --chmod=-x \"${_f}\"" >&2
+						_bad_modes=$((_bad_modes + 1))
+						;;
+				esac
+			fi
+		elif [ "${_mode}" = "100644" ]; then
+			if [ "${_is_hook}" -eq 1 ] && [ "${_f##*.}" != "sample" ]; then
+				echo "❌ [pre-commit] Gancho Git sem permissão de execução no Git Index: ${_f}" >&2
+				echo "   Execute: git update-index --chmod=+x \"${_f}\"" >&2
+				_bad_modes=$((_bad_modes + 1))
+			elif [ "${_has_shebang}" -eq 1 ]; then
+				echo "❌ [pre-commit] Script com shebang sem permissão de execução no Git Index: ${_f}" >&2
+				echo "   Execute: git update-index --chmod=+x \"${_f}\"" >&2
+				_bad_modes=$((_bad_modes + 1))
+			fi
+		fi
+	done
+	if [ "${_bad_modes}" -gt 0 ]; then
+		exit 1
+	fi
+fi
+
+### --------------------------------
 ### Shell Scripts Syntax Check
 ### --------------------------------
 if [ -d "bin" ]; then
