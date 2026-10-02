@@ -190,12 +190,12 @@ Baseados nos 17 Princípios UNIX (_The Art of UNIX Programming_, Eric S. Raymond
 - **18. A Regra da Soberania do Usuário (_Rule of User Sovereignty_):** Nenhuma automação, script ou loader deve sobrescrever variáveis ou configurações pré-existentes do usuário sem consentimento explícito. Ferramentas intencionais do usuário (`doas`, `paru`, `hx`, `eza`, `rg`, `bat`) têm prioridade sobre utilitários genéricos.
 - **19. A Regra da Autonomia Reentrante (_Rule of Reentrant Autonomy & Opportunistic Synergy_):** Todo repositório deve operar com total independência, sem dependências obrigatórias e sem ruído de erro quando isolado. Quando outros componentes são detectados, sinergias são ativadas em silêncio e de forma imediata.
 - **20. A Regra do Hermetismo de Produção & Autonomia Soberana (_Rule of Production Hermeticity_):** O ecossistema é 100% autônomo e independente de IA (`rm -rf .agents`). Nenhum código de produção deve depender de ferramentas ou skills de IA.
-- **21. A Regra do Desacoplamento Dev-Hub vs. Runtime de Produção (_Rule of Production Sovereign Isolation_):** O Environment é exclusivamente bancada de desenvolvimento. Em produção, cada repositório opera soberanamente em sua localização canônica (`~/.config/profile`, `~/.vault`, `/usr/local/share/shell`, etc.).
+- **21. A Regra do Desacoplamento Dev-Hub vs. Runtime de Produção (_Rule of Production Sovereign Isolation_):** O Environment é exclusivamente bancada de desenvolvimento. Em produção, cada repositório opera soberanamente em sua localização canônica (`~/.config/profile`, `~/.vault`, `/usr/local/share/shell`, etc.). O ciclo de atualização obedece ao pipeline obrigatório: edição estrita na bancada $\rightarrow$ `git push` $\rightarrow$ `git pull` soberano nos clones de produção, evitando `cp` avulso que deixe working trees sujas.
 - **22. A Regra da Antifragilidade & Resiliência Ativa (_Rule of Antifragility & Active Self-Healing_):** Auto-cura de permissões em tempo de voo, resolução dinâmica em cascata (XDG/FHS) e zero suposições cegas de arquivos estáticos.
 
 ### 2. Arquitetura de Comentários em Três Camadas (Regra do Não-Vazamento)
 
-- **Zero Comentários Narrativos:** Comentários explicativos inline ("faz isso", "verifica aquilo") são expressamente proibidos em código, scripts, templates e exemplos de documentação. O código expressa sua intenção por meio de nomes semânticos e separação por linhas em branco.
+- **Zero Comentários Narrativos:** Comentários explicativos inline ("faz isso", "verifica aquilo") são proibidos em código, scripts, templates e exemplos de documentação. O código expressa sua intenção por meio de nomes semânticos e separação por linhas em branco.
 - **Camada 1 — Header Banner (64 `-`):** Exclusivo para o topo do arquivo (linhas 2 a 4), delimitando a identidade do script:
     ```sh
     # ----------------------------------------------------------------

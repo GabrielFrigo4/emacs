@@ -36,10 +36,11 @@
       "gpt-4o-mini"
       "deepseek-chat"
       "deepseek-reasoner"
-      "llama3.2"
-      "mistral"
-      "qwen2.5-coder"
-      "gemma3")
+      "gemma4:e2b"
+      "gemma4:e4b"
+      "qwen3.5"
+      "phi4"
+      "deepseek-r1:distill")
     "Models available for selection in GPTEL.")
 
   (defun gptel-select-model ()
@@ -52,6 +53,18 @@
       (unless (string-empty-p selected)
         (setq gptel-model (intern selected))
         (message "gptel-model: %s" gptel-model))))
+
+  (defun ollama-detect-p ()
+    "Detect if Ollama is running on localhost:11434."
+    (condition-case nil
+        (let ((proc (make-network-process
+                     :name "ollama-probe"
+                     :host "127.0.0.1"
+                     :service 11434
+                     :nowait nil)))
+          (delete-process proc)
+          t)
+      (error nil)))
   :config
   (setq-default chatgpt-backend
                 (gptel-make-openai "ChatGPT"  :stream t :key llm-openai-api-key))
@@ -60,11 +73,14 @@
   (setq-default gemini-backend
                 (gptel-make-gemini "Gemini"   :stream t :key llm-google-api-key))
 
-  (setq-default ollama-backend
-                (gptel-make-ollama "Ollama"
-                                   :host "localhost:11434"
-                                   :stream t
-                                   :models '(llama3.2 mistral qwen2.5-coder gemma3)))
+  (when (ollama-detect-p)
+    (setq-default ollama-backend
+                  (gptel-make-ollama "Ollama"
+                                     :host "localhost:11434"
+                                     :stream t
+                                     :models '(gemma4:e2b gemma4:e4b
+                                               qwen3.5 phi4
+                                               deepseek-r1:distill))))
 
   (setq-default gptel-model   'gemini-2.5-flash)
   (setq-default gptel-backend gemini-backend))

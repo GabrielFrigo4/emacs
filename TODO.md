@@ -37,6 +37,13 @@
 - [ ] **Common Lisp & Elisp:** Atualizar e aprimorar ferramentas e REPLs interativos para desenvolvimento em Lisp.
 - [ ] **Org-mode & Produtividade:** Refinar integração com agenda, capture templates e exportação de documentos.
 
+### 4. 🤖 Integração de IA Local (Ollama & LLMs)
+
+- [ ] **Modernização dos modelos Ollama no `gptel`:** Substituir modelos fósseis por Gemma 4, Qwen 3.5, Phi 4, DeepSeek-R1-Distill.
+- [ ] **Detecção automática do Ollama:** Implementar `ollama-detect-p` com probe TCP e degradação graciosa.
+- [ ] **Explorar `el-llm` e backends alternativos:** Avaliar integração com pacote `llm` para unificação de providers locais.
+- [ ] **Integração com `org-ai` via Ollama:** Configurar `org-ai` para usar modelos locais como fallback quando APIs cloud estiverem indisponíveis.
+
 ---
 
 > [!TIP]

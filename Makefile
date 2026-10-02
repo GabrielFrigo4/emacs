@@ -7,7 +7,7 @@ MAKEFLAGS += --no-print-directory -s
 # Makefile: Emacs Lisp Suite
 # ----------------------------------------------------------------
 
-.PHONY: help hooks test batch indent ci upmodes treesit update
+.PHONY: help hooks test batch indent format prettier ci upmodes treesit update
 
 ### ================================
 ### HELP & DOCUMENTATION
@@ -23,7 +23,9 @@ help:
 	sec "Qualidade & Formatação:"; \
 	cmd "test"           "Valida inicialização limpa em modo batch"; \
 	cmd "batch"          "Executa boot limpo batch do Emacs"; \
+	cmd "format"         "Formata arquivos Elisp e Markdown"; \
 	cmd "indent"         "Formata e indenta arquivos Elisp"; \
+	cmd "prettier"       "Formata documentações Markdown com Prettier"; \
 	cmd "ci"             "Executa suíte de validação local do Emacs"; \
 	sec "Sincronização & Modos Elisp:"; \
 	cmd "update"         "Atualiza repositório GNU Emacs e submódulos Elisp"; \
@@ -78,6 +80,17 @@ batch:
 		emacs -Q --batch -l early-init.el -l init.el --eval '(message "Emacs batch OK")' > "/dev/null" 2>&1 && echo "  ✅ Emacs: batch OK"; \
 	else \
 		echo "ℹ️  emacs não encontrado no PATH; ignorando teste batch."; \
+	fi
+
+format: indent prettier
+	echo "✅ Formatação concluída!"
+
+prettier:
+	echo "🎨 Formatando documentações Markdown com Prettier..."
+	if command -v prettier > "/dev/null" 2>&1; then \
+		prettier --write "**/*.md" 2> "/dev/null" || true; \
+	elif command -v npx > "/dev/null" 2>&1; then \
+		npx prettier --write "**/*.md" 2> "/dev/null" || true; \
 	fi
 
 indent:

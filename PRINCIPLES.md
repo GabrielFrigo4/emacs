@@ -166,7 +166,12 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
     - `Helix`: `~/.config/helix`.
     - `NeoVim`: `~/.config/nvim`.
     - `Vim`: `~/.vim`.
-- **Zero Symlinks para a Bancada de Desenvolvimento:** É estritamente proibido criar links simbólicos de sistema, configurações de shell (`.bashrc`, `.zshrc`) ou dotfiles que apontem para a pasta de desenvolvimento `~/Documents/Environment`. O provisionamento no SO deve ser feito exclusivamente clonando cada repositório em sua localização canônica via `make install`.
+- **Zero Symlinks para a Bancada de Desenvolvimento:** Não crie links simbólicos de sistema, configurações de shell (`.bashrc`, `.zshrc`) ou dotfiles que apontem para a pasta de desenvolvimento `~/Documents/Environment`. O provisionamento no SO deve ser feito exclusivamente clonando cada repositório em sua localização canônica via `make install`.
+- **Ciclo Obrigatório de Propagação (Dev-Hub -> Git Push -> Git Pull em Produção):** O fluxo de atualização entre a bancada e os ambientes de produção do sistema operacional obedece a um pipeline estrito, rastreado e auditável:
+    1. **Edição Estrita na Bancada:** Toda e qualquer alteração de código, scripts, módulos ou dotfiles é implementada, testada e validada no clone de desenvolvimento sob o Environment (`~/Documents/Environment/<Componente>`).
+    2. **Integração no Git:** As alterações são commitadas e enviadas ao repositório remoto oficial (`git push`).
+    3. **Atualização Soberana em Produção:** Os clones de produção (`/usr/local/share/shell`, `~/.local/share/profile`, `~/.emacs.d`, `~/.config/nvim`, etc.) são atualizados exclusivamente via `git pull` (ou rotinas e aliases como `upsh`, `uprc`, `uped`, `make pull`, `make install`).
+    4. **Sincronização Limpa via Git:** Não copie arquivos manualmente (`cp`) da bancada para os clones de produção de modo a deixar a árvore de trabalho de produção com alterações não rastreadas (`unstaged/uncommitted changes`). Os repositórios de produção devem permanecer com working tree 100% limpa (`clean working tree`) e sincronizados via histórico do Git.
 - **Hierarquia de Resolução de Caminhos (XDG vs. FHS):**
     - **Universal Shell:**
         1. `/usr/local/share/shell` — Padrão prático para o par `root` + administrador do host.
@@ -251,7 +256,7 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 
 ### 6. Padrão Exclusivo de Comentários Estruturais (Regra do Não-Vazamento)
 
-- **Zero Comentários Narrativos:** Comentários explicativos inline são estritamente proibidos em código, scripts, templates e exemplos. O código expressa sua intenção através de separação por linhas em branco e nomenclatura semântica.
+- **Zero Comentários Narrativos:** Comentários explicativos inline são proibidos em código, scripts, templates e exemplos. O código expressa sua intenção através de separação por linhas em branco e nomenclatura semântica.
 - **Cabeçalho de Topo (Header Banner):** Exclusivo para as linhas 2 a 4 do arquivo, delimitado por exatamente 64 hífens (`# ----------------------------------------------------------------`).
 - **Corpo do Script:** Seções estruturais internas usam estritamente réguas de 32 caracteres (`### ================================` ou `### --------------------------------`), com o título estritamente contido no limite de 32 caracteres (não-vazamento).
 
@@ -262,9 +267,9 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 2. **Receitas Exclusivas de Linux (`linux/`):**
    `dnf` _(Fedora)_ $\rightarrow$ `apt` _(Debian)_ $\rightarrow$ `pacman` _(Arch)_
 
-### 8. Preferência Absoluta por Flags Longas Autoexplicativas
+### 8. Preferência por Flags Longas Autoexplicativas
 
-- Use sempre flags descritivas: `apt install --yes`, `dnf install --assumeyes`, `pkg install --yes`, `pacman -S --needed --noconfirm`.
+- Use preferencialmente flags descritivas: `apt install --yes`, `dnf install --assumeyes`, `pkg install --yes`, `pacman -S --needed --noconfirm`.
 
 ### 9. Nomenclatura Semântica de Diretórios
 
@@ -274,19 +279,19 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 
 ### 10. Orçamento de Linhas (Regra 8 - 16 - 128 - 256)
 
-- **Piso Rígido (Erro Fatal < 8 linhas):** Nenhum script isolado deve possuir menos de 8 linhas úteis. Scripts de 1 a 7 linhas são terminantemente proibidos como nano-scripts órfãos ou vazios, gerando erro fatal e bloqueio de commit no pre-commit e CI (`sys.exit(1)`).
-- **Averiguação Inferior (Aviso <= 16 linhas):** Scripts com 8 a 16 linhas são sinalizados pelos auditores estáticos como candidatos à averiguação e consolidação temática em seus respectivos módulos, evitando fragmentação excessiva.
+- **Piso Rígido (< 8 linhas):** Nenhum script isolado deve possuir menos de 8 linhas úteis. Scripts de 1 a 7 linhas são bloqueados no pre-commit e CI (`sys.exit(1)`).
+- **Averiguação Inferior (Aviso <= 16 linhas):** Scripts com 8 a 16 linhas são sinalizados pelos auditores estáticos como candidatos à consolidação temática em seus respectivos módulos, evitando fragmentação excessiva.
 - **Faixa Canônica (Sweet Spot 17 a 128 linhas):** Faixa de equilíbrio arquitetural ideal entre granularidade atômica, legibilidade UNIX e manutenibilidade Clean Code.
-- **Averiguação Superior (Aviso 129 a 255 linhas):** Scripts com 129 a 255 linhas são sinalizados pelos auditores estáticos como candidatos à averiguação e modularização.
-- **Teto Rígido (Erro Fatal > 256 linhas):** Nenhum script deve ultrapassar 256 linhas úteis (monólito inaceitável), gerando erro fatal e bloqueio de commit no pre-commit e CI (`sys.exit(1)`), salvo exceções técnicas raras devidamente documentadas na Whitelist dos auditores com justificativa explícita.
+- **Averiguação Superior (Aviso 129 a 255 linhas):** Scripts com 129 a 255 linhas são sinalizados pelos auditores estáticos como candidatos à modularização.
+- **Teto Rígido (> 256 linhas):** Nenhum script deve ultrapassar 256 linhas úteis, gerando bloqueio no pre-commit e CI (`sys.exit(1)`), salvo exceções técnicas documentadas na Whitelist dos auditores com justificativa explícita.
 
 ### 11. Execução pelo Shell Ativo (_Active Shell Invocation_)
 
-- Funções utilitárias do terminal e rotinas interativas (como `reinstall-shell`, `bench-shell`, `install.sh`) NUNCA devem invocar `sh <script>` de forma cega.
+- Funções utilitárias do terminal e rotinas interativas (como `reinstall-shell`, `bench-shell`, `install.sh`) não devem invocar `sh <script>` de forma cega.
 - Em distribuições Linux baseadas em Debian e Ubuntu, `/bin/sh` aponta para o interpretador `dash`, cuja BNF estrita rejeita nomes em `kebab-case` (`-`) em funções (`update-all`, `reinstall-shell`, etc.).
-- A execução de sub-rotinas interativas DEVE sempre delegar para o shell ativo em execução seguindo a ordem canônica de preferência: `command -v "$(_detect_shell)" || command -v zsh || command -v bash || command -v sh`. No FreeBSD, o `/bin/sh` permanece como fallback leve de sistema. Scripts instaladores devem conter guards de auto-elevação para o shell interativo suportado do usuário.
+- A execução de sub-rotinas interativas deve sempre delegar para o shell ativo em execução seguindo a ordem canônica de preferência: `command -v "$(_detect_shell)" || command -v zsh || command -v bash || command -v sh`. No FreeBSD, o `/bin/sh` permanece como fallback leve de sistema. Scripts instaladores devem conter guards de auto-elevação para o shell interativo suportado do usuário.
 
 ### 12. Nomenclatura Kebab-Case para Funções de Shell
 
-- Todas as funções utilitárias do motor interativo (`Shell`) adotam estritamente a convenção **kebab-case** (`reinstall-shell`, `update-editors`, `update-git`, `open-neovim`).
-- O interpretador `dash` é formalmente descartado como shell interativo por incompatibilidade com essa convenção, focando a experiência do usuário nos shells suportados (`bash`, `zsh` e FreeBSD `/bin/sh`).
+- Todas as funções utilitárias do motor interativo (`Shell`) adotam a convenção **kebab-case** (`reinstall-shell`, `update-editors`, `update-git`, `open-neovim`).
+- A matriz de shells interativos suportados compreende `zsh`, `bash`, FreeBSD `/bin/sh` e OpenBSD `ksh`. O interpretador `dash` é formalmente descartado como shell interativo por incompatibilidade com essa convenção.
