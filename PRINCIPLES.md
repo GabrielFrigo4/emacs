@@ -101,7 +101,7 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 
 > _Evite codificação manual; escreva programas para escrever programas quando puder._
 
-- Utilizar scripts utilitários e geradores de templates em `scripts/` para automações e conversões de formatos.
+- Utilizar scripts utilitários e geradores de templates em `.scripts/` (diretório oculto na raiz, separando o ferramental de pipeline do conteúdo) para automações e conversões de formatos.
 
 ### 15. Regra da Otimização (_Rule of Optimization_)
 
