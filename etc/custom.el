@@ -15,7 +15,6 @@
  '(display-time-mode t)
  '(global-display-line-numbers-mode t)
  '(inhibit-startup-screen t)
- '(menu-bar-mode nil)
  '(size-indication-mode t)
  '(tool-bar-mode nil)
  '(xterm-mouse-mode t))

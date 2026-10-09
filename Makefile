@@ -62,11 +62,9 @@ treesit:
 update:
 	echo "⬇️  Atualizando repositório GNU Emacs..."
 	git pull --ff-only 2> "/dev/null" || git pull || echo "⚠️  git pull falhou."
-	$(MAKE) upmodes
 
 upmodes:
-	echo "🔄 Atualizando submódulos Elisp locais..."
-	git submodule update --init --recursive --remote --merge && echo "  ✅ Submódulos Elisp atualizados!"
+	echo "  ℹ️  Modos Elisp locais (usr/local/*) integrados nativamente no repositório."
 
 
 ### ================================

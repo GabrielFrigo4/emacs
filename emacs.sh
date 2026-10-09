@@ -46,9 +46,7 @@ _emacs_treesit() {
 }
 
 _emacs_upmodes() {
-	echo "🔄 [Emacs] Atualizando submódulos Elisp locais..."
-	git -C "${_EMACS_ROOT}" submodule update --init --recursive --remote --merge
-	echo "  ✅ Submódulos Elisp atualizados com sucesso!"
+	echo "ℹ️  [Emacs] Modos Elisp locais (usr/local/*) integrados nativamente."
 }
 
 _emacs_test() {
@@ -81,7 +79,6 @@ _emacs_indent() {
 _emacs_update() {
 	echo "🔄 [Emacs] Atualizando repositório GNU Emacs..."
 	git -C "${_EMACS_ROOT}" pull --ff-only 2> "/dev/null" || git -C "${_EMACS_ROOT}" pull || true
-	_emacs_upmodes
 }
 
 _cmd="${1:-help}"
