@@ -243,6 +243,15 @@ Baseados nos 17 Princípios UNIX (_The Art of UNIX Programming_, Eric S. Raymond
     - `.agents/rules/principles.md` com diretrizes de engenharia específicas do seu domínio.
     - `.agents/skills/` com runbooks cognitivos padronizados (`universal-*`, `proactive-guardian`, `deep-investigation`).
 
+### 7. Arquitetura Híbrida Host/Guest (FreeBSD Workstation + Bhyve Linux Runtime)
+
+Em estações de trabalho FreeBSD, ferramentas e agentes de IA que demandam runtimes Go avançados com HTTP/2 ou loops `epoll`/`fsnotify` (como o **Google Antigravity CLI**) operam sob um subsistema dedicado e isolado de virtualização via Bhyve:
+
+- **Host Soberano (FreeBSD):** Workstation desktop (KDE/Wayland), terminais interativos, storage primário em ZFS (`zroot`), firewall PF com NAT e servidor NFSv3 exportando `/home/gabrielf` com `-mapall=gabrielf`.
+- **Guest Linux (Debian 13.7 em Bhyve):** Máquina virtual com kernel 6.12 nativo, UID/GID 1001 alinhado e ponto de montagem NFSv3 em `/home/gabrielf`.
+- **Camada de Integração do Shell:** Módulos desacoplados `target/freebsd/bhyve.sh` e `target/freebsd/compat.sh` provendo funções POSIX `linux-host` (aliases: `linux`, `lx`, `debian`, `deb`), `agy-lx` (aliases: `agy`, `agy-bh`), `agy-compat` (alias: `agy-cp`) e rotina `update-linux` (`uplx`, `updeb`), garantindo navegação com paridade de diretórios e fallback silencioso para a home.
+- **Documentação Canônica:** Série modular de runbooks documentada no Environment em [`docs/bhyve/`](https://github.com/GabrielFrigo4/environment/tree/main/docs/bhyve).
+
 ---
 
 ## 🔗 Links dos Repositórios Federados
