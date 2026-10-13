@@ -241,10 +241,18 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 
     echo "📦 [Nome]: Iniciando configuração..."
 
-    ELEVATE="$( [ "$(id -u)" -ne 0 ] && { command -v doas > "/dev/null" 2>&1 && echo "doas" || { command -v sudo > "/dev/null" 2>&1 && echo "sudo"; }; } )"
+    ELEVATE=""
+    if [ "$(id -u)" -ne 0 ]; then
+        if command -v doas > "/dev/null" 2>&1; then
+            ELEVATE="doas"
+        elif command -v sudo > "/dev/null" 2>&1; then
+            ELEVATE="sudo"
+        fi
+    fi
 
     echo "✅ [Nome]: Configurado com sucesso!"
     ```
+    - Todo comando `shift` em scripts sob `set -eu` deve ser precedido por validação de quantidade de parâmetros (`[ "$#" -ge N ] && shift N`), prevenindo o término fatal imediato exigido pelo padrão POSIX para _special built-ins_ quando `$# < N`.
 - **Utilitários e Orquestradores (`Shell`, `Profile`, `Environment`):** Adotam a biblioteca semântica de emissão (`ui.sh` / `_ui_*`), garantindo TUI ANSI em terminais interativos (`[ -t 1 ]`) e fallback gracioso em texto plano para pipelines e modo batch:
     - `_ui_step`: Marcador de etapa primária em Ciano (`==>`).
     - `_ui_sub`: Subtarefa ou item inspecionado em Azul (`↳`).
