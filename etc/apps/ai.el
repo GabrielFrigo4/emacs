@@ -20,8 +20,8 @@
   (setq-default llm-google-model "gemini-2.5-flash"))
 
 (defvar gptel-models-list
-  '("Gemma4:E2B"
-    "Gemma4:E4B")
+  '("gemma4:e2b"
+    "gemma4:e4b")
   "Models available for selection in GPTEL.")
 
 (defvar gptel-think-p nil
@@ -94,12 +94,10 @@ When nil (default), suppress and strip thinking tags from responses.")
                 (gptel-make-ollama "Ollama"
                                    :host "localhost:11434"
                                    :stream t
-                                   :models '(Gemma4:E2B
-                                             Gemma4:E4B
-                                             gemma4:e2b
+                                   :models '(gemma4:e2b
                                              gemma4:e4b)))
 
-  (setq-default gptel-model   'Gemma4:E2B)
+  (setq-default gptel-model   'gemma4:e2b)
   (setq-default gptel-backend ollama-backend))
 
 (use-package ellama
