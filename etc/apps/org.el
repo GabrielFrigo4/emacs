@@ -28,6 +28,22 @@
   (org-auto-align-tags t)
   :config
 ;; --------------------------------
+;; CAPTURE & PRODUCTIVITY
+;; --------------------------------
+  (setq org-directory (expand-file-name "~/org"))
+  (setq org-default-notes-file (expand-file-name "notes.org" org-directory))
+  (setq org-capture-templates
+        '(("t" "Todo [Inbox]" entry
+           (file+headline org-default-notes-file "Tasks")
+           "* TODO %?\n  %i\n  %a" :prepend t)
+          ("n" "Nota Rápida" entry
+           (file+headline org-default-notes-file "Notes")
+           "* %? :NOTE:\n  %U\n  %i" :prepend t)
+          ("j" "Diário Técnico" entry
+           (file+datetree (expand-file-name "journal.org" org-directory))
+           "* %?\nEntrada criada em %U\n  %i")))
+
+;; --------------------------------
 ;; TAG ALIGNMENT & ERGONOMICS
 ;; --------------------------------
   (add-hook 'org-mode-hook

@@ -147,7 +147,10 @@ With prefix ARG (C-u C-c RET), open `gptel-menu'."
   (setq-default org-ai-default-chat-system-prompt
                 "Act like a wizard that can only generate raw text. Your response should not contain any Markdown formatting or <think> tags. Provide direct plain text without internal thinking.")
   (setq-default org-ai-default-inject-sys-prompt-for-all-messages t)
-  (setq-default org-ai-default-chat-model "gemma4:e2b"))
+  (setq-default org-ai-default-chat-model "gemma4:e2b")
+  (unless (getenv "OPENAI_API_KEY")
+    (setq-default org-ai-openai-api-token "ollama")
+    (setq-default org-ai-openai-chat-endpoint "http://localhost:11434/v1/chat/completions")))
 
 (use-package minuet
   :if minuet/enable
