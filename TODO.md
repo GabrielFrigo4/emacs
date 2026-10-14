@@ -21,15 +21,15 @@
 
 ### 1. 🏛️ Arquitetura Modular & Auto-Detecção Sensorial
 
-- [ ] **Detecção dinâmica de hardware e display:** Identificar automaticamente Wayland (PGTK), X11, DirectWrite e aceleração gráfica.
-- [ ] **Auto-detecção de compilação nativa:** Detectar presença de `libgccjit` e compilação AOT/JIT com chaveamento de flags.
-- [ ] **Desacoplamento modular em `usr/local/`:** Isolar módulos e pacotes locais mantendo inicialização resiliente via `condition-case`.
+- [x] **Detecção dinâmica de hardware e display:** Identificar automaticamente Wayland (PGTK), X11, DirectWrite e aceleração gráfica.
+- [x] **Auto-detecção de compilação nativa:** Detectar presença de `libgccjit` e compilação AOT/JIT com chaveamento de flags.
+- [x] **Desacoplamento modular com `condition-case`:** Isolar módulos e pacotes locais mantendo inicialização resiliente.
 
 ### 2. 🔤 Tipografia Adaptativa & Engine de Fontes
 
-- [ ] Adicionar suporte a DirectWrite BackEngine Font no Windows para renderização nítida de glifos.
-- [ ] Configuração dinâmica de HarfBuzz e Fontconfig em Linux e FreeBSD.
-- [ ] Fallback inteligente de fontes Nerd Fonts, símbolos e emojis.
+- [x] Adicionar suporte a DirectWrite BackEngine Font no Windows para renderização nítida de glifos.
+- [x] Configuração dinâmica de HarfBuzz e Fontconfig em Linux e FreeBSD.
+- [x] Fallback inteligente de fontes Nerd Fonts, símbolos e emojis.
 
 ### 3. 📬 Aplicações, Ecossistemas & Linguagens
 
@@ -39,8 +39,8 @@
 
 ### 4. 🤖 Integração de IA Local (Ollama & LLMs)
 
-- [ ] **Modernização dos modelos Ollama no `gptel`:** Substituir modelos fósseis por Gemma 4, Qwen 3.5, Phi 4, DeepSeek-R1-Distill.
-- [ ] **Detecção automática do Ollama:** Implementar `ollama-detect-p` com probe TCP e degradação graciosa.
+- [x] **Modernização dos modelos Ollama no `gptel`:** Atualizado com `gemma2:9b`, `qwen2.5-coder:7b`, `phi4:14b`, `deepseek-r1:8b`.
+- [x] **Detecção automática do Ollama:** Implementado `ollama-detect-p` com probe TCP e degradação graciosa.
 - [ ] **Explorar `el-llm` e backends alternativos:** Avaliar integração com pacote `llm` para unificação de providers locais.
 - [ ] **Integração com `org-ai` via Ollama:** Configurar `org-ai` para usar modelos locais como fallback quando APIs cloud estiverem indisponíveis.
 

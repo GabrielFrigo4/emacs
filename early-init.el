@@ -11,14 +11,19 @@
     (setq user-emacs-directory (file-name-as-directory (file-truename (file-name-directory file))))))
 
 (setq package-enable-at-startup nil)
+(setq gc-cons-threshold most-positive-fixnum
+      gc-cons-percentage 0.6)
+(setq frame-inhibit-implied-resize t)
 
-(let ((eln-cache-dir (expand-file-name "var/cache/eln-cache/" user-emacs-directory)))
-  (unless (file-exists-p eln-cache-dir)
-    (make-directory eln-cache-dir t))
-  (when (boundp 'startup-redirect-eln-cache)
-    (startup-redirect-eln-cache eln-cache-dir))
-  (when (boundp 'native-comp-eln-load-path)
-    (setq native-comp-eln-load-path
-          (cons eln-cache-dir
-                (delete (expand-file-name "eln-cache/" user-emacs-directory)
-                        native-comp-eln-load-path)))))
+;; Auto-detect native compilation before configuring eln-cache
+(when (featurep 'native-compile)
+  (let ((eln-cache-dir (expand-file-name "var/cache/eln-cache/" user-emacs-directory)))
+    (unless (file-exists-p eln-cache-dir)
+      (make-directory eln-cache-dir t))
+    (when (fboundp 'startup-redirect-eln-cache)
+      (startup-redirect-eln-cache eln-cache-dir))
+    (when (boundp 'native-comp-eln-load-path)
+      (setq native-comp-eln-load-path
+            (cons eln-cache-dir
+                  (delete (expand-file-name "eln-cache/" user-emacs-directory)
+                          native-comp-eln-load-path))))))

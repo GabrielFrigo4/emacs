@@ -39,9 +39,65 @@
 (defmacro if-haiku    (&rest body) `(if-system haiku ,@body))
 (defmacro if-android  (&rest body) `(if-system android ,@body))
 
-;; ================================
-;; UTILITY FUNCTIONS
-;; ================================
+;;; ================================
+;;; HARDWARE & DISPLAY DETECTION
+;;; ================================
+
+(defun display-pgtk-p ()
+  "Return non-nil if running Pure GTK (PGTK) build under Wayland."
+  (featurep 'pgtk))
+
+(defun display-x11-p ()
+  "Return non-nil if running under X11 window system."
+  (eq window-system 'x))
+
+(defun display-w32-p ()
+  "Return non-nil if running under Windows native GUI (w32)."
+  (eq window-system 'w32))
+
+(defun display-tty-p ()
+  "Return non-nil if running in a text terminal (TTY, no window system)."
+  (not window-system))
+
+(defun display-graphic-p* ()
+  "Return non-nil if running in any graphical window system."
+  (and window-system t))
+
+(defun native-compile-p ()
+  "Return non-nil if native compilation (libgccjit) is available."
+  (featurep 'native-compile))
+
+(defmacro when-pgtk           (&rest body) `(when (display-pgtk-p) ,@body))
+(defmacro when-x11            (&rest body) `(when (display-x11-p) ,@body))
+(defmacro when-w32            (&rest body) `(when (display-w32-p) ,@body))
+(defmacro when-tty            (&rest body) `(when (display-tty-p) ,@body))
+(defmacro when-native-compile (&rest body) `(when (native-compile-p) ,@body))
+
+(defmacro if-pgtk           (&rest body) `(if (display-pgtk-p) ,@body))
+(defmacro if-x11            (&rest body) `(if (display-x11-p) ,@body))
+(defmacro if-w32            (&rest body) `(if (display-w32-p) ,@body))
+(defmacro if-tty            (&rest body) `(if (display-tty-p) ,@body))
+(defmacro if-native-compile (&rest body) `(if (native-compile-p) ,@body))
+
+;;; ================================
+;;; NETWORK & LOCAL AI PROBES
+;;; ================================
+
+(defun ollama-detect-p ()
+  "Detect if Ollama daemon is active on localhost:11434 via TCP probe."
+  (condition-case nil
+      (let ((proc (make-network-process
+                   :name "ollama-probe"
+                   :host "127.0.0.1"
+                   :service 11434
+                   :nowait nil)))
+        (delete-process proc)
+        t)
+    (error nil)))
+
+;;; ================================
+;;; UTILITY FUNCTIONS
+;;; ================================
 
 (defun async-sleep (seconds)
   "Sleep for SECONDS without freezing Emacs."

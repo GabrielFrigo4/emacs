@@ -19,52 +19,51 @@
                     (auth-source-pick-first-password :host "generativelanguage.googleapis.com")))
   (setq-default llm-google-model "gemini-2.5-flash"))
 
+(defvar gptel-models-list
+  '("gemini-2.5-pro"
+    "gemini-2.5-flash"
+    "gemini-2.5-flash-lite"
+    "gpt-4o"
+    "gpt-4o-mini"
+    "deepseek-chat"
+    "deepseek-reasoner"
+    "gemma2:9b"
+    "qwen2.5-coder:7b"
+    "phi4:14b"
+    "deepseek-r1:8b")
+  "Models available for selection in GPTEL.")
+
+(defun gptel-select-model ()
+  "Interactively select the model to use with GPTEL."
+  (interactive)
+  (let ((selected (completing-read
+                   "Select model: "
+                   gptel-models-list nil t nil nil
+                   (if (boundp 'gptel-model) (symbol-name gptel-model) ""))))
+    (unless (string-empty-p selected)
+      (setq gptel-model (intern selected))
+      (message "gptel-model: %s" gptel-model))))
+
+(defun gptel/send-safe ()
+  "Send prompt to GPTEL with offline guard for local Ollama backend."
+  (interactive)
+  (if (and (boundp 'ollama-backend)
+           (boundp 'gptel-backend)
+           (eq gptel-backend ollama-backend)
+           (not (ollama-detect-p)))
+      (message "[AVISO] Daemon Ollama offline em localhost:11434. Inicie o servico ou troque de modelo (C-c m).")
+    (if (fboundp 'gptel-send)
+        (call-interactively #'gptel-send)
+      (message "[AVISO] gptel nao esta carregado."))))
+
 (use-package gptel
   :if ia/enable
   :ensure (:type git :host github :repo "emacsmirror/gptel" :branch "master")
   :defer t
   :bind
   (("C-c g"   . gptel)
-   ("C-c RET" . gptel-send)
+   ("C-c RET" . gptel/send-safe)
    ("C-c m"   . gptel-select-model))
-  :init
-  (defvar gptel-models-list
-    '("gemini-2.5-pro"
-      "gemini-2.5-flash"
-      "gemini-2.5-flash-lite"
-      "gpt-4o"
-      "gpt-4o-mini"
-      "deepseek-chat"
-      "deepseek-reasoner"
-      "gemma4:e2b"
-      "gemma4:e4b"
-      "qwen3.5"
-      "phi4"
-      "deepseek-r1:distill")
-    "Models available for selection in GPTEL.")
-
-  (defun gptel-select-model ()
-    "Interactively select the model to use with GPTEL."
-    (interactive)
-    (let ((selected (completing-read
-                     "Select model: "
-                     gptel-models-list nil t nil nil
-                     (symbol-name gptel-model))))
-      (unless (string-empty-p selected)
-        (setq gptel-model (intern selected))
-        (message "gptel-model: %s" gptel-model))))
-
-  (defun ollama-detect-p ()
-    "Detect if Ollama is running on localhost:11434."
-    (condition-case nil
-        (let ((proc (make-network-process
-                     :name "ollama-probe"
-                     :host "127.0.0.1"
-                     :service 11434
-                     :nowait nil)))
-          (delete-process proc)
-          t)
-      (error nil)))
   :config
   (setq-default chatgpt-backend
                 (gptel-make-openai "ChatGPT"  :stream t :key llm-openai-api-key))
@@ -78,9 +77,10 @@
                   (gptel-make-ollama "Ollama"
                                      :host "localhost:11434"
                                      :stream t
-                                     :models '(gemma4:e2b gemma4:e4b
-                                               qwen3.5 phi4
-                                               deepseek-r1:distill))))
+                                     :models '(gemma2:9b
+                                               qwen2.5-coder:7b
+                                               phi4:14b
+                                               deepseek-r1:8b))))
 
   (setq-default gptel-model   'gemini-2.5-flash)
   (setq-default gptel-backend gemini-backend))

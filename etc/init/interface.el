@@ -25,9 +25,6 @@
         (setcdr face-entry '(:inherit 'gnus-group-mail-1-empty :weight 'normal)))))
   :config
   (require 'doom-themes-base nil t)
-  (when (boundp 'doom-themes-base-faces)
-    (when-let* ((face-entry (assoc 'gnus-group-news-low-empty doom-themes-base-faces)))
-      (setcdr face-entry '(:inherit 'gnus-group-mail-1-empty :weight 'normal))))
   (when (facep 'gnus-group-news-low)
     (set-face-attribute 'gnus-group-news-low nil :inherit nil))
   (when (facep 'gnus-group-news-low-empty)
@@ -74,22 +71,25 @@
 ;; MENU & TOOL BAR
 ;; --------------------------------
 
-(if (eq system-type 'windows-nt)
-    (progn
-      (menu-bar-mode -1)
-      (tool-bar-mode -1))
-  (menu-bar-mode 1)
-  (tool-bar-mode 1))
+(cond
+ ((not window-system)
+  (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
+  (when (fboundp 'tool-bar-mode) (tool-bar-mode -1)))
+ ((eq window-system 'w32)
+  (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
+  (when (fboundp 'tool-bar-mode) (tool-bar-mode -1)))
+ (t
+  (when (fboundp 'menu-bar-mode) (menu-bar-mode 1))
+  (when (fboundp 'tool-bar-mode) (tool-bar-mode 1))))
 
 ;; --------------------------------
 ;; FRAME MANAGEMENT
 ;; --------------------------------
 
 (setq frame-resize-pixelwise t)
-(add-to-list 'default-frame-alist '(width . 100))
-(add-to-list 'default-frame-alist '(height . 31))
-(add-to-list 'initial-frame-alist '(width . 100))
-(add-to-list 'initial-frame-alist '(height . 31))
+(dolist (param '((width . 100) (height . 31)))
+  (add-to-list 'default-frame-alist param)
+  (add-to-list 'initial-frame-alist param))
 
 (defun frame/center-screen (&optional frame)
   "Center Frame (or the Current Frame) on the Screen."
@@ -236,18 +236,15 @@
               (run-at-time delay nil #'buffer/kill-eaf))))
 
 (add-hook 'elpaca-after-init-hook #'buffer/kill-pkg)
-(when (boundp 'native-comp-async-all-done-hook)
+(when (and (featurep 'native-compile) (boundp 'native-comp-async-all-done-hook))
   (add-hook 'native-comp-async-all-done-hook #'buffer/kill-log))
 
 ;; --------------------------------
 ;; SERVER CONFIGURATION
 ;; --------------------------------
-
 (setq server-name "server")
-
 (when-windows
   (setq server-auth-dir (expand-file-name "var/server/auth/" emacs-dir)))
-
 (when-unix
   (let ((auth-dir (expand-file-name "var/server/auth/" emacs-dir)))
     (unless (file-directory-p auth-dir)

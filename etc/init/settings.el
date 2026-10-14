@@ -53,7 +53,8 @@
 (setq-default max-image-size (expt 2 24))
 (setq-default image-cache-eviction-delay (expt 2 8))
 (setq-default async-shell-command-buffer 'new-buffer)
-(setq-default native-comp-async-report-warnings-errors 'silent)
+(when (featurep 'native-compile)
+  (setq-default native-comp-async-report-warnings-errors 'silent))
 
 (global-auto-revert-mode 1)
 (setq-default global-auto-revert-non-file-buffers t)

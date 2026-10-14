@@ -17,16 +17,20 @@
   (when file
     (setq user-emacs-directory (file-name-as-directory (file-truename (file-name-directory file))))))
 
-(setq home-dir (expand-file-name "~/"))
-(setq emacs-dir (expand-file-name user-emacs-directory))
+(setq home-dir  (expand-file-name "~/")
+      emacs-dir (expand-file-name user-emacs-directory)
+      etc-dir   (expand-file-name "etc/" emacs-dir)
+      var-dir   (expand-file-name "var/" emacs-dir)
+      opt-dir   (expand-file-name "opt/" emacs-dir)
+      lib-dir   (expand-file-name "lib/" emacs-dir)
+      tmp-dir   (expand-file-name "tmp/" emacs-dir)
+      usr-dir   (expand-file-name "usr/" emacs-dir)
+      temporary-file-directory tmp-dir)
 
-(setq etc-dir (expand-file-name "etc/" emacs-dir))
-(setq var-dir (expand-file-name "var/" emacs-dir))
-(setq opt-dir (expand-file-name "opt/" emacs-dir))
-(setq lib-dir (expand-file-name "lib/" emacs-dir))
-(setq tmp-dir (expand-file-name "tmp/" emacs-dir))
-(setq usr-dir (expand-file-name "usr/" emacs-dir))
-(setq temporary-file-directory tmp-dir)
+(add-to-list 'load-path lib-dir)
+(condition-case err
+    (require 'core)
+  (error (message "[ERRO] Falha ao carregar core: %s" (error-message-string err))))
 
 (setq eshell-directory-name (expand-file-name "eshell/" var-dir))
 (setq eshell-aliases-file (expand-file-name "eshell/alias" usr-dir))
@@ -55,36 +59,28 @@
                    (expand-file-name "tokens/.authinfo" vault-dir)
                    (expand-file-name ".netrc" home-dir)))))
 
-(setq backup-dir (expand-file-name "cache/backup/" var-dir))
-(setq cache-dir  (expand-file-name "cache/" var-dir))
-(setq lock-dir   (expand-file-name "run/lock/" var-dir))
+(setq backup-dir (expand-file-name "cache/backup/" var-dir)
+      cache-dir  (expand-file-name "cache/" var-dir)
+      lock-dir   (expand-file-name "run/lock/" var-dir))
 
-(unless (file-exists-p var-dir) (make-directory var-dir t))
-(unless (file-exists-p cache-dir) (make-directory cache-dir t))
-(unless (file-exists-p backup-dir) (make-directory backup-dir t))
-(unless (file-exists-p lock-dir) (make-directory lock-dir t))
-(unless (file-exists-p tmp-dir) (make-directory tmp-dir t))
-(unless (file-exists-p usr-dir) (make-directory usr-dir t))
-(unless (file-exists-p (file-name-directory eshell-aliases-file))
-  (make-directory (file-name-directory eshell-aliases-file) t))
+(dolist (dir (list var-dir cache-dir backup-dir lock-dir tmp-dir usr-dir
+                   (file-name-directory eshell-aliases-file)))
+  (unless (file-exists-p dir) (make-directory dir t)))
 
 (when (file-directory-p tmp-dir)
   (dolist (file (directory-files tmp-dir t "^[^.]"))
-    (condition-case nil
-        (if (file-directory-p file)
-            (delete-directory file t)
-          (delete-file file))
-      (error nil))))
+    (ignore-errors
+      (if (file-directory-p file) (delete-directory file t) (delete-file file)))))
 
 (setq treesit-extra-load-path (list (expand-file-name "lib/tree-sitter/" var-dir)))
 
 ;; ================================
 ;; CACHE FILES
 ;; ================================
-(setq ido-save-directory-list-file (expand-file-name "ido.last" cache-dir))
-(setq tramp-persistency-file-name (expand-file-name "tramp" cache-dir))
-(setq recentf-save-file (expand-file-name "recentf" cache-dir))
-(setq mc/list-file (expand-file-name "mc-lists.el" cache-dir))
+(setq ido-save-directory-list-file (expand-file-name "ido.last" cache-dir)
+      tramp-persistency-file-name  (expand-file-name "tramp" cache-dir)
+      recentf-save-file            (expand-file-name "recentf" cache-dir)
+      mc/list-file                 (expand-file-name "mc-lists.el" cache-dir))
 
 ;; ================================
 ;; FEATURE TOGGLES & AUTO-DETECTION
@@ -108,14 +104,15 @@
        t))
 
 (defun ai-detect-p ()
-  "Auto-detect if AI credentials or tokens are present in system, vault or auth-sources."
+  "Auto-detect if AI credentials, tokens or local Ollama daemon are present."
   (and (or (getenv "GEMINI_API_KEY")
            (getenv "OPENAI_API_KEY")
            (getenv "DEEPSEEK_API_KEY")
            (getenv "ANTHROPIC_API_KEY")
            (file-exists-p (expand-file-name ".authinfo.gpg" home-dir))
            (file-exists-p (expand-file-name "tokens/authinfo" vault-dir))
-           (file-exists-p (expand-file-name "tokens/authinfo.gpg" vault-dir)))
+           (file-exists-p (expand-file-name "tokens/authinfo.gpg" vault-dir))
+           (and (fboundp 'ollama-detect-p) (ollama-detect-p)))
        t))
 
 (defun minuet-detect-p ()
@@ -134,20 +131,17 @@
   "Auto-detect if LaTeX compiler is present in system."
   (and (or (executable-find "latex") (executable-find "pdflatex")) t))
 
-(setq scroll/enable  (getenv-bool "EMACS_SCROLL" t))
-(setq treesit/enable (getenv-bool "EMACS_TREESIT" #'treesit-detect-p))
-(setq minuet/enable  (getenv-bool "EMACS_MINUET" #'minuet-detect-p))
-(setq ia/enable      (getenv-bool "EMACS_AI" #'ai-detect-p))
-(setq eaf/enable     (getenv-bool "EMACS_EAF" #'eaf-detect-p))
-(setq lsp/enable     (getenv-bool "EMACS_LSP" t))
-(setq latex/enable   (getenv-bool "EMACS_LATEX" #'latex-detect-p))
+(setq scroll/enable  (getenv-bool "EMACS_SCROLL" t)
+      treesit/enable (getenv-bool "EMACS_TREESIT" #'treesit-detect-p)
+      minuet/enable  (getenv-bool "EMACS_MINUET" #'minuet-detect-p)
+      ia/enable      (getenv-bool "EMACS_AI" #'ai-detect-p)
+      eaf/enable     (getenv-bool "EMACS_EAF" #'eaf-detect-p)
+      lsp/enable     (getenv-bool "EMACS_LSP" t)
+      latex/enable   (getenv-bool "EMACS_LATEX" #'latex-detect-p))
 
 ;; ================================
-;; CORE LIBRARIES & LOCAL PACKAGES
+;; LOCAL PACKAGES
 ;; ================================
-(add-to-list 'load-path lib-dir)
-(require 'core)
-
 ;; Add user local packages (usr/local/*) to load-path
 (let ((local-pkgs-dir (expand-file-name "local" usr-dir)))
   (when (file-directory-p local-pkgs-dir)
@@ -187,19 +181,27 @@
 ;; MODULAR CONFIGURATION
 ;; ================================
 (defun load-directory-recursive (directory)
-  "Load all .el files in DIRECTORY and its sub-directories."
+  "Load all .el files in DIRECTORY and its sub-directories safely."
   (when (file-directory-p directory)
     (let ((files (directory-files-recursively directory "\\.el$")))
       (dolist (file files)
         (condition-case err
-            (load file)
-          (error (message "ERROR loading %s: %s" file (error-message-string err))))))))
+            (load file nil t)
+          (error (message "[ERRO] Falha ao carregar modulo %s: %s"
+                          (file-name-nondirectory file)
+                          (error-message-string err))))))))
 
 ;; --------------------------------
 ;; Core Initialization
 ;; --------------------------------
-(mapc (lambda (file) (load (expand-file-name (format "init/%s" file) etc-dir)))
-      '("packages" "interface" "settings" "keybindings"))
+(dolist (module '("packages" "interface" "typography" "settings" "keybindings"))
+  (let ((file (expand-file-name (format "init/%s.el" module) etc-dir)))
+    (condition-case err
+        (when (file-exists-p file)
+          (load file nil t))
+      (error (message "[ERRO] Falha ao carregar modulo init/%s: %s"
+                      module
+                      (error-message-string err))))))
 
 ;; --------------------------------
 ;; Feature Modules
@@ -213,12 +215,22 @@
 (let ((user-init   (expand-file-name "init.el" usr-dir))
       (user-config (expand-file-name "config.el" usr-dir)))
   (cond
-   ((file-exists-p user-init)   (load user-init 'noerror))
-   ((file-exists-p user-config) (load user-config 'noerror))
+   ((file-exists-p user-init)
+    (condition-case err
+        (load user-init nil t)
+      (error (message "[ERRO] Falha ao carregar user init.el: %s" (error-message-string err)))))
+   ((file-exists-p user-config)
+    (condition-case err
+        (load user-config nil t)
+      (error (message "[ERRO] Falha ao carregar user config.el: %s" (error-message-string err)))))
    (t
     (dolist (file (directory-files usr-dir t "^[^.].*\\.el$"))
       (unless (file-directory-p file)
-        (load file 'noerror))))))
+        (condition-case err
+            (load file nil t)
+          (error (message "[ERRO] Falha ao carregar %s: %s"
+                          (file-name-nondirectory file)
+                          (error-message-string err)))))))))
 
 ;; ================================
 ;; EMACS SERVER
