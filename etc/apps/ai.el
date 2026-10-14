@@ -25,14 +25,20 @@
   "Models available for selection in GPTEL.")
 
 (defvar gptel-think-p nil
-  "When non-nil, keep <think>...</think> reasoning blocks.
-When nil (default), suppress and strip thinking tags from responses.")
+  "When non-nil, keep thinking active in Ollama request payload (:think true).
+When nil (default), natively skip thinking (:think false) and suppress tags.")
 
 (defun gptel-toggle-think ()
-  "Toggle thinking/reasoning output in GPTEL and AI models."
+  "Toggle native reasoning/thinking mode in Ollama and GPTEL."
   (interactive)
   (setq gptel-think-p (not gptel-think-p))
-  (message "Modo Think (Raciocinio): %s" (if gptel-think-p "ATIVADO" "DESATIVADO")))
+  (when (and (boundp 'ollama-backend)
+             (fboundp 'gptel-backend-request-params))
+    (setf (gptel-backend-request-params ollama-backend)
+          (plist-put (copy-sequence (gptel-backend-request-params ollama-backend))
+                     :think (if gptel-think-p t :json-false))))
+  (message "Modo Think (Ollama nativo): %s"
+           (if gptel-think-p "ATIVADO (pensamento ativo no modelo)" "DESATIVADO (pensamento desativado/ignorado no modelo)")))
 
 (defun gptel--filter-think (text)
   "Filter out <think>...</think> blocks from TEXT if `gptel-think-p' is nil."
@@ -52,17 +58,20 @@ When nil (default), suppress and strip thinking tags from responses.")
       (setq gptel-model (intern selected))
       (message "gptel-model: %s" gptel-model))))
 
-(defun gptel/send-safe ()
-  "Send prompt to GPTEL with offline guard for local Ollama backend."
-  (interactive)
-  (if (and (boundp 'ollama-backend)
-           (boundp 'gptel-backend)
-           (eq gptel-backend ollama-backend)
-           (not (ollama-detect-p)))
-      (message "[AVISO] Daemon Ollama offline em localhost:11434. Inicie o servico ou troque de modelo (C-c m).")
-    (if (fboundp 'gptel-send)
-        (call-interactively #'gptel-send)
-      (message "[AVISO] gptel nao esta carregado."))))
+(defun gptel/send-safe (&optional arg)
+  "Send prompt to GPTEL with offline guard for local Ollama backend.
+With prefix ARG (C-u C-c RET), open `gptel-menu'."
+  (interactive "P")
+  (if arg
+      (call-interactively #'gptel-menu)
+    (if (and (boundp 'ollama-backend)
+             (boundp 'gptel-backend)
+             (eq gptel-backend ollama-backend)
+             (not (ollama-detect-p)))
+        (message "[AVISO] Daemon Ollama offline em localhost:11434. Inicie o servico ou troque de modelo (C-c m).")
+      (if (fboundp 'gptel-send)
+          (call-interactively #'gptel-send)
+        (message "[AVISO] gptel nao esta carregado.")))))
 
 (use-package gptel
   :if ia/enable
@@ -71,6 +80,7 @@ When nil (default), suppress and strip thinking tags from responses.")
   :bind
   (("C-c g"   . gptel)
    ("C-c RET" . gptel/send-safe)
+   ("C-c ?"   . gptel-menu)
    ("C-c m"   . gptel-select-model)
    ("C-c t"   . gptel-toggle-think))
   :config
@@ -95,7 +105,17 @@ When nil (default), suppress and strip thinking tags from responses.")
                                    :host "localhost:11434"
                                    :stream t
                                    :models '(gemma4:e2b
-                                             gemma4:e4b)))
+                                             gemma4:e4b)
+                                   :request-params '(:think :json-false)))
+
+  (setq-default gptel-directives
+                '((default . "Você é um assistente técnico conciso e preciso integrado ao GNU Emacs. Forneça respostas diretas e objetivas, sem explicações desnecessárias.")
+                  (code    . "Você é um engenheiro de software experiente com foco em UNIX, POSIX, C, Rust e Elisp. Escreva código limpo, performático, seguro e sem código de transição.")
+                  (org     . "Você é um assistente especializado em Org-mode, estruturação de notas técnicas, planejamento e documentação em prosa clara.")
+                  (concise . "Forneça exclusivamente a resposta ou comando solicitado, com zero texto introdutório ou conclusivo.")))
+
+  (setq-default gptel-system-prompt
+                (alist-get 'default gptel-directives))
 
   (setq-default gptel-model   'gemma4:e2b)
   (setq-default gptel-backend ollama-backend))
