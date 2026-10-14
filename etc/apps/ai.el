@@ -24,6 +24,23 @@
     "Gemma4:E4B")
   "Models available for selection in GPTEL.")
 
+(defvar gptel-think-p nil
+  "When non-nil, keep <think>...</think> reasoning blocks.
+When nil (default), suppress and strip thinking tags from responses.")
+
+(defun gptel-toggle-think ()
+  "Toggle thinking/reasoning output in GPTEL and AI models."
+  (interactive)
+  (setq gptel-think-p (not gptel-think-p))
+  (message "Modo Think (Raciocinio): %s" (if gptel-think-p "ATIVADO" "DESATIVADO")))
+
+(defun gptel--filter-think (text)
+  "Filter out <think>...</think> blocks from TEXT if `gptel-think-p' is nil."
+  (if (or gptel-think-p (null text))
+      text
+    (let ((clean (replace-regexp-in-string "<think>\\([[:ascii:][:nonascii:]]*?\\)</think>[\r\n]*" "" text)))
+      (replace-regexp-in-string "</?think>[\r\n]*" "" clean))))
+
 (defun gptel-select-model ()
   "Interactively select the model to use with GPTEL."
   (interactive)
@@ -54,8 +71,18 @@
   :bind
   (("C-c g"   . gptel)
    ("C-c RET" . gptel/send-safe)
-   ("C-c m"   . gptel-select-model))
+   ("C-c m"   . gptel-select-model)
+   ("C-c t"   . gptel-toggle-think))
   :config
+  (add-hook 'gptel-response-filter-functions #'gptel--filter-think)
+  (add-hook 'gptel-post-response-functions
+            (lambda (beg end)
+              (unless gptel-think-p
+                (save-excursion
+                  (goto-char beg)
+                  (while (re-search-forward "<think>\\([[:ascii:][:nonascii:]]*?\\)</think>[\r\n]*" end t)
+                    (replace-match ""))))))
+
   (setq-default chatgpt-backend
                 (gptel-make-openai "ChatGPT"  :stream t :key llm-openai-api-key))
   (setq-default deepseek-backend
@@ -100,9 +127,9 @@
   :hook (org-mode . org-ai-mode)
   :config
   (setq-default org-ai-default-chat-system-prompt
-                "Act like a wizard that can only generate raw text. Your response should not contain any Markdown formatting. I need to copy and paste your output into a plain text editor without losing any information.")
+                "Act like a wizard that can only generate raw text. Your response should not contain any Markdown formatting or <think> tags. Provide direct plain text without internal thinking.")
   (setq-default org-ai-default-inject-sys-prompt-for-all-messages t)
-  (setq-default org-ai-default-chat-model llm-google-model))
+  (setq-default org-ai-default-chat-model "gemma4:e2b"))
 
 (use-package minuet
   :if minuet/enable
