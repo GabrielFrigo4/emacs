@@ -39,7 +39,7 @@
 
 ### 4. 🤖 Integração de IA Local (Ollama & LLMs)
 
-- [x] **Modernização dos modelos Ollama no `gptel`:** Atualizado com `gemma2:9b`, `qwen2.5-coder:7b`, `phi4:14b`, `deepseek-r1:8b`.
+- [x] **Modernização dos modelos Ollama no `gptel`:** Atualizado exclusivamente com `Gemma4:E2B` e `Gemma4:E4B`.
 - [x] **Detecção automática do Ollama:** Implementado `ollama-detect-p` com probe TCP e degradação graciosa.
 - [ ] **Explorar `el-llm` e backends alternativos:** Avaliar integração com pacote `llm` para unificação de providers locais.
 - [ ] **Integração com `org-ai` via Ollama:** Configurar `org-ai` para usar modelos locais como fallback quando APIs cloud estiverem indisponíveis.

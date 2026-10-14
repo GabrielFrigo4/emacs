@@ -20,17 +20,8 @@
   (setq-default llm-google-model "gemini-2.5-flash"))
 
 (defvar gptel-models-list
-  '("gemini-2.5-pro"
-    "gemini-2.5-flash"
-    "gemini-2.5-flash-lite"
-    "gpt-4o"
-    "gpt-4o-mini"
-    "deepseek-chat"
-    "deepseek-reasoner"
-    "gemma2:9b"
-    "qwen2.5-coder:7b"
-    "phi4:14b"
-    "deepseek-r1:8b")
+  '("Gemma4:E2B"
+    "Gemma4:E4B")
   "Models available for selection in GPTEL.")
 
 (defun gptel-select-model ()
@@ -72,18 +63,17 @@
   (setq-default gemini-backend
                 (gptel-make-gemini "Gemini"   :stream t :key llm-google-api-key))
 
-  (when (ollama-detect-p)
-    (setq-default ollama-backend
-                  (gptel-make-ollama "Ollama"
-                                     :host "localhost:11434"
-                                     :stream t
-                                     :models '(gemma2:9b
-                                               qwen2.5-coder:7b
-                                               phi4:14b
-                                               deepseek-r1:8b))))
+  (setq-default ollama-backend
+                (gptel-make-ollama "Ollama"
+                                   :host "localhost:11434"
+                                   :stream t
+                                   :models '(Gemma4:E2B
+                                             Gemma4:E4B
+                                             gemma4:e2b
+                                             gemma4:e4b)))
 
-  (setq-default gptel-model   'gemini-2.5-flash)
-  (setq-default gptel-backend gemini-backend))
+  (setq-default gptel-model   'Gemma4:E2B)
+  (setq-default gptel-backend ollama-backend))
 
 (use-package ellama
   :if ia/enable
