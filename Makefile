@@ -84,11 +84,11 @@ format: indent prettier
 	echo "✅ Formatação concluída!"
 
 prettier:
-	echo "🎨 Formatando documentações Markdown com Prettier..."
+	echo "🎨 Formatando documentações e configurações com Prettier..."
 	if command -v prettier > "/dev/null" 2>&1; then \
-		prettier --write "**/*.md" 2> "/dev/null" || true; \
+		prettier --write "**/*.{md,json,jsonc,yml,yaml,html,css}" 2> "/dev/null" || true; \
 	elif command -v npx > "/dev/null" 2>&1; then \
-		npx prettier --write "**/*.md" 2> "/dev/null" || true; \
+		npx --yes prettier --write "**/*.{md,json,jsonc,yml,yaml,html,css}" 2> "/dev/null" || true; \
 	fi
 
 indent:
