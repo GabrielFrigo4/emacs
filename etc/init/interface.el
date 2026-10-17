@@ -38,7 +38,7 @@
   :ensure (:type git :host github :repo "emacsmirror/doom-modeline" :branch "master")
   :init (doom-modeline-mode 1)
   :custom
-  (doom-modeline-icon t)
+  (doom-modeline-icon (display-graphic-p))
   (doom-modeline-height 26)
   (doom-modeline-bar-width 4)
   (doom-modeline-buffer-file-name-style 'truncate-upto-project)
@@ -56,10 +56,10 @@
   (setq dashboard-show-shortcuts nil)
   (setq dashboard-items '((recents  . 5)
                           (projects . 5)))
-  (setq dashboard-display-icons-p t)
+  (setq dashboard-display-icons-p (display-graphic-p))
   (setq dashboard-icon-type 'nerd-icons)
-  (setq dashboard-set-heading-icons t)
-  (setq dashboard-set-file-icons t)
+  (setq dashboard-set-heading-icons (display-graphic-p))
+  (setq dashboard-set-file-icons (display-graphic-p))
   (setq dashboard-startup-banner 'logo)
   (add-hook 'dashboard-mode-hook
             (lambda ()
@@ -68,19 +68,27 @@
               (display-line-numbers-mode -1))))
 
 ;; --------------------------------
-;; MENU & TOOL BAR
+;; MENU & TOOL BAR & TTY MOUSE
 ;; --------------------------------
 
 (cond
  ((not window-system)
   (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
-  (when (fboundp 'tool-bar-mode) (tool-bar-mode -1)))
+  (when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
+  (when (fboundp 'xterm-mouse-mode) (xterm-mouse-mode 1)))
  ((eq window-system 'w32)
   (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
   (when (fboundp 'tool-bar-mode) (tool-bar-mode -1)))
  (t
   (when (fboundp 'menu-bar-mode) (menu-bar-mode 1))
   (when (fboundp 'tool-bar-mode) (tool-bar-mode 1))))
+
+(add-hook 'after-make-frame-functions
+          (lambda (frame)
+            (with-selected-frame frame
+              (unless (display-graphic-p frame)
+                (when (fboundp 'xterm-mouse-mode)
+                  (xterm-mouse-mode 1))))))
 
 ;; --------------------------------
 ;; FRAME MANAGEMENT
