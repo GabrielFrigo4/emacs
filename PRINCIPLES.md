@@ -309,3 +309,9 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 
 - Todas as funções utilitárias do motor interativo (`Shell`) adotam a convenção **kebab-case** (`reinstall-shell`, `update-editors`, `update-git`, `open-neovim`).
 - A matriz de shells interativos suportados compreende `zsh`, `bash`, FreeBSD `/bin/sh` e OpenBSD `ksh`. O interpretador `dash` é formalmente descartado como shell interativo por incompatibilidade com essa convenção.
+
+### 13. Simetria de Escopo & Não-Assimetria de Subgrupo na Documentação
+
+- **Comportamento Universal Pertence à Camada do Grupo:** Se um comportamento, protocolo, capacidade ou invariante de segurança é compartilhado por todo um grupo de componentes (ex: todos os carregadores do Vault excluem templates, todos os scripts do Setup usam elevação antifrágil, todos os shells suportam prompts pill/micro), ele DEVE ser documentado na camada de abstração do grupo (no documento canônico de arquitetura, README raiz do módulo ou seção geral).
+- **Proibição de Falsa Especialização:** É proibido rotular ou destacar um sub-membro específico com uma propriedade universal do grupo como se fosse uma característica ou diferencial exclusivo daquele sub-membro (ex: indicar em uma tabela que apenas um arquivo específico filtra templates). Isso gera falsas assimetrias e desorienta o leitor, sugerindo erroneamente que os demais membros não possuem a propriedade ou que aquele membro é uma exceção isolada.
+- **Especialização Legítima:** Um sub-membro específico só deve detalhar um comportamento do grupo se ele o implementar de forma substancialmente mais especializada, diferenciada ou tecnicamente otimizada (ex: execução em espaço de memória do processo via Lua no Clink vs fork de processos em batch, ou parser nativo em Rust/C vs script interpretado), explicando com clareza conceitual em que aspectos a sua implementação específica se aprofunda ou diverge em relação à invariante universal.
