@@ -34,9 +34,16 @@
 
   (when (and (not (display-graphic-p)) (string-equal (getenv "TERM") "linux"))
     (add-hook 'evil-insert-state-entry-hook (lambda () (send-string-to-terminal "\e[?2c")))
-    (add-hook 'evil-replace-state-entry-hook (lambda () (send-string-to-terminal "\e[?2c")))
+    (add-hook 'evil-operator-state-entry-hook (lambda () (send-string-to-terminal "\e[?3c")))
+    (add-hook 'minibuffer-setup-hook (lambda () (send-string-to-terminal "\e[?3c")))
+    (add-hook 'evil-replace-state-entry-hook (lambda () (send-string-to-terminal "\e[?4c")))
+    (add-hook 'evil-visual-state-entry-hook (lambda () (send-string-to-terminal "\e[?5c")))
+    (add-hook 'evil-normal-state-entry-hook (lambda () (send-string-to-terminal "\e[?6c")))
     (add-hook 'evil-insert-state-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
+    (add-hook 'evil-operator-state-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
+    (add-hook 'minibuffer-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
     (add-hook 'evil-replace-state-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
+    (add-hook 'evil-visual-state-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
     (add-hook 'kill-emacs-hook (lambda () (send-string-to-terminal "\e[?6c")))))
 
 (use-package evil-tutor
