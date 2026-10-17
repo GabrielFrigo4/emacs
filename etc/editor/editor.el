@@ -30,7 +30,14 @@
   (setq-default evil-normal-state-modes   '())
   (setq-default evil-visual-state-modes   '())
   (setq-default evil-replace-state-modes  '())
-  (setq-default evil-operator-state-modes '()))
+  (setq-default evil-operator-state-modes '())
+
+  (when (and (not (display-graphic-p)) (string-equal (getenv "TERM") "linux"))
+    (add-hook 'evil-insert-state-entry-hook (lambda () (send-string-to-terminal "\e[?2c")))
+    (add-hook 'evil-replace-state-entry-hook (lambda () (send-string-to-terminal "\e[?2c")))
+    (add-hook 'evil-insert-state-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
+    (add-hook 'evil-replace-state-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
+    (add-hook 'kill-emacs-hook (lambda () (send-string-to-terminal "\e[?6c")))))
 
 (use-package evil-tutor
   :defer t
