@@ -106,6 +106,8 @@ Quando os repositórios coexistem no mesmo sistema, eles **detectam-se automatic
 - **Shell ↔ Vault:** O Shell detecta silenciosamente o cofre e injeta chaves SSH e variáveis. Se o cofre não for encontrado, roda normalmente em modo anônimo.
 - **Profile ↔ Skills de IA:** O Profile cria um link simbólico unificado de diretório (`~/.gemini/config/skills -> Profile/skills`). Qualquer nova skill adicionada ao repositório fica imediatamente disponível no IDE após um `git pull`, sem necessidade de novos links manuais.
 - **Profile ↔ Editores de Texto:** O Profile **NÃO** gerencia nem cria links para editores de texto modais (`~/.emacs.d`, `~/.config/nvim`, etc.). Esses editores gerenciam-se a si mesmos em seus diretórios canônicos.
+- **Shells Nativos Windows ↔ Auto-Cura de Perfis:** Quando o usuário executa `upsh` ou `resh` em qualquer dos shells nativos no Windows (PowerShell, NuShell, CMD), o atualizador detecta os diretórios de configuração dos demais e propaga atomicamente os perfis físicos em disco (`Documents\PowerShell`, `%APPDATA%\nushell`, `%LOCALAPPDATA%\clink`), garantindo auto-cura reentrante sem qualquer intervenção manual de cópia.
+- **NuShell ↔ GitHub CLI (HTTPS Auth):** O NuShell detecta dinamicamente a presença do binário `gh.exe` e injeta explicitamente o helper de credenciais HTTPS (`-c credential.https://github.com.helper=...`) ao sincronizar repositórios privados como o Vault, operando com isolamento estrito contra falhas de lookup de subshells e sem depender de chaves SSH para o GitHub.
 
 ---
 

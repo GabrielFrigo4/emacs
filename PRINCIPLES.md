@@ -144,6 +144,7 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 
 - **Cidadão de Primeira Classe Isolado:** Qualquer repositório do ecossistema (`Shell`, `Profile`, `Vault`, `Setup`, `Editor/*`) DEVE poder ser clonado e operado sozinho sem requerer a existência de nenhum outro componente. A ausência de módulos pares NUNCA deve gerar erros, falhas ou avisos ao usuário.
 - **Sinergia Oportunística Silenciosa:** Se um componente detectar a presença de outro no ambiente hospedeiro (`Emacs` detectando `Vault`, `Shell` detectando `Vault`, `Profile` sincronizando `Skills`), ele se conecta e ativa recursos avançados imediatamente e em silêncio absoluto.
+- **Auto-Cura Reentrante de Perfis Multi-Shell (Zero Manual Tweaks):** Comandos de sincronização e atualização (`upsh`, `resh`, `uprc`) executados em qualquer shell no Windows propagam e auto-curam automaticamente e atomicamente os perfis físicos em disco de todos os demais ambientes (`Documents\PowerShell`, `%APPDATA%\nushell`, `%LOCALAPPDATA%\clink`), eliminando toda e qualquer necessidade de cópia manual de arquivos ou intervenções pós-clone.
 
 ### 20. Regra do Hermetismo de Produção & Autonomia Soberana (_Rule of Production Hermeticity_)
 
@@ -206,6 +207,11 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
 - **Zero Falha Cega & Argument Forwarding:** Utilitários e wrappers antifrágeis nunca omitem falhas silenciosamente nem engolem argumentos:
     - Se a chave física não for encontrada no disco, tentam conexão delegada para o agente SSH em execução em vez de passar `-i <caminho_inexistente>`.
     - Encaminham transparentemente todos os parâmetros adicionais (`"$@"`) para o comando subjacente, permitindo execução remota de comandos, flags de porta e modo batch sem atrito.
+- **Imunidade a Recursão de Aliases em Runtimes Case-Insensitive:** No PowerShell, funções e comandos não devem possuir aliases homônimos (ex: `New-Alias "foo-bar" "Foo-Bar"`), prevenindo a supressão da função e desvios para busca de executáveis inexistentes no PATH. Declarações utilizam exclusivamente `Set-Alias -Force -Option AllScope` para garantir reentrância idempotente.
+- **Sincronização Dual de PATH em Runtimes Case-Sensitive sob Windows:** No NuShell sobre Windows, a divergência entre a convenção do sistema (`Path`) e a sensibilidade a maiúsculas de `$env` exige a inicialização e sincronização dual de `$env.Path` e `$env.PATH` com `$env.ENV_CONVERSIONS`, impedindo que processos-filhos do Win32 executem sob caminhos obsoletos.
+- **Injeção Dinâmica Defensiva de Credenciais em Runtimes Isolados:** No NuShell, repositórios privados recebem a injeção explícita do helper do GitHub CLI (`gh auth git-credential`) via flag `-c` do Git, imunizando comandos contra falhas de lookup de subshells sem expor tokens ou violar o veto a chaves SSH para o GitHub.
+- **Higienização Defensiva Pré-Pull na Suíte de Editores:** Rotinas de atualização de editores executam limpeza prévia de stubs locais gerados em tempo de execução (`git clean -fd usr/local`) antes de disparar `git pull --ff-only`, prevenindo abortos causados por arquivos não rastreados.
+- **Paridade UTF-8 no Git:** Configuração explícita de `core.quotepath = false` em todas as estações de trabalho para impedir a fuga octal de nomes contendo diacríticos (`ç`, `ã`).
 
 ---
 
