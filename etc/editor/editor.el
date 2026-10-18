@@ -51,7 +51,7 @@
   (add-hook 'evil-insert-state-entry-hook
             (lambda () (emacs/set-terminal-cursor "\e[?2c" "\e[5 q")))
   (add-hook 'minibuffer-setup-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?3c" "\e[3 q")))
+            (lambda () (emacs/set-terminal-cursor "\e[?3c" "\e[5 q")))
   (add-hook 'evil-operator-state-entry-hook
             (lambda () (emacs/set-terminal-cursor "\e[?4c" "\e[3 q")))
   (add-hook 'evil-replace-state-entry-hook

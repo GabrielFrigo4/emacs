@@ -22,7 +22,7 @@ Este runbook orienta desenvolvedores e agentes de inteligência artificial no ge
 4. **Lexical Binding Obrigatório (Linha 1):** Todo e qualquer arquivo `.el` deve conter impreterivelmente `;;; -*- lexical-binding: t -*-` como primeira linha absoluta (Linha 1), antes de qualquer régua ou cabeçalho. Isso elimina warnings de compilação no Emacs 30/31+, previne bugs de escopo dinâmico e potencializa a compilação nativa (`.eln`).
 5. **Ergonomia de Cursor Adaptativa (GUI vs PTY vs Linux TTY):**
     - **Em GUI (Wayland/PGTK):** Configurado nativamente via Evil-mode (`normal='box`, `insert='(bar . 2)`, `visual='hollow`, `replace='(hbar . 3)`, `operator='(hbar . 3)`).
-    - **Em PTY Gráfico e FreeBSD TTY (`-nw` em emuladores virtuais ou console `vt(4)`):** Hooks reativos cientes de frame (`emacs/set-terminal-cursor`) injetam sequências DECSCUSR piscantes canônicas em paridade com o NeoVim (`insert=\e[5 q`, `normal/visual=\e[1 q`, `minibuffer/replace/operator=\e[3 q`, `exit=\e[0 q`).
+    - **Em PTY Gráfico e FreeBSD TTY (`-nw` em emuladores virtuais ou console `vt(4)`):** Hooks reativos cientes de frame (`emacs/set-terminal-cursor`) injetam sequências DECSCUSR piscantes canônicas em paridade com o NeoVim e Helix (`insert/minibuffer=\e[5 q`, `normal/visual=\e[1 q`, `replace/operator=\e[3 q`, `exit=\e[0 q`).
     - **Em Linux Console TTY (`(string-equal (getenv "TERM") "linux")`):** Hooks reativos no Evil-mode e Minibuffer injetam os 5 formatos de hardware do Linux VT:
         - Inserção (`evil-insert-state-entry-hook`): `\e[?2c` (Underline na base)
         - Minibuffer (`minibuffer-setup-hook`): `\e[?3c` (Lower Third - 1/3 inferior)
