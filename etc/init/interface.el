@@ -71,22 +71,22 @@
 ;; MENU & TOOL BAR & TTY MOUSE
 ;; --------------------------------
 
-(cond
- ((not window-system)
-  (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
-  (when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
-  (when (fboundp 'xterm-mouse-mode) (xterm-mouse-mode 1)))
- ((eq window-system 'w32)
-  (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
-  (when (fboundp 'tool-bar-mode) (tool-bar-mode -1)))
- (t
-  (when (fboundp 'menu-bar-mode) (menu-bar-mode 1))
-  (when (fboundp 'tool-bar-mode) (tool-bar-mode 1))))
+(when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
+(when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
+
+(if (not (display-graphic-p))
+    (progn
+      (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
+      (when (fboundp 'xterm-mouse-mode) (xterm-mouse-mode 1)))
+  (when (fboundp 'menu-bar-mode) (menu-bar-mode 1)))
 
 (add-hook 'after-make-frame-functions
           (lambda (frame)
             (with-selected-frame frame
-              (unless (display-graphic-p frame)
+              (if (display-graphic-p frame)
+                  (when (fboundp 'menu-bar-mode)
+                    (set-frame-parameter frame 'menu-bar-lines 1))
+                (set-frame-parameter frame 'menu-bar-lines 0)
                 (when (fboundp 'xterm-mouse-mode)
                   (xterm-mouse-mode 1))))))
 

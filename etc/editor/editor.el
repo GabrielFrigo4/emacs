@@ -40,33 +40,38 @@
         evil-motion-state-cursor   'box
         evil-emacs-state-cursor    '(bar . 2))
 
-  (if (and (not (display-graphic-p)) (string-equal (getenv "TERM") "linux"))
-      (progn
-        (add-hook 'evil-insert-state-entry-hook (lambda () (send-string-to-terminal "\e[?2c")))
-        (add-hook 'minibuffer-setup-hook (lambda () (send-string-to-terminal "\e[?3c")))
-        (add-hook 'evil-operator-state-entry-hook (lambda () (send-string-to-terminal "\e[?4c")))
-        (add-hook 'evil-replace-state-entry-hook (lambda () (send-string-to-terminal "\e[?4c")))
-        (add-hook 'evil-visual-state-entry-hook (lambda () (send-string-to-terminal "\e[?5c")))
-        (add-hook 'evil-normal-state-entry-hook (lambda () (send-string-to-terminal "\e[?6c")))
-        (add-hook 'evil-insert-state-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
-        (add-hook 'evil-operator-state-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
-        (add-hook 'minibuffer-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
-        (add-hook 'evil-replace-state-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
-        (add-hook 'evil-visual-state-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
-        (add-hook 'kill-emacs-hook (lambda () (send-string-to-terminal "\e%G\e[?16;238;0c"))))
-    (when (not (display-graphic-p))
-      (add-hook 'evil-insert-state-entry-hook (lambda () (send-string-to-terminal "\e[6 q")))
-      (add-hook 'minibuffer-setup-hook (lambda () (send-string-to-terminal "\e[4 q")))
-      (add-hook 'evil-operator-state-entry-hook (lambda () (send-string-to-terminal "\e[4 q")))
-      (add-hook 'evil-replace-state-entry-hook (lambda () (send-string-to-terminal "\e[4 q")))
-      (add-hook 'evil-visual-state-entry-hook (lambda () (send-string-to-terminal "\e[2 q")))
-      (add-hook 'evil-normal-state-entry-hook (lambda () (send-string-to-terminal "\e[2 q")))
-      (add-hook 'evil-insert-state-exit-hook (lambda () (send-string-to-terminal "\e[2 q")))
-      (add-hook 'evil-operator-state-exit-hook (lambda () (send-string-to-terminal "\e[2 q")))
-      (add-hook 'minibuffer-exit-hook (lambda () (send-string-to-terminal "\e[2 q")))
-      (add-hook 'evil-replace-state-exit-hook (lambda () (send-string-to-terminal "\e[2 q")))
-      (add-hook 'evil-visual-state-exit-hook (lambda () (send-string-to-terminal "\e[2 q")))
-      (add-hook 'kill-emacs-hook (lambda () (send-string-to-terminal "\e[0 q"))))))
+  (defun emacs/set-terminal-cursor (linux-code pty-code)
+    "Send cursor escape sequence to terminal if current frame is non-graphic."
+    (unless (display-graphic-p (selected-frame))
+      (let ((term (getenv "TERM")))
+        (if (and term (string-equal term "linux"))
+            (send-string-to-terminal linux-code)
+          (send-string-to-terminal pty-code)))))
+
+  (add-hook 'evil-insert-state-entry-hook
+            (lambda () (emacs/set-terminal-cursor "\e[?2c" "\e[6 q")))
+  (add-hook 'minibuffer-setup-hook
+            (lambda () (emacs/set-terminal-cursor "\e[?3c" "\e[4 q")))
+  (add-hook 'evil-operator-state-entry-hook
+            (lambda () (emacs/set-terminal-cursor "\e[?4c" "\e[4 q")))
+  (add-hook 'evil-replace-state-entry-hook
+            (lambda () (emacs/set-terminal-cursor "\e[?4c" "\e[4 q")))
+  (add-hook 'evil-visual-state-entry-hook
+            (lambda () (emacs/set-terminal-cursor "\e[?5c" "\e[2 q")))
+  (add-hook 'evil-normal-state-entry-hook
+            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[2 q")))
+  (add-hook 'evil-insert-state-exit-hook
+            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[2 q")))
+  (add-hook 'evil-operator-state-exit-hook
+            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[2 q")))
+  (add-hook 'minibuffer-exit-hook
+            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[2 q")))
+  (add-hook 'evil-replace-state-exit-hook
+            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[2 q")))
+  (add-hook 'evil-visual-state-exit-hook
+            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[2 q")))
+  (add-hook 'kill-emacs-hook
+            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[0 q"))))
 
 (use-package evil-tutor
   :defer t
