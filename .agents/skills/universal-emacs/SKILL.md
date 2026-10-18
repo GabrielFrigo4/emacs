@@ -20,6 +20,15 @@ Este runbook orienta desenvolvedores e agentes de inteligência artificial no ge
     - `var/`: Estado mutável de runtime (`cache/`, `run/`, `backup/`) — 100% ignorado no Git.
 3. **Zero Symlinks Manuais:** O repositório é clonado como árvore canônica diretamente em `${HOME}/.emacs.d`.
 4. **Lexical Binding Obrigatório (Linha 1):** Todo e qualquer arquivo `.el` deve conter impreterivelmente `;;; -*- lexical-binding: t -*-` como primeira linha absoluta (Linha 1), antes de qualquer régua ou cabeçalho. Isso elimina warnings de compilação no Emacs 30/31+, previne bugs de escopo dinâmico e potencializa a compilação nativa (`.eln`).
+5. **Ergonomia de Cursor Adaptativa (GUI/PTY vs Linux TTY):**
+    - **Em GUI / PTY Gráfico:** Configurado via `cursor-type` do Emacs.
+    - **Em Linux Console TTY (`(string-equal (getenv "TERM") "linux")`):** Hooks reativos no Evil-mode e Minibuffer injetam os 5 formatos de hardware do Linux VT:
+        - Inserção (`evil-insert-state-entry-hook`): `\e[?2c` (Underline)
+        - Operador / Minibuffer (`evil-operator-state-entry-hook`, `minibuffer-setup-hook`): `\e[?3c` (Lower Third)
+        - Substituição (`evil-replace-state-entry-hook`): `\e[?4c` (Lower Half)
+        - Visual (`evil-visual-state-entry-hook`): `\e[?5c` (Two Thirds)
+        - Normal (`evil-normal-state-entry-hook`): `\e[?6c` (Full Block)
+        - Encerramento (`kill-emacs-hook`): Restaura `\e%G\e[?16;238;0c` para auto-cura imediata do console.
 
 ---
 

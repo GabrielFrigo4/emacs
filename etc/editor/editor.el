@@ -44,7 +44,7 @@
     (add-hook 'minibuffer-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
     (add-hook 'evil-replace-state-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
     (add-hook 'evil-visual-state-exit-hook (lambda () (send-string-to-terminal "\e[?6c")))
-    (add-hook 'kill-emacs-hook (lambda () (send-string-to-terminal "\e[?6c")))))
+    (add-hook 'kill-emacs-hook (lambda () (send-string-to-terminal "\e%G\e[?16;238;0c")))))
 
 (use-package evil-tutor
   :defer t

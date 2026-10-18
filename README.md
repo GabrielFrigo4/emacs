@@ -22,6 +22,7 @@ Este repositório contém a configuração pessoal do **GNU Emacs (versão 30+, 
 - **LSP Integrado:** Eglot nativo de alta performance para linguagens compiladas e interpretadas.
 - **Gerenciador Elpaca:** Gestão assíncrona e declarativa de pacotes.
 - **Modos Pessoais Federados:** Submódulos Git integrados em `usr/local/` (`aweshell`, `aweww`, `emacs-lisp-ts-mode`).
+- **Ergonomia Modal em TTY & GUI:** Suporte a `cursor-type` em interfaces gráficas e hooks dedicados no Evil-mode e Minibuffer nos 5 formatos de hardware em consoles Linux TTY (`\e[?2c` a `\e[?6c`) com auto-cura estática no encerramento (`\e%G\e[?16;238;0c`).
 
 ---
 
