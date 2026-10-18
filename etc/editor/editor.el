@@ -49,27 +49,27 @@
           (send-string-to-terminal pty-code)))))
 
   (add-hook 'evil-insert-state-entry-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?2c" "\e[6 q")))
+            (lambda () (emacs/set-terminal-cursor "\e[?2c" "\e[5 q")))
   (add-hook 'minibuffer-setup-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?3c" "\e[4 q")))
+            (lambda () (emacs/set-terminal-cursor "\e[?3c" "\e[3 q")))
   (add-hook 'evil-operator-state-entry-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?4c" "\e[4 q")))
+            (lambda () (emacs/set-terminal-cursor "\e[?4c" "\e[3 q")))
   (add-hook 'evil-replace-state-entry-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?4c" "\e[4 q")))
+            (lambda () (emacs/set-terminal-cursor "\e[?4c" "\e[3 q")))
   (add-hook 'evil-visual-state-entry-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?5c" "\e[2 q")))
+            (lambda () (emacs/set-terminal-cursor "\e[?5c" "\e[1 q")))
   (add-hook 'evil-normal-state-entry-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[2 q")))
+            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))
   (add-hook 'evil-insert-state-exit-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[2 q")))
+            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))
   (add-hook 'evil-operator-state-exit-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[2 q")))
+            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))
   (add-hook 'minibuffer-exit-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[2 q")))
+            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))
   (add-hook 'evil-replace-state-exit-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[2 q")))
+            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))
   (add-hook 'evil-visual-state-exit-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[2 q")))
+            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))
   (add-hook 'kill-emacs-hook
             (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[0 q"))))
 
