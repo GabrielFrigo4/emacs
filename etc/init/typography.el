@@ -106,16 +106,18 @@
 ;;; TTY CONSOLE FALLBACK
 ;;; ================================
 
-(defun typography/setup-tty ()
-  "Configure clean, resilient ANSI terminal typography without heavy glyphs."
-  (unless (display-graphic-p)
-    (setq-default nerd-icons-font-family nil)
-    (setq-default doom-modeline-icon nil)
-    (setq-default dashboard-display-icons-p nil)
-    (setq-default dashboard-icon-type 'text)
-    (setq-default org-modern-mode nil)
-    (when (fboundp 'set-terminal-parameter)
-      (set-terminal-parameter nil 'background-mode 'dark))))
+(defun typography/setup-tty (&optional frame)
+  "Configure clean, resilient ANSI terminal typography."
+  (let ((target (or frame (selected-frame))))
+    (unless (display-graphic-p target)
+      (when (display-raw-tty-p target)
+        (setq-default nerd-icons-font-family nil)
+        (setq-default doom-modeline-icon nil)
+        (setq-default dashboard-display-icons-p nil)
+        (setq-default dashboard-icon-type 'text)
+        (setq-default org-modern-mode nil))
+      (when (fboundp 'set-terminal-parameter)
+        (set-terminal-parameter (frame-terminal target) 'background-mode 'dark)))))
 
 ;;; ================================
 ;;; ENGINE INITIALIZATION
@@ -123,13 +125,14 @@
 
 (defun typography/init (&optional frame)
   "Initialize adaptive typography engine based on active display environment."
-  (if (display-graphic-p (or frame (selected-frame)))
-      (progn
-        (when (eq window-system 'w32)
-          (typography/setup-w32-directwrite))
-        (typography/setup-gui-fonts frame)
-        (typography/setup-ligatures))
-    (typography/setup-tty)))
+  (let ((target (or frame (selected-frame))))
+    (if (display-graphic-p target)
+        (progn
+          (when (eq window-system 'w32)
+            (typography/setup-w32-directwrite))
+          (typography/setup-gui-fonts target)
+          (typography/setup-ligatures))
+      (typography/setup-tty target))))
 
 (if (daemonp)
     (add-hook 'after-make-frame-functions #'typography/init)

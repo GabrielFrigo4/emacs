@@ -771,82 +771,98 @@ The status is displayed on the last line."
 ;; ============================================================================
 
 (defface aweshell/theme-zshrc-delimiter-face
-  '((t (:foreground "#ff9e64" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#ff9e64" :weight bold))
+    (t (:foreground "yellow" :weight bold)))
   "Face for zshrc-style delimiter characters."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-time-face
-  '((t (:foreground "#9ece6a" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#9ece6a" :weight bold))
+    (t (:foreground "green" :weight bold)))
   "Face for time in zshrc-style theme."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-date-face
-  '((t (:foreground "#9ece6a" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#9ece6a" :weight bold))
+    (t (:foreground "green" :weight bold)))
   "Face for date in zshrc-style theme."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-dir-face
-  '((t (:foreground "#7dcfff" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#7dcfff" :weight bold))
+    (t (:foreground "cyan" :weight bold)))
   "Face for directory in zshrc-style theme."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-user-face
-  '((t (:foreground "#9ece6a" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#9ece6a" :weight bold))
+    (t (:foreground "green" :weight bold)))
   "Face for user in zshrc-style theme."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-root-face
-  '((t (:foreground "#f7768e" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#f7768e" :weight bold))
+    (t (:foreground "red" :weight bold)))
   "Face for root user in zshrc-style theme."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-os-face
-  '((t (:foreground "#bb9af7" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#bb9af7" :weight bold))
+    (t (:foreground "magenta" :weight bold)))
   "Face for OS version in zshrc-style header."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-os-icon-face
-  '((t (:foreground "#7aa2f7" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#7aa2f7" :weight bold))
+    (t (:foreground "cyan" :weight bold)))
   "Face for Emacs icon in zshrc-style header."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-shell-face
-  '((t (:foreground "#bb9af7" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#bb9af7" :weight bold))
+    (t (:foreground "magenta" :weight bold)))
   "Face for shell name in zshrc-style header."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-shell-icon-face
-  '((t (:foreground "#7aa2f7" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#7aa2f7" :weight bold))
+    (t (:foreground "cyan" :weight bold)))
   "Face for shell icon in zshrc-style header."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-git-branch-face
-  '((t (:foreground "#bb9af7" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#bb9af7" :weight bold))
+    (t (:foreground "magenta" :weight bold)))
   "Face for git branch in zshrc-style theme."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-git-icon-face
-  '((t (:foreground "#f7768e" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#f7768e" :weight bold))
+    (t (:foreground "red" :weight bold)))
   "Face for git icon in zshrc-style theme."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-git-dirty-face
-  '((t (:foreground "#e0af68" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#e0af68" :weight bold))
+    (t (:foreground "yellow" :weight bold)))
   "Face for git dirty indicator in zshrc-style theme."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-user-icon-face
-  '((t (:foreground "#7aa2f7" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#7aa2f7" :weight bold))
+    (t (:foreground "cyan" :weight bold)))
   "Face for user icon in zshrc-style theme."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-dir-icon-face
-  '((t (:foreground "#ffc777" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#ffc777" :weight bold))
+    (t (:foreground "yellow" :weight bold)))
   "Face for directory icon in zshrc-style theme."
   :group 'epe)
 
 (defface aweshell/theme-zshrc-prompt-delimiter-face
-  '((t (:foreground "#7aa2f7" :bold t)))
+  '((((class color) (min-colors 256)) (:foreground "#7aa2f7" :weight bold))
+    (t (:foreground "cyan" :weight bold)))
   "Face for the final prompt delimiter in zshrc-style theme."
   :group 'epe)
 
@@ -857,8 +873,10 @@ The status is displayed on the last line."
 (defun aweshell/theme-theme-zshrc ()
   "An eshell-prompt theme replicating a zsh configuration style.
 Multi-line prompt with OS info, time, date, directory, user, and git."
-  (setq eshell-prompt-regexp "^└─ ")
-  (let* ((delimiter-face 'aweshell/theme-zshrc-delimiter-face)
+  (setq eshell-prompt-regexp "^└─\\(?:\\|>\\) ")
+  (let* ((is-raw (or (and (fboundp 'display-raw-tty-p) (display-raw-tty-p))
+                     (< (display-color-cells) 256)))
+         (delimiter-face 'aweshell/theme-zshrc-delimiter-face)
          (user-face (if (= (user-uid) 0) 'aweshell/theme-zshrc-root-face 'aweshell/theme-zshrc-user-face))
          (os-ver aweshell/theme-zshrc--os-version)
          (shell-name "aweshell")
@@ -866,6 +884,9 @@ Multi-line prompt with OS info, time, date, directory, user, and git."
          (date-str (format-time-string "%d/%m/%y" (current-time)))
          (dir-str (aweshell/theme-abbrev-dir-name (aweshell/theme-pwd)))
          (user-str (if (aweshell/theme-remote-p) (aweshell/theme-remote-user) (user-login-name)))
+         (l-brk (if is-raw "[" "❮"))
+         (r-brk (if is-raw "]" "❯"))
+         (p-sym (if is-raw ">" ""))
          (git-info (when (aweshell/theme-git-p)
                      (let* ((branch (or (aweshell/theme-git-branch) (aweshell/theme-git-tag)))
                             (dirty (aweshell/theme-git-dirty))
@@ -873,39 +894,63 @@ Multi-line prompt with OS info, time, date, directory, user, and git."
                                            (aweshell/theme-colorize-with-face "*" 'aweshell/theme-zshrc-git-dirty-face)
                                          "")))
                        (concat
-                        (aweshell/theme-colorize-with-face "❮" delimiter-face)
-                        (aweshell/theme-colorize-with-face "󰊢 " 'aweshell/theme-zshrc-git-icon-face)
+                        (aweshell/theme-colorize-with-face l-brk delimiter-face)
+                        (if is-raw "" (aweshell/theme-colorize-with-face "󰊢 " 'aweshell/theme-zshrc-git-icon-face))
                         (aweshell/theme-colorize-with-face branch 'aweshell/theme-zshrc-git-branch-face)
                         indicator
-                        (aweshell/theme-colorize-with-face "❯" delimiter-face))))))
-    (concat
-     "\n"
-     (aweshell/theme-colorize-with-face "" delimiter-face)
-     (aweshell/theme-colorize-with-face "" 'aweshell/theme-zshrc-os-icon-face)
-     (aweshell/theme-colorize-with-face (concat " " os-ver) 'aweshell/theme-zshrc-os-face)
-     (aweshell/theme-colorize-with-face "─" delimiter-face)
-     (aweshell/theme-colorize-with-face "" 'aweshell/theme-zshrc-shell-icon-face)
-     (aweshell/theme-colorize-with-face (concat " " shell-name) 'aweshell/theme-zshrc-shell-face)
-     (aweshell/theme-colorize-with-face "" delimiter-face)
-     "\n"
-     (aweshell/theme-colorize-with-face "┌──❮ " delimiter-face)
-     (aweshell/theme-colorize-with-face "" 'aweshell/theme-zshrc-time-face)
-     (aweshell/theme-colorize-with-face (concat " " time-str) 'aweshell/theme-zshrc-time-face)
-     (aweshell/theme-colorize-with-face " ❯─❮ " delimiter-face)
-     (aweshell/theme-colorize-with-face "" 'aweshell/theme-zshrc-date-face)
-     (aweshell/theme-colorize-with-face (concat " " date-str) 'aweshell/theme-zshrc-date-face)
-     (aweshell/theme-colorize-with-face " ❯─❮ " delimiter-face)
-     (aweshell/theme-colorize-with-face "" 'aweshell/theme-zshrc-dir-icon-face)
-     (aweshell/theme-colorize-with-face (concat " " dir-str) 'aweshell/theme-zshrc-dir-face)
-     (aweshell/theme-colorize-with-face " ❯─ " delimiter-face)
-     (aweshell/theme-colorize-with-face "❮" delimiter-face)
-     (aweshell/theme-colorize-with-face "" 'aweshell/theme-zshrc-user-icon-face)
-     (aweshell/theme-colorize-with-face (concat " " user-str) user-face)
-     (aweshell/theme-colorize-with-face "❯" delimiter-face)
-     (if git-info (concat " " git-info) "")
-     "\n"
-     (aweshell/theme-colorize-with-face "└─" delimiter-face)
-     (aweshell/theme-colorize-with-face "" 'aweshell/theme-zshrc-prompt-delimiter-face)
-     " ")))
+                        (aweshell/theme-colorize-with-face r-brk delimiter-face))))))
+    (if is-raw
+        (concat
+         "\n"
+         (aweshell/theme-colorize-with-face "[" delimiter-face)
+         (aweshell/theme-colorize-with-face os-ver 'aweshell/theme-zshrc-os-face)
+         (aweshell/theme-colorize-with-face "]─[" delimiter-face)
+         (aweshell/theme-colorize-with-face shell-name 'aweshell/theme-zshrc-shell-face)
+         (aweshell/theme-colorize-with-face "]" delimiter-face)
+         "\n"
+         (aweshell/theme-colorize-with-face "┌──[ " delimiter-face)
+         (aweshell/theme-colorize-with-face time-str 'aweshell/theme-zshrc-time-face)
+         (aweshell/theme-colorize-with-face " ]─[ " delimiter-face)
+         (aweshell/theme-colorize-with-face date-str 'aweshell/theme-zshrc-date-face)
+         (aweshell/theme-colorize-with-face " ]─[ " delimiter-face)
+         (aweshell/theme-colorize-with-face dir-str 'aweshell/theme-zshrc-dir-face)
+         (aweshell/theme-colorize-with-face " ]─> " delimiter-face)
+         (aweshell/theme-colorize-with-face "[" delimiter-face)
+         (aweshell/theme-colorize-with-face user-str user-face)
+         (aweshell/theme-colorize-with-face "]" delimiter-face)
+         (if git-info (concat " " git-info) "")
+         "\n"
+         (aweshell/theme-colorize-with-face "└─" delimiter-face)
+         (aweshell/theme-colorize-with-face p-sym 'aweshell/theme-zshrc-prompt-delimiter-face)
+         " ")
+      (concat
+       "\n"
+       (aweshell/theme-colorize-with-face "" delimiter-face)
+       (aweshell/theme-colorize-with-face "" 'aweshell/theme-zshrc-os-icon-face)
+       (aweshell/theme-colorize-with-face (concat " " os-ver) 'aweshell/theme-zshrc-os-face)
+       (aweshell/theme-colorize-with-face "─" delimiter-face)
+       (aweshell/theme-colorize-with-face "" 'aweshell/theme-zshrc-shell-icon-face)
+       (aweshell/theme-colorize-with-face (concat " " shell-name) 'aweshell/theme-zshrc-shell-face)
+       (aweshell/theme-colorize-with-face "" delimiter-face)
+       "\n"
+       (aweshell/theme-colorize-with-face "┌──❮ " delimiter-face)
+       (aweshell/theme-colorize-with-face "" 'aweshell/theme-zshrc-time-face)
+       (aweshell/theme-colorize-with-face (concat " " time-str) 'aweshell/theme-zshrc-time-face)
+       (aweshell/theme-colorize-with-face " ❯─❮ " delimiter-face)
+       (aweshell/theme-colorize-with-face "" 'aweshell/theme-zshrc-date-face)
+       (aweshell/theme-colorize-with-face (concat " " date-str) 'aweshell/theme-zshrc-date-face)
+       (aweshell/theme-colorize-with-face " ❯─❮ " delimiter-face)
+       (aweshell/theme-colorize-with-face "" 'aweshell/theme-zshrc-dir-icon-face)
+       (aweshell/theme-colorize-with-face (concat " " dir-str) 'aweshell/theme-zshrc-dir-face)
+       (aweshell/theme-colorize-with-face " ❯─ " delimiter-face)
+       (aweshell/theme-colorize-with-face "❮" delimiter-face)
+       (aweshell/theme-colorize-with-face "" 'aweshell/theme-zshrc-user-icon-face)
+       (aweshell/theme-colorize-with-face (concat " " user-str) user-face)
+       (aweshell/theme-colorize-with-face "❯" delimiter-face)
+       (if git-info (concat " " git-info) "")
+       "\n"
+       (aweshell/theme-colorize-with-face "└─" delimiter-face)
+       (aweshell/theme-colorize-with-face "" 'aweshell/theme-zshrc-prompt-delimiter-face)
+       " "))))
 
 (provide 'aweshell-theme)

@@ -44,8 +44,14 @@
 ;; --------------------------------
 
 (global-font-lock-mode 1)
+(column-number-mode 1)
+(size-indication-mode 1)
+(global-display-line-numbers-mode 1)
+(setq-default display-line-numbers-type 'relative)
 (setq-default blink-cursor-interval 0.5)
 (setq-default visible-bell t)
+(setq-default ring-bell-function #'ignore)
+(setq-default inhibit-startup-screen t)
 (setq-default inhibit-compacting-font-caches t)
 (setq-default truncate-lines nil)
 (setq-default make-backup-files nil)
@@ -53,6 +59,8 @@
 (setq-default max-image-size (expt 2 24))
 (setq-default image-cache-eviction-delay (expt 2 8))
 (setq-default async-shell-command-buffer 'new-buffer)
+(put 'downcase-region 'disabled nil)
+(put 'upcase-region 'disabled nil)
 (when (featurep 'native-compile)
   (setq-default native-comp-async-report-warnings-errors 'silent))
 

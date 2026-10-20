@@ -7,7 +7,7 @@
   (scroll-bar-mode -1))
 
 (defun auto-scroll-bar ()
-  (when (fboundp 'set-window-scroll-bars)
+  (when (and (display-graphic-p) (fboundp 'set-window-scroll-bars))
     (let* ((win (selected-window))
            (body-height (window-body-height win 'pixel))
            (text-size (window-text-pixel-size win (point-min) (point-max) nil (1+ body-height)))

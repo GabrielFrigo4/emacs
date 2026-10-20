@@ -4,13 +4,15 @@
 ;; ----------------------------------------------------------------
 
 (use-package treemacs
-  :ensure t :defer t 
-  :bind (("C-\\" . treemacs) 
-         ("M-\\" . treemacs) 
+  :ensure t :defer t
+  :bind (("C-\\" . treemacs)
+         ("M-\\" . treemacs)
+         ("M-["  . treemacs)
          ("C-c t" . treemacs))
-  :config 
-  (setq treemacs-width (- (expt 2 5) (expt 2 2))) 
-  (treemacs-follow-mode 1) 
+  :config
+  (setq treemacs-width (- (expt 2 5) (expt 2 2))
+        treemacs-no-png-images (not (display-graphic-p)))
+  (treemacs-follow-mode 1)
   (treemacs-filewatch-mode 1))
 
 (use-package imenu-list

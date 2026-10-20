@@ -15,12 +15,12 @@
   :init
   (defalias 'esh 'aweshell/new)
   (defalias 'eshell 'aweshell/new)
-  (setq-default aweshell/validate-executable nil)
+  (setq-default aweshell/validate-executable t)
   (setq-default aweshell/auto-suggestion-p t)
   (setq-default aweshell/banner-message "Welcome to the Awesome Emacs Shell\n")
   (if-windows
-   (setq-default aweshell/validate-delay (expt 2 -0.5))
-   (setq-default aweshell/validate-delay (expt 2 -1)))
+   (setq-default aweshell/validate-delay (expt 2 -1))
+   (setq-default aweshell/validate-delay (expt 2 -2)))
   :config
   (setq aweshell/theme 'aweshell/theme-theme-zshrc))
 

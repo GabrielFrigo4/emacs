@@ -56,7 +56,7 @@
 (global-set-key (kbd "C-S-a")          'mc/mark-all-like-this)
 (global-set-key (kbd "C->")            'mc/mark-next-like-this)
 
-(global-set-key (kbd "C-c v")  #'latex/view)
-(global-set-key (kbd "C-c p")  #'latex/preview)
+(global-set-key (kbd "C-c C-v") #'latex/view)
+(global-set-key (kbd "C-c p")   #'latex/preview)
 
 (provide 'init-keybindings)

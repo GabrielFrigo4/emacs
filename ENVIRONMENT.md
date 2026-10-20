@@ -254,6 +254,21 @@ Em estações de trabalho FreeBSD, ferramentas e agentes de IA que demandam runt
 - **Camada de Integração do Shell:** Biblioteca universal `library/hypervisor.sh` provendo orquestração multiplataforma de VMs e Containers (`fb`, `lx`, `ob`, `nt`), integrada no FreeBSD via `target/freebsd/bhyve.sh` e `compat.sh` com funções POSIX `linux-host` (aliases: `linux`, `lx`, `debian`, `deb`), `agy-lx` (alias: `agy`), `agy-compat` (alias: `agy-cp`) e rotina `update-linux` (`uplx`, `updeb`), garantindo navegação com paridade de diretórios e fallback silencioso para a home.
 - **Documentação Canônica:** Série modular de runbooks documentada no Environment em [`docs/virtualization/bhyve/`](https://github.com/GabrielFrigo4/environment/tree/main/docs/virtualization/bhyve).
 
+### 8. Arquitetura Tri-Modal de Terminal & Suíte de Editores (GUI, PTY 24-Bit e Console Kernel TTY 16-Color)
+
+O ecossistema padroniza a experiência visual, tipográfica e ergonômica entre o **Shell** e toda a **Suíte de Editores** (**Emacs**, **NeoVim**, **Vim** e **Helix**) através de três camadas de renderização mutuamente isoladas:
+
+1. **Demarcação Estrita de `COLORTERM` (PTY vs Raw TTY):**
+    - Em emuladores gráficos de terminal (**PTY**: KDE Konsole, Alacritty, Kitty, Foot, WezTerm, Ghostty), `core/environment.sh` exporta `COLORTERM="truecolor"` e `MICRO_TRUECOLOR=1`, habilitando paletas RGB de 24 bits (`16.777.216` cores) e ícones Nerd Fonts.
+    - Em consoles puros de kernel (**Raw TTY**: `_is_raw_tty`, `TERM=linux`, `TERM=cons25` ou FreeBSD `vt(4)` sem servidor gráfico), `COLORTERM` e `MICRO_TRUECOLOR` são explicitamente removidos (`unset`), exportando `RAW_TTY=1`. Isso impede que editores como GNU Emacs 30+, NeoVim e Helix emitam sequências RGB de 24 bits (`\e[38;2;R;G;Bm`) incompatíveis com framebuffers de 16 cores.
+2. **Calibração da Paleta Hardware VGA DAC no Linux TTY (`fbcon`):**
+    - Diferente do FreeBSD `vt(4)` (que possui paleta moderna legível de fábrica), a tabela CGA/VGA legada do kernel Linux (`fbcon`) utiliza azul escuro (`#0000aa`, contraste 1.3:1 sobre preto `#000000`) e cinza opaco (`#555555`), prejudicando a leitura em listagens (`ls --color`), prompts e editores.
+    - O **Setup** (`Setup/linux/common/system/console.sh` via `/sys/module/vt/parameters/default_{red,grn,blu}` e `/etc/issue`) e o **Shell** (`Shell/core/environment.sh` via sequências OSC `\e]P0...` a `\e]PF...`) reprogramam a tabela DAC de 16 cores do `fbcon` com uma paleta calibrada de alto contraste inspirada no Dark+/TokyoNight (azul celeste `#569cd6`, azul brilhante `#7dcfff`, cinza legível `#858585`, verde `#73c991`/`#9ece6a`, amarelo ouro `#e5c07b`/`#e0af68`, magenta `#c586c0`/`#bb9af7`), mantendo o fundo `#000000` puro e preservando inalterados os temas do FreeBSD e dos PTYs gráficos.
+3. **Simetria Visual e Ergonômica nos 4 Editores (Emacs, NeoVim, Vim e Helix):**
+    - **Em GUI e PTY 24-Bit:** Mantêm seus temas originais completos com fundo próprio e tipografia rica (`doom-dark+` no Emacs, `kanagawa-wave` no NeoVim, `codedark` no Vim e `dark_plus` no Helix). No Emacs em modo terminal (`-nw`), o Dashboard comuta automaticamente do banner gráfico/Braille para o banner ASCII limpo (`2`), suprimindo mensagens de inicialização e barras gráficas.
+    - **Em Raw TTY (16 Cores):** Comutam automaticamente para esquemas de alto contraste de 16 cores sem `cursorcolumn`, sem sublinhado em `CursorLine` e sem índices de 256 cores (`ctermbg=238`) que falham em terminais de 16 cores. A seleção visual (`Visual` / `region`) e a barra de status (`StatusLine` / `mode-line`) utilizam branco brilhante sobre azul (`ctermfg=15 ctermbg=4`), comentários utilizam cinza calibrado (`ctermfg=8` / `black` bold) e identificadores/keywords utilizam ciano, amarelo e azul brilhantes.
+    - **Navegação Unificada Entre os 4 Editores:** Atalhos padronizados para alternar janelas (`M-]`), abrir árvore de arquivos (`C-\` e `M-[`), buscar arquivos (`C-p` e `C-f`), listar buffers (`C-b`) e busca textual ripgrep (`C-g`).
+
 ---
 
 ## 🔗 Links dos Repositórios Federados

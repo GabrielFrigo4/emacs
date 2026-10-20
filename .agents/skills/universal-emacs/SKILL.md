@@ -20,16 +20,20 @@ Este runbook orienta desenvolvedores e agentes de inteligência artificial no ge
     - `var/`: Estado mutável de runtime (`cache/`, `run/`, `backup/`) — 100% ignorado no Git.
 3. **Zero Symlinks Manuais:** O repositório é clonado como árvore canônica diretamente em `${HOME}/.emacs.d`.
 4. **Lexical Binding Obrigatório (Linha 1):** Todo e qualquer arquivo `.el` deve conter impreterivelmente `;;; -*- lexical-binding: t -*-` como primeira linha absoluta (Linha 1), antes de qualquer régua ou cabeçalho. Isso elimina warnings de compilação no Emacs 30/31+, previne bugs de escopo dinâmico e potencializa a compilação nativa (`.eln`).
-5. **Ergonomia de Cursor Adaptativa (GUI vs PTY vs Linux TTY):**
-    - **Em GUI (Wayland/PGTK):** Configurado nativamente via Evil-mode (`normal='box`, `insert='(bar . 2)`, `visual='hollow`, `replace='(hbar . 3)`, `operator='(hbar . 3)`).
-    - **Em PTY Gráfico e FreeBSD TTY (`-nw` em emuladores virtuais ou console `vt(4)`):** Hooks reativos cientes de frame (`emacs/set-terminal-cursor`) injetam sequências DECSCUSR piscantes canônicas em paridade com o NeoVim e Helix (`insert/minibuffer=\e[5 q`, `normal/visual=\e[1 q`, `replace/operator=\e[3 q`, `exit=\e[0 q`).
-    - **Em Linux Console TTY (`(string-equal (getenv "TERM") "linux")`):** Hooks reativos no Evil-mode e Minibuffer injetam os 5 formatos de hardware do Linux VT:
-        - Inserção (`evil-insert-state-entry-hook`): `\e[?2c` (Underline na base)
+5. **Ergonomia de Cursor & Renderização Tri-Modal (GUI vs PTY 24-Bit vs Raw TTY 16-Color):**
+    - **Armadilha de `(getenv "TERM")` no Emacs:** Ao carregar `tramp`/`comint`, o Emacs altera `TERM=dumb` em `process-environment` para proteger subprocessos assíncronos. Para inspecionar o terminal real do frame ativo, use sempre `(tty-type frame)` (implementado em `display-raw-tty-p` em `lib/core.el` e em `emacs/set-terminal-cursor` em `etc/editor/editor.el`).
+    - **Inicialização Silenciosa em `-nw`:** `early-init.el` define `load-prefer-newer t`, `site-run-file nil`, desativa `menu-bar-lines` em frames não-gráficos antes do primeiro redraw e silencia o echo area durante o bootstrap (`inhibit-message t` restaurado em `emacs-startup-hook`), eliminando qualquer lixo visual ou sobreposição de mensagens na abertura de `emacs -nw`.
+    - **Adaptação de Faces em Raw TTY (`interface/apply-tty-faces`):** Como terminfos `linux` e `xterm` reportam 8 cores base em `tty-color-alist`, nomes como `"brightwhite"` ou `"brightcyan"` falham em `tty-color-desc`. O adaptador utiliza os 8 nomes ANSI canônicos (`"black"`, `"red"`, `"green"`, `"yellow"`, `"blue"`, `"magenta"`, `"cyan"`, `"white"`) combinados com `:weight 'bold` (`\e[1m`), garantindo suporte universal às 16 cores de hardware por frame (compatível inclusive com `emacs --daemon` misturando frames GUI, PTY e Raw TTY).
+    - **Aweshell (`usr/local/aweshell/`):** Realce sintático instantâneo na linha de comando via `after-change-functions` e cache de executáveis em hash-table (`aweshell/executable-cache`), além de prompt `aweshell/theme-theme-zshrc` dual (Nerd Fonts em GUI/PTY e ASCII/Box-Drawing em Raw TTY).
+    - **Em GUI (Wayland/PGTK):** Configurado nativamente via Evil-mode (`normal='box`, `insert='(bar . 2)`, `visual='hollow`, `replace='(hbar . 3)`, `operator='(hbar . 3)`, `emacs='(bar . 2)`).
+    - **Em PTY Gráfico e FreeBSD TTY (`-nw` em emuladores virtuais ou console `vt(4)`):** Hooks reativos cientes de frame (`emacs/set-terminal-cursor`) injetam sequências DECSCUSR piscantes canônicas em paridade com o NeoVim e Helix (`insert/emacs/minibuffer=\e[5 q`, `normal/visual=\e[1 q`, `replace/operator=\e[3 q`, `exit/suspend=\e[0 q`).
+    - **Em Linux Console TTY (`(string-equal (tty-type frame) "linux")`):** Hooks reativos no Evil-mode e Minibuffer injetam os 5 formatos de hardware do Linux VT:
+        - Inserção / Emacs State (`evil-insert-state-entry-hook`, `evil-emacs-state-entry-hook`): `\e[?2c` (Underline na base)
         - Minibuffer (`minibuffer-setup-hook`): `\e[?3c` (Lower Third - 1/3 inferior)
         - Operador e Substituição (`evil-operator-state-entry-hook`, `evil-replace-state-entry-hook`): `\e[?4c` (Lower Half - metade inferior)
         - Visual (`evil-visual-state-entry-hook`): `\e[?5c` (Two Thirds - 2/3 inferiores)
         - Normal (`evil-normal-state-entry-hook`): `\e[?6c` (Full Block)
-        - Encerramento (`kill-emacs-hook`): Restaura `\e%G\e[?16;238;0c` para auto-cura imediata do console.
+        - Suspensão / Encerramento (`suspend-hook`, `kill-emacs-hook`): Restaura `\e%G\e[?16;238;0c` para auto-cura imediata do console.
 
 ---
 

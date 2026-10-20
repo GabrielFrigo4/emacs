@@ -59,6 +59,20 @@
   "Return non-nil if running in a text terminal (TTY, no window system)."
   (not window-system))
 
+(defun display-raw-tty-p (&optional frame)
+  "Return non-nil if FRAME is running in a raw kernel console TTY (16-color/no PUA)."
+  (let* ((target (or frame (selected-frame)))
+         (term (or (and (fboundp 'tty-type) (tty-type target))
+                   (getenv "TERM")
+                   "")))
+    (and (not (display-graphic-p target))
+         (or (member (getenv "RAW_TTY") '("1" "true" "yes"))
+             (member (getenv "LC_RAW_TTY") '("1" "true" "yes"))
+             (member (getenv "UNIVERSAL_RAW_TTY") '("1" "true" "yes"))
+             (member term '("linux" "cons25" "vt100" "vt220"))
+             (let ((cells (display-color-cells target)))
+               (and (> cells 0) (< cells 256)))))))
+
 (defun display-graphic-p* ()
   "Return non-nil if running in any graphical window system."
   (and window-system t))

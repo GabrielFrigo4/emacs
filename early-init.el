@@ -10,10 +10,27 @@
   (when file
     (setq user-emacs-directory (file-name-as-directory (file-truename (file-name-directory file))))))
 
-(setq package-enable-at-startup nil)
-(setq gc-cons-threshold most-positive-fixnum
+(setq package-enable-at-startup nil
+      site-run-file nil
+      load-prefer-newer t
+      byte-compile-warnings '(not obsolete)
+      inhibit-startup-screen t
+      inhibit-startup-message t
+      inhibit-startup-echo-area-message user-login-name
+      inhibit-default-init t
+      frame-inhibit-implied-resize t
+      gc-cons-threshold most-positive-fixnum
       gc-cons-percentage 0.6)
-(setq frame-inhibit-implied-resize t)
+
+(push '(tool-bar-lines . 0) default-frame-alist)
+(push '(vertical-scroll-bars . nil) default-frame-alist)
+(unless (display-graphic-p)
+  (push '(menu-bar-lines . 0) default-frame-alist)
+  (setq inhibit-message t)
+  (add-hook 'emacs-startup-hook
+            (lambda ()
+              (setq inhibit-message nil)
+              (redraw-display))))
 
 ;; Auto-detect native compilation before configuring eln-cache
 (when (featurep 'native-compile)

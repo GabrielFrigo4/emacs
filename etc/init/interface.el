@@ -38,7 +38,7 @@
   :ensure (:type git :host github :repo "emacsmirror/doom-modeline" :branch "master")
   :init (doom-modeline-mode 1)
   :custom
-  (doom-modeline-icon (display-graphic-p))
+  (doom-modeline-icon (not (display-raw-tty-p)))
   (doom-modeline-height 26)
   (doom-modeline-bar-width 4)
   (doom-modeline-buffer-file-name-style 'truncate-upto-project)
@@ -56,16 +56,80 @@
   (setq dashboard-show-shortcuts nil)
   (setq dashboard-items '((recents  . 5)
                           (projects . 5)))
-  (setq dashboard-display-icons-p (display-graphic-p))
-  (setq dashboard-icon-type 'nerd-icons)
-  (setq dashboard-set-heading-icons (display-graphic-p))
-  (setq dashboard-set-file-icons (display-graphic-p))
-  (setq dashboard-startup-banner 'logo)
+  (setq dashboard-display-icons-p (not (display-raw-tty-p)))
+  (setq dashboard-icon-type (if (display-raw-tty-p) 'text 'nerd-icons))
+  (setq dashboard-set-heading-icons (not (display-raw-tty-p)))
+  (setq dashboard-set-file-icons (not (display-raw-tty-p)))
+  (setq dashboard-startup-banner (if (display-graphic-p) 'logo 2))
   (add-hook 'dashboard-mode-hook
             (lambda ()
               (setq-local display-line-numbers nil)
               (setq-local display-line-numbers-type nil)
               (display-line-numbers-mode -1))))
+
+(elpaca-wait)
+
+;; --------------------------------
+;; TTY HIGH-CONTRAST FACE ADAPTER
+;; --------------------------------
+
+(defun interface/apply-tty-faces (&optional frame)
+  "Apply high-contrast 16-color faces when FRAME is a raw TTY (< 256 colors)."
+  (dolist (target (if frame (list frame) (frame-list)))
+    (when (display-raw-tty-p target)
+      (with-selected-frame target
+        (dolist (spec '((default                       :foreground "white"   :background "unspecified-bg")
+                        (cursor                        :background "white"   :foreground "black")
+                        (region                        :background "blue"    :foreground "white" :weight bold :extend t)
+                        (highlight                     :background "blue"    :foreground "white" :weight bold)
+                        (hl-line                       :background "unspecified-bg" :underline nil)
+                        (fringe                        :background "unspecified-bg" :foreground "black" :weight bold)
+                        (vertical-border               :foreground "black"   :background "unspecified-bg" :weight bold)
+                        (window-divider                :foreground "black"   :weight bold)
+                        (line-number                   :foreground "black"   :background "unspecified-bg" :weight bold)
+                        (line-number-current-line      :foreground "yellow"  :background "unspecified-bg" :weight bold)
+                        (mode-line                     :foreground "white"   :background "blue"  :weight bold :box nil)
+                        (mode-line-active              :foreground "white"   :background "blue"  :weight bold :box nil)
+                        (mode-line-inactive            :foreground "white"   :background "black" :weight normal :box nil)
+                        (minibuffer-prompt             :foreground "cyan"    :weight bold)
+                        (isearch                       :foreground "black"   :background "yellow" :weight bold)
+                        (lazy-highlight                :foreground "white"   :background "blue"   :weight bold)
+                        (show-paren-match              :foreground "cyan"    :weight bold :underline t)
+                        (error                         :foreground "red"     :weight bold)
+                        (warning                       :foreground "yellow"  :weight bold)
+                        (success                       :foreground "green"   :weight bold)
+                        (link                          :foreground "cyan"    :weight bold :underline t)
+                        (shadow                        :foreground "black"   :weight bold)
+                        (font-lock-comment-face        :foreground "black"   :weight bold :slant normal)
+                        (font-lock-doc-face            :foreground "cyan"    :weight normal)
+                        (font-lock-string-face         :foreground "yellow"  :weight normal)
+                        (font-lock-keyword-face        :foreground "cyan"    :weight bold)
+                        (font-lock-builtin-face        :foreground "magenta" :weight bold)
+                        (font-lock-function-name-face  :foreground "yellow"  :weight bold)
+                        (font-lock-variable-name-face  :foreground "cyan"    :weight normal)
+                        (font-lock-type-face           :foreground "green"   :weight bold)
+                        (font-lock-constant-face       :foreground "magenta" :weight bold)
+                        (font-lock-number-face         :foreground "green"   :weight normal)
+                        (font-lock-warning-face        :foreground "red"     :weight bold)
+                        (org-block                     :background "unspecified-bg" :extend t)
+                        (org-block-begin-line          :foreground "cyan"    :background "unspecified-bg" :weight bold :underline t :extend t)
+                        (org-block-end-line            :foreground "cyan"    :background "unspecified-bg" :weight bold :underline t :extend t)
+                        (org-code                      :foreground "yellow"  :weight bold)
+                        (org-verbatim                  :foreground "green"   :weight bold)
+                        (org-link                      :foreground "cyan"    :weight bold :underline t)
+                        (vertico-current               :background "blue"    :foreground "white"  :weight bold :extend t)
+                        (company-tooltip               :background "black"   :foreground "white")
+                        (company-tooltip-selection     :background "blue"    :foreground "white"  :weight bold)
+                        (company-tooltip-common        :foreground "yellow"  :weight bold)))
+          (let ((face (car spec))
+                (attrs (cdr spec)))
+            (when (facep face)
+              (ignore-errors
+                (apply #'set-face-attribute face target attrs)))))))))
+
+(add-hook 'elpaca-after-init-hook #'interface/apply-tty-faces)
+(add-hook 'tty-setup-hook #'interface/apply-tty-faces)
+(add-hook 'window-setup-hook #'interface/apply-tty-faces)
 
 ;; --------------------------------
 ;; MENU & TOOL BAR & TTY MOUSE
@@ -77,7 +141,8 @@
 (if (not (display-graphic-p))
     (progn
       (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
-      (when (fboundp 'xterm-mouse-mode) (xterm-mouse-mode 1)))
+      (when (fboundp 'xterm-mouse-mode) (xterm-mouse-mode 1))
+      (interface/apply-tty-faces))
   (when (fboundp 'menu-bar-mode) (menu-bar-mode 1)))
 
 (add-hook 'after-make-frame-functions
@@ -88,7 +153,8 @@
                     (set-frame-parameter frame 'menu-bar-lines 1))
                 (set-frame-parameter frame 'menu-bar-lines 0)
                 (when (fboundp 'xterm-mouse-mode)
-                  (xterm-mouse-mode 1))))))
+                  (xterm-mouse-mode 1))
+                (interface/apply-tty-faces frame)))))
 
 ;; --------------------------------
 ;; FRAME MANAGEMENT
@@ -102,26 +168,29 @@
 (defun frame/center-screen (&optional frame)
   "Center Frame (or the Current Frame) on the Screen."
   (interactive)
-  (let* ((frame (or frame (selected-frame)))
-         (frame-width (frame-pixel-width frame))
-         (frame-height (frame-pixel-height frame))
-         (display-width (display-pixel-width))
-         (display-height (display-pixel-height))
-         (pos-x (/ (- display-width frame-width) 2))
-         (pos-y (/ (- display-height frame-height) 2)))
-    (set-frame-position frame pos-x pos-y)))
+  (let ((target (or frame (selected-frame))))
+    (when (display-graphic-p target)
+      (let* ((frame-width (frame-pixel-width target))
+             (frame-height (frame-pixel-height target))
+             (display-width (display-pixel-width target))
+             (display-height (display-pixel-height target))
+             (pos-x (max 0 (/ (- display-width frame-width) 2)))
+             (pos-y (max 0 (/ (- display-height frame-height) 2))))
+        (set-frame-position target pos-x pos-y)))))
 
 (defun frame/new-setup (frame)
-  (select-frame frame)
-  (if-windows
-   (sleep-for 0.036)
-   (sleep-for 0.032))
-  (frame/center-screen frame))
+  "Configure newly created graphical FRAME."
+  (when (display-graphic-p frame)
+    (select-frame frame)
+    (if-windows
+     (sleep-for 0.036)
+     (sleep-for 0.032))
+    (frame/center-screen frame)))
 
 (dolist (frame (frame-list))
   (frame/new-setup frame))
 
-(add-hook 'after-make-frame-functions 'frame/new-setup)
+(add-hook 'after-make-frame-functions #'frame/new-setup)
 
 ;; --------------------------------
 ;; BUFFER MANAGEMENT

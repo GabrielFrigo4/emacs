@@ -43,11 +43,15 @@
   (defun emacs/set-terminal-cursor (linux-code pty-code)
     "Send cursor escape sequence to terminal if current frame is non-graphic."
     (unless (display-graphic-p (selected-frame))
-      (let ((term (getenv "TERM")))
-        (if (and term (string-equal term "linux"))
-            (send-string-to-terminal linux-code)
-          (send-string-to-terminal pty-code)))))
+      (let ((term (or (and (fboundp 'tty-type) (tty-type (selected-frame)))
+                      (getenv "TERM"))))
+        (ignore-errors
+          (if (and term (string-equal term "linux"))
+              (send-string-to-terminal linux-code)
+            (send-string-to-terminal pty-code))))))
 
+  (add-hook 'evil-emacs-state-entry-hook
+            (lambda () (emacs/set-terminal-cursor "\e[?2c" "\e[5 q")))
   (add-hook 'evil-insert-state-entry-hook
             (lambda () (emacs/set-terminal-cursor "\e[?2c" "\e[5 q")))
   (add-hook 'minibuffer-setup-hook
@@ -70,6 +74,8 @@
             (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))
   (add-hook 'evil-visual-state-exit-hook
             (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))
+  (add-hook 'suspend-hook
+            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[0 q")))
   (add-hook 'kill-emacs-hook
             (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[0 q"))))
 

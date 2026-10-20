@@ -78,11 +78,13 @@ With prefix ARG (C-u C-c RET), open `gptel-menu'."
   :ensure (:type git :host github :repo "emacsmirror/gptel" :branch "master")
   :defer t
   :bind
-  (("C-c g"   . gptel)
+  (("C-c G"   . gptel)
+   ("C-c M-g" . gptel)
    ("C-c RET" . gptel/send-safe)
    ("C-c ?"   . gptel-menu)
-   ("C-c m"   . gptel-select-model)
-   ("C-c t"   . gptel-toggle-think))
+   ("C-c M"   . gptel-select-model)
+   ("C-c M-m" . gptel-select-model)
+   ("C-c T"   . gptel-toggle-think))
   :config
   (add-hook 'gptel-response-filter-functions #'gptel--filter-think)
   (add-hook 'gptel-post-response-functions
@@ -124,7 +126,7 @@ With prefix ARG (C-u C-c RET), open `gptel-menu'."
   :if ia/enable
   :ensure t
   :defer t
-  :bind-keymap ("C-c e" . ellama-command-map)
+  :bind-keymap ("C-c A" . ellama-command-map)
   :init
   (setopt ellama-language "Portuguese")
   (setopt ellama-auto-scroll t)

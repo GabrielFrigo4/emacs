@@ -26,6 +26,15 @@
              (not (file-exists-p (expand-file-name "recipes/" melpa-dir))))
     (delete-directory melpa-dir t)))
 
+(when (file-directory-p elpaca-sources-directory)
+  (dolist (src-dir (directory-files elpaca-sources-directory t "^[^.]"))
+    (when (and (file-directory-p src-dir)
+               (null (directory-files-recursively src-dir "\\.el$")))
+      (ignore-errors (delete-directory src-dir t))
+      (let ((build-dir (expand-file-name (file-name-nondirectory src-dir) elpaca-builds-directory)))
+        (when (file-directory-p build-dir)
+          (ignore-errors (delete-directory build-dir t)))))))
+
 (defvar elpaca-order
   '(elpaca :repo "https://github.com/progfolio/elpaca.git"
            :ref nil
