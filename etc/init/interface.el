@@ -140,9 +140,12 @@
     (progn
       (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
       (when (fboundp 'xterm-mouse-mode)
+        (setq mouse-wheel-tilt-scroll nil)
         (add-hook 'emacs-startup-hook
                   (lambda ()
-                    (xterm-mouse-mode 1))))
+                    (xterm-mouse-mode 1)
+                    ;; Desativa relatórios de movimento contínuo que inundam o PTY
+                    (send-string-to-terminal "\e[?1003l"))))
       (interface/apply-tty-faces))
   (when (fboundp 'menu-bar-mode) (menu-bar-mode 1)))
 
