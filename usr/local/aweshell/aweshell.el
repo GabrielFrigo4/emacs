@@ -256,8 +256,8 @@ If this function affects you, disable this option."
         (let* ((eshell-buffer-index-strings
                 (seq-filter (function
                              (lambda (buffer-index)
-                                (and (stringp buffer-index)
-                                     (not (equal 0 (string-to-number buffer-index))))))
+                               (and (stringp buffer-index)
+                                    (not (equal 0 (string-to-number buffer-index))))))
                             (mapcar (function
                                      (lambda (buffer-name)
                                        (if (integerp (string-match "\\*eshell\\*\\<\\([0-9]+\\)\\>" buffer-name))
@@ -290,7 +290,7 @@ If ARG is prefix, open in current dir. Reuse existing buffer or create new."
           (if existing-buffer
               (switch-to-buffer existing-buffer)
             (message "No Aweshell buffer with current dir found, creating a new one.")
-            (switch-to-buffer (car (last (aweshell/new))))
+            (switch-to-buffer (aweshell/new))
             (eshell/cd dir)))
       (aweshell/next))))
 
@@ -305,7 +305,8 @@ If ARG is prefix, open in current dir. Reuse existing buffer or create new."
     (with-current-buffer buf
       (when (boundp 'aweshell/banner-message)
         (setq-local eshell-banner-message aweshell/banner-message)))
-    (setq aweshell/buffer-list (nconc aweshell/buffer-list (list buf)))
+    (unless (memq buf aweshell/buffer-list)
+      (setq aweshell/buffer-list (nconc aweshell/buffer-list (list buf))))
     buf))
 
 (defun aweshell/next ()

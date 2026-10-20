@@ -121,9 +121,9 @@ Returns the tag name as a string or nil on failure."
                           (progn
                             (let ((url-request-extra-headers
                                    (when-let* ((token-value (let ((secrets (auth-source-search :host "api.github.com")))
-                                                             (when secrets
-                                                               (let ((token (plist-get (car secrets) :secret)))
-                                                                 (if (functionp token) (funcall token) token))))))
+                                                              (when secrets
+                                                                (let ((token (plist-get (car secrets) :secret)))
+                                                                  (if (functionp token) (funcall token) token))))))
                                      `(("Authorization" . ,(format "Bearer %s" token-value))
                                        ("User-Agent" . "Emacs/treesit-fetcher")))))
                               (url-copy-file download-url destination)

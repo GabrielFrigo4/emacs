@@ -43,19 +43,10 @@
                  (broken-link (seq-some (lambda (f)
                                           (and (file-symlink-p f)
                                                (not (file-exists-p (file-truename f)))))
-                                        build-el))
-                 (root-src-el (append (directory-files src-dir nil "^[^.].*\\.el$")
-                                      (let ((lisp-sub (expand-file-name "lisp" src-dir)))
-                                        (when (file-directory-p lisp-sub)
-                                          (directory-files lisp-sub nil "^[^.].*\\.el$")))))
-                 (missing-link (seq-some (lambda (el)
-                                           (and (not (string-suffix-p "-pkg.el" el))
-                                                (not (string-suffix-p "-autoloads.el" el))
-                                                (not (string-match-p "test" el))
-                                                (not (file-exists-p (expand-file-name el build-dir)))))
-                                         root-src-el)))
-            (when (or broken-link missing-link)
-              (ignore-errors (delete-directory build-dir t))))))))))
+                                        build-el)))
+            (when (or (null build-el) broken-link)
+              (ignore-errors (delete-directory build-dir t))
+              (ignore-errors (delete-directory src-dir t))))))))))
 
 (defvar elpaca-order
   '(elpaca :repo "https://github.com/progfolio/elpaca.git"

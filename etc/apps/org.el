@@ -27,9 +27,9 @@
   (org-confirm-babel-evaluate nil)
   (org-auto-align-tags t)
   :config
-;; --------------------------------
-;; CAPTURE & PRODUCTIVITY
-;; --------------------------------
+  ;; --------------------------------
+  ;; CAPTURE & PRODUCTIVITY
+  ;; --------------------------------
   (setq org-directory (expand-file-name "~/org"))
   (setq org-default-notes-file (expand-file-name "notes.org" org-directory))
   (setq org-capture-templates
@@ -43,30 +43,30 @@
            (file+datetree (expand-file-name "journal.org" org-directory))
            "* %?\nEntrada criada em %U\n  %i")))
 
-;; --------------------------------
-;; TAG ALIGNMENT & ERGONOMICS
-;; --------------------------------
+  ;; --------------------------------
+  ;; TAG ALIGNMENT & ERGONOMICS
+  ;; --------------------------------
   (add-hook 'org-mode-hook
             (lambda ()
               (add-hook 'before-save-hook #'org-align-all-tags nil t)))
   (add-hook 'org-mode-hook #'visual-line-mode)
 
-;; --------------------------------
-;; CHECKBOXES & HIGHLIGHTING
-;; --------------------------------
+  ;; --------------------------------
+  ;; CHECKBOXES & HIGHLIGHTING
+  ;; --------------------------------
   (set-face-attribute 'org-checkbox nil :weight 'bold)
   (font-lock-add-keywords 'org-mode '(("^ *[-+*] +\\[X\\] \\(.*\\)" (1 'shadow prepend))))
 
-;; --------------------------------
-;; SOURCE FACES
-;; --------------------------------
+  ;; --------------------------------
+  ;; SOURCE FACES
+  ;; --------------------------------
   (defface org-block-begin-line '((t (:underline "#646260" :foreground "#10CFFC" :background "#41403F" :extend t))) "")
   (defface org-block '((t (:background "#3A3938" :extend t))) "")
   (defface org-block-end-line '((t (:underline "#646260" :foreground "#10CFFC" :background "#41403F" :extend t))) "")
 
-;; --------------------------------
-;; LANGUAGES
-;; --------------------------------
+  ;; --------------------------------
+  ;; LANGUAGES
+  ;; --------------------------------
   (setq org-babel-C-compiler "clang")
   (setq org-babel-C++-compiler "clang++")
   (when-unix (setq-default org-babel-sh-command "zsh"))

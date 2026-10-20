@@ -33,6 +33,7 @@
 
 ;; Auto-detect native compilation before configuring eln-cache
 (when (featurep 'native-compile)
+  (setq-default native-comp-async-report-warnings-errors 'silent)
   (let ((eln-cache-dir (expand-file-name "var/cache/eln-cache/" user-emacs-directory)))
     (unless (file-exists-p eln-cache-dir)
       (make-directory eln-cache-dir t))

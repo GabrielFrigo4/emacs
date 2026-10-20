@@ -67,13 +67,13 @@
     (add-hook 'tty-setup-hook #'evil-init-esc)
     (add-hook 'window-setup-hook #'evil-init-esc))
 
-(setq evil-emacs-state-cursor      'box
-        evil-normal-state-cursor   'box
-        evil-visual-state-cursor   'box
-        evil-motion-state-cursor   'box
-        evil-insert-state-cursor   '(bar . 2)
-        evil-replace-state-cursor  '(hbar . 4)
-        evil-operator-state-cursor '(hbar . 4))
+  (setq evil-emacs-state-cursor      'box
+        evil-normal-state-cursor     'box
+        evil-visual-state-cursor     'box
+        evil-motion-state-cursor     'box
+        evil-insert-state-cursor     '(bar . 2)
+        evil-replace-state-cursor    '(hbar . 4)
+        evil-operator-state-cursor   '(hbar . 4))
 
   (defun emacs/set-terminal-cursor (linux-code pty-code)
     "Send dynamic (`blink') cursor escape sequence in PTY and static (`noblink') only in raw TTY."
@@ -94,7 +94,7 @@
     (unless (display-graphic-p (selected-frame))
       (cond
        ((minibufferp)
-        (emacs/set-terminal-cursor "\e[?3c" "\e[5 q"))
+        (emacs/set-terminal-cursor "\e[?2c" "\e[5 q"))
        ((not (bound-and-true-p evil-local-mode))
         (emacs/set-terminal-cursor "\e[?2c" "\e[5 q"))
        ((or (evil-emacs-state-p) (evil-insert-state-p))
@@ -113,6 +113,14 @@
   (add-hook 'evil-visual-state-entry-hook   #'emacs/sync-evil-terminal-cursor)
   (add-hook 'evil-normal-state-entry-hook   #'emacs/sync-evil-terminal-cursor)
   (add-hook 'evil-motion-state-entry-hook   #'emacs/sync-evil-terminal-cursor)
+  (defun emacs/sync-minibuffer-cursor (&rest _)
+    "Use Evil insert state cursor shape in the minibuffer."
+    (when (and (bound-and-true-p evil-mode) (minibufferp))
+      (setq-local cursor-type (if (boundp 'evil-insert-state-cursor)
+                                  evil-insert-state-cursor
+                                '(bar . 2)))))
+  (add-hook 'minibuffer-setup-hook          #'emacs/sync-minibuffer-cursor)
+  (advice-add 'evil-refresh-cursor :after   #'emacs/sync-minibuffer-cursor)
   (add-hook 'minibuffer-setup-hook          #'emacs/sync-evil-terminal-cursor)
   (add-hook 'minibuffer-exit-hook           #'emacs/sync-evil-terminal-cursor)
   (add-hook 'buffer-list-update-hook        #'emacs/sync-evil-terminal-cursor)

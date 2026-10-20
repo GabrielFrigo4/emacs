@@ -134,9 +134,9 @@
                   (common-lisp-mode . common-lisp-ts-mode)
                   (emacs-lisp-mode  . emacs-lisp-ts-mode)
                   )))
-  (when (and (fboundp 'treesit-language-available-p)
-             (treesit-language-available-p 'haskell))
-    (add-to-list 'major-mode-remap-alist '(haskell-mode . haskell-ts-mode)))
+(when (and (fboundp 'treesit-language-available-p)
+           (treesit-language-available-p 'haskell))
+  (add-to-list 'major-mode-remap-alist '(haskell-mode . haskell-ts-mode)))
 
 ;; --------------------------------
 ;; SETUP COMMANDS

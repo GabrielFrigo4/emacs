@@ -14,7 +14,7 @@
   :commands (aweshell/new aweshell/toggle aweshell/dedicated-toggle aweshell/switch-buffer aweshell/next aweshell/prev aweshell/select-theme)
   :init
   (defalias 'esh 'aweshell/new)
-  (defalias 'eshell 'aweshell/new)
+  (global-set-key [remap eshell] #'aweshell/new)
   (setq-default aweshell/validate-executable t)
   (setq-default aweshell/auto-suggestion-p t)
   (setq-default aweshell/banner-message "Welcome to the Awesome Emacs Shell\n")
@@ -43,7 +43,10 @@
   :config
   (setq-default eshell-banner-message "Welcome to the Awesome Emacs Shell\n")
   (setq-default eshell-bad-command-tolerance (expt 2 64))
-  (defalias 'eshell 'aweshell/new)
+  (define-advice eshell (:around (orig-fn &optional arg) aweshell-redirect)
+    (if (and (called-interactively-p 'any) (null arg))
+        (aweshell/new)
+      (funcall orig-fn arg)))
   (defalias 'eshell/cls   'eshell/clear-scrollback)
   (defalias 'eshell/clr   'eshell/clear-scrollback)
   (defalias 'eshell/where 'eshell/which)

@@ -13,7 +13,19 @@
   (setq-default rust-mode-treesitter-derive t)
   :bind (("C-c r f" . rust-format-buffer)))
 
-(use-package go-mode :ensure t)
+(declare-function lsp-rename "lsp-mode")
+(declare-function eglot-rename "eglot")
+(declare-function lsp-execute-code-action-by-kind "lsp-mode")
+(declare-function eglot-code-actions "eglot")
+(declare-function eglot--code-action-bounds "eglot")
+(use-package go-mode
+  :ensure t
+  :init
+  (autoload 'lsp-rename "lsp-mode" nil t)
+  (autoload 'eglot-rename "eglot" nil t)
+  (autoload 'lsp-execute-code-action-by-kind "lsp-mode" nil t)
+  (autoload 'eglot-code-actions "eglot" nil t)
+  (autoload 'eglot--code-action-bounds "eglot"))
 (use-package zig-mode
   :ensure (:type git :repo "https://codeberg.org/ziglang/zig-mode.git" :depth nil))
 (use-package haskell-mode :ensure t)
