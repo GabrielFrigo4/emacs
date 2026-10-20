@@ -36,7 +36,7 @@ make ci
 1. **Arquitetura Modular & FHS Estrito:**
     - `early-init.el`: Otimizações de garbage collection (`gc-cons-threshold`), inibição de UI redundante e bootstrap do `elpaca`.
     - `init.el`: Carregamento declarativo e orquestração de módulos.
-    - `etc/`: Módulos temáticos de configuração (`appearance.el`, `editing.el`, `completion.el`, `lsp.el`, `treesitter.el`).
+    - `etc/`: Módulos temáticos de configuração particionados por domínio (`init/`, `editor/`, `lang/`, `tools/`, `apps/`).
     - `lib/`: Scripts de formatação e utilitários auxiliares.
     - `usr/`: Modos e submódulos Git locais (`usr/local/*`).
     - `var/`: Estado persistente gerado em tempo de execução (ignorado no versionamento).

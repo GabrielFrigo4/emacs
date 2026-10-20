@@ -56,19 +56,19 @@ Clona o repositório diretamente no destino canônico com controle de versão Gi
 #### 🐧 Unix (Linux, FreeBSD, macOS)
 
 ```sh
-git clone "[https://github.com/GabrielFrigo4/emacs.git](https://github.com/GabrielFrigo4/emacs.git)" "${HOME}/.emacs.d"
+git clone "https://github.com/GabrielFrigo4/emacs.git" "${HOME}/.emacs.d"
 ```
 
 #### 🪟 Windows (PowerShell Nativo)
 
 ```powershell
-git clone "[https://github.com/GabrielFrigo4/emacs.git](https://github.com/GabrielFrigo4/emacs.git)" "$HOME\.emacs.d"
+git clone "https://github.com/GabrielFrigo4/emacs.git" "$HOME\.emacs.d"
 ```
 
 #### 🪟 Windows (MSYS2 / Git Bash)
 
 ```sh
-git clone "[https://github.com/GabrielFrigo4/emacs.git](https://github.com/GabrielFrigo4/emacs.git)" "${HOME}/.emacs.d"
+git clone "https://github.com/GabrielFrigo4/emacs.git" "${HOME}/.emacs.d"
 ```
 
 ---
@@ -81,14 +81,14 @@ git clone "[https://github.com/GabrielFrigo4/emacs.git](https://github.com/Gabri
 #### 🐧 Unix (Linux, FreeBSD, macOS & MSYS2)
 
 ```sh
-git clone --depth=1 "[https://github.com/GabrielFrigo4/emacs.git](https://github.com/GabrielFrigo4/emacs.git)" "${HOME}/.emacs.d" && \
+git clone --depth=1 "https://github.com/GabrielFrigo4/emacs.git" "${HOME}/.emacs.d" && \
   rm -rf "${HOME}/.emacs.d/.git"* "${HOME}/.emacs.d/.agents" "${HOME}/.emacs.d/"*.md
 ```
 
 #### 🪟 Windows (PowerShell)
 
 ```powershell
-git clone --depth=1 "[https://github.com/GabrielFrigo4/emacs.git](https://github.com/GabrielFrigo4/emacs.git)" "$HOME\.emacs.d"
+git clone --depth=1 "https://github.com/GabrielFrigo4/emacs.git" "$HOME\.emacs.d"
 Remove-Item -Recurse -Force "$HOME\.emacs.d\.git*", "$HOME\.emacs.d\.agents", "$HOME\.emacs.d\*.md" -ErrorAction SilentlyContinue
 ```
 
