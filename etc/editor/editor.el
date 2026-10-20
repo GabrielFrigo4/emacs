@@ -63,10 +63,6 @@
     (define-key evil-normal-state-map   key #'evil-force-normal-state)
     (define-key evil-motion-state-map   key #'evil-force-normal-state))
 
-  (when (fboundp 'evil-init-esc)
-    (add-hook 'tty-setup-hook #'evil-init-esc)
-    (add-hook 'window-setup-hook #'evil-init-esc))
-
   (setq evil-emacs-state-cursor      'box
         evil-normal-state-cursor     'box
         evil-visual-state-cursor     'box

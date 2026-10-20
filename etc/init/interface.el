@@ -159,7 +159,7 @@
 ;; --------------------------------
 
 (setq frame-resize-pixelwise t)
-(dolist (param '((width . 100) (height . 31)))
+(dolist (param '((width . 81) (height . 27)))
   (add-to-list 'default-frame-alist param)
   (add-to-list 'initial-frame-alist param))
 
@@ -180,7 +180,7 @@
   "Configure newly created graphical FRAME."
   (when (display-graphic-p frame)
     (select-frame frame)
-    (set-frame-size frame 100 31)
+    (set-frame-size frame 81 27)
     (if-windows
      (sleep-for 0.036)
      (sleep-for 0.032))
