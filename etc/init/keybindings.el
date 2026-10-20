@@ -12,6 +12,27 @@
 (defalias 'zsh-mode  'sh-mode)
 
 ;; ================================
+;; TERMINAL KEY DECODING
+;; ================================
+
+(defun emacs/setup-input-decode (&optional frame)
+  "Configure terminal key decoding and prevent CSI prefix hijacking."
+  (with-selected-frame (or frame (selected-frame))
+    (when (fboundp 'normal-erase-is-backspace-mode)
+      (normal-erase-is-backspace-mode (if (display-graphic-p) 1 0)))
+    (define-key input-decode-map "\e[3~" [deletechar])
+    (define-key input-decode-map "\e[3;2~" [S-delete])
+    (define-key input-decode-map "\x7f" [backspace])
+    (define-key input-decode-map "\C-h" [backspace])
+    (unless (display-graphic-p)
+      (global-unset-key (kbd "M-[")))))
+
+(emacs/setup-input-decode)
+(add-hook 'tty-setup-hook #'emacs/setup-input-decode)
+(add-hook 'after-make-frame-functions #'emacs/setup-input-decode)
+(add-hook 'elpaca-after-init-hook #'emacs/setup-input-decode)
+
+;; ================================
 ;; GLOBAL KEYBINDINGS
 ;; ================================
 
@@ -34,6 +55,7 @@
 (global-set-key (kbd "C-c i")    'insert-char)
 (global-set-key (kbd "M-s q")    'replace-regexp)
 (global-set-key (kbd "M-s r")    'replace-string)
+
 (defun emacs/escape-dwim ()
   "Exit Evil non-normal/non-emacs state if active; otherwise run `keyboard-escape-quit'."
   (interactive)
@@ -53,12 +75,15 @@
 
 (global-set-key (kbd "<escape>") #'emacs/escape-dwim)
 
-(global-set-key (kbd "<backspace>")    'backward-delete-char)
-(global-set-key (kbd "S-<backspace>")  'backward-delete-char-untabify)
-(global-set-key (kbd "<del>")          'backward-delete-char)
-(global-set-key (kbd "S-<del>")        'backward-delete-char-untabify)
-(global-set-key (kbd "C-?")            'backward-delete-char)
-(global-set-key (kbd "S-C-?")          'backward-delete-char-untabify)
+(global-set-key [backspace]           #'backward-delete-char-untabify)
+(global-set-key (kbd "<backspace>")   #'backward-delete-char-untabify)
+(global-set-key (kbd "S-<backspace>") #'backward-delete-char)
+(global-set-key (kbd "DEL")           #'backward-delete-char-untabify)
+(global-set-key [delete]              #'delete-forward-char)
+(global-set-key [deletechar]          #'delete-forward-char)
+(global-set-key (kbd "<delete>")      #'delete-forward-char)
+(global-set-key (kbd "<deletechar>")  #'delete-forward-char)
+(global-set-key (kbd "C-d")           #'delete-forward-char)
 
 (global-set-key (kbd "C-c M-t")  'term)
 (global-set-key (kbd "C-c M-v")  'vterm)
