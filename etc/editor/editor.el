@@ -94,17 +94,17 @@
     (unless (display-graphic-p (selected-frame))
       (cond
        ((minibufferp)
-        (emacs/set-terminal-cursor "\e[?3c" "\e[6 q"))
+        (emacs/set-terminal-cursor "\e[?3c" "\e[5 q"))
        ((not (bound-and-true-p evil-local-mode))
-        (emacs/set-terminal-cursor "\e[?2c" "\e[6 q"))
+        (emacs/set-terminal-cursor "\e[?2c" "\e[5 q"))
        ((or (evil-emacs-state-p) (evil-insert-state-p))
-        (emacs/set-terminal-cursor "\e[?2c" "\e[6 q"))
+        (emacs/set-terminal-cursor "\e[?2c" "\e[5 q"))
        ((or (evil-replace-state-p) (evil-operator-state-p))
-        (emacs/set-terminal-cursor "\e[?4c" "\e[4 q"))
+        (emacs/set-terminal-cursor "\e[?4c" "\e[3 q"))
        ((evil-visual-state-p)
-        (emacs/set-terminal-cursor "\e[?5c" "\e[2 q"))
+        (emacs/set-terminal-cursor "\e[?5c" "\e[1 q"))
        (t
-        (emacs/set-terminal-cursor "\e[?6c" "\e[2 q")))))
+        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))))
 
   (add-hook 'evil-emacs-state-entry-hook    #'emacs/sync-evil-terminal-cursor)
   (add-hook 'evil-insert-state-entry-hook   #'emacs/sync-evil-terminal-cursor)
@@ -119,9 +119,9 @@
   (add-hook 'window-configuration-change-hook #'emacs/sync-evil-terminal-cursor)
   (add-hook 'tty-setup-hook                 #'emacs/sync-evil-terminal-cursor)
   (add-hook 'suspend-hook
-            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[2 q")))
+            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q")))
   (add-hook 'kill-emacs-hook
-            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[2 q"))))
+            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q"))))
 
 (use-package evil-tutor
   :defer t
