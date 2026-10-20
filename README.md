@@ -23,7 +23,7 @@ Este repositório contém a configuração pessoal do **GNU Emacs (versão 30+, 
 - **Gerenciador Elpaca:** Gestão assíncrona e declarativa de pacotes.
 - **Modos Pessoais Integrados:** Pacotes locais em `usr/local/` (`aweshell` com os 3 temas canônicos do Universal Shell — `multi`, `pill` e `micro` — adaptativos entre GUI/PTY e Raw TTY, além de `aweww` para leitura web dinâmica).
 - **Tipografia Homologada:** Projetado e calibrado para **`JetBrainsMono NF`** (`:height 120`), proporcionando proporção equilibrada em Org-mode, mode-line e ícones de buffer, com geometria inicial centrada (`100x31`).
-- **Ergonomia Híbrida Emacs + Evil (`C-z` & `ESC`) e Cursores Estáticos (`noblink`):** Inicia sempre em **Emacs state** nativo em todos os modos e alterna instantaneamente para **Evil Normal state** via `C-z` (e retorno do Insert/Visual/Replace ao Normal state via `ESC`). Sincroniza os formatos de cursor estáticos (`noblink`) idênticos ao Vim/NeoVim/Helix em GUI (`box`, `bar`, `hbar`), PTY (`\e[1 q`, `\e[3 q`, `\e[5 q`) e consoles Linux TTY (`\e[?2c` a `\e[?6c`, com auto-cura `\e%G\e[?16;238;0c`).
+- **Ergonomia Híbrida Emacs + Evil (`C-z` & `ESC`) e Cursores Dinâmicos (`blink` em GUI/PTY e `noblink` em TTY):** Inicia sempre em **Emacs state** nativo em todos os modos e alterna instantaneamente para **Evil Normal state** via `C-z` (e retorno do Insert/Visual/Replace ao Normal state via `ESC`). Sincroniza os formatos de cursor dinâmicos e piscantes (`blink`) idênticos ao Vim/NeoVim/Helix em GUI (`box`, `bar`, `hbar`) e PTY (`\e[1 q`, `\e[3 q`, `\e[5 q`), ficando estático (`noblink`) apenas em consoles Linux Raw TTY (`\e[?2c` a `\e[?6c`, com auto-cura `\e%G\e[?16;238;0c`).
 
 ---
 
@@ -56,19 +56,19 @@ Clona o repositório diretamente no destino canônico com controle de versão Gi
 #### 🐧 Unix (Linux, FreeBSD, macOS)
 
 ```sh
-git clone "https://github.com/GabrielFrigo4/emacs.git" "${HOME}/.emacs.d"
+git clone "[https://github.com/GabrielFrigo4/emacs.git](https://github.com/GabrielFrigo4/emacs.git)" "${HOME}/.emacs.d"
 ```
 
 #### 🪟 Windows (PowerShell Nativo)
 
 ```powershell
-git clone "https://github.com/GabrielFrigo4/emacs.git" "$HOME\.emacs.d"
+git clone "[https://github.com/GabrielFrigo4/emacs.git](https://github.com/GabrielFrigo4/emacs.git)" "$HOME\.emacs.d"
 ```
 
 #### 🪟 Windows (MSYS2 / Git Bash)
 
 ```sh
-git clone "https://github.com/GabrielFrigo4/emacs.git" "${HOME}/.emacs.d"
+git clone "[https://github.com/GabrielFrigo4/emacs.git](https://github.com/GabrielFrigo4/emacs.git)" "${HOME}/.emacs.d"
 ```
 
 ---
@@ -81,14 +81,14 @@ git clone "https://github.com/GabrielFrigo4/emacs.git" "${HOME}/.emacs.d"
 #### 🐧 Unix (Linux, FreeBSD, macOS & MSYS2)
 
 ```sh
-git clone --depth=1 "https://github.com/GabrielFrigo4/emacs.git" "${HOME}/.emacs.d" && \
+git clone --depth=1 "[https://github.com/GabrielFrigo4/emacs.git](https://github.com/GabrielFrigo4/emacs.git)" "${HOME}/.emacs.d" && \
   rm -rf "${HOME}/.emacs.d/.git"* "${HOME}/.emacs.d/.agents" "${HOME}/.emacs.d/"*.md
 ```
 
 #### 🪟 Windows (PowerShell)
 
 ```powershell
-git clone --depth=1 "https://github.com/GabrielFrigo4/emacs.git" "$HOME\.emacs.d"
+git clone --depth=1 "[https://github.com/GabrielFrigo4/emacs.git](https://github.com/GabrielFrigo4/emacs.git)" "$HOME\.emacs.d"
 Remove-Item -Recurse -Force "$HOME\.emacs.d\.git*", "$HOME\.emacs.d\.agents", "$HOME\.emacs.d\*.md" -ErrorAction SilentlyContinue
 ```
 
@@ -98,11 +98,15 @@ Remove-Item -Recurse -Force "$HOME\.emacs.d\.git*", "$HOME\.emacs.d\.agents", "$
 
 Quando operado a partir do [Universal Environment](https://github.com/GabrielFrigo4/environment):
 
-```sh
-# Atualizar a suíte de editores com o upstream
-make uped
+- **Atualizar a suíte de editores com o upstream:**
 
-# Implantar o repositório no destino canônico (~/.emacs.d)
+```sh
+make uped
+```
+
+- **Implantar o repositório no destino canônico (`~/.emacs.d`):**
+
+```sh
 make deploy
 ```
 
@@ -129,24 +133,39 @@ EMACS_LSP=0 emacs
 
 ### 💻 Executar com Recursos Customizados
 
+- **Boot padrão (mínimo e ultra-rápido):**
+
 ```sh
-# Boot padrão (mínimo e ultra-rápido)
 emacs
+```
 
-# Habilitar IA sob demanda
+- **Habilitar IA sob demanda:**
+
+```sh
 EMACS_AI=1 emacs
+```
 
-# Modo diagnóstico e teste de sintaxe via script CLI
+- **Modo diagnóstico e teste de sintaxe via script CLI:**
+
+```sh
 ./emacs.sh test
+```
 
-# Compilar todas as gramáticas Tree-sitter essenciais
+- **Compilar todas as gramáticas Tree-sitter essenciais (ou via `./emacs.sh treesit`):**
+
+```sh
 make treesit
-# ou: ./emacs.sh treesit
+```
 
-# Atualizar os submódulos de modos Elisp federados (usr/local/*)
+- **Atualizar os submódulos de modos Elisp federados (`usr/local/*`):**
+
+```sh
 make upmodes
+```
 
-# Lançar diretamente uma nova janela com Eshell/aweshell (se no ambiente desktop)
+- **Lançar diretamente uma nova janela com Eshell/aweshell (se no ambiente desktop):**
+
+```sh
 esh
 ```
 
@@ -156,11 +175,16 @@ esh
 
 Para configurar o ambiente de desenvolvimento local, ativar os quality gates automáticos e validar a integridade da suíte:
 
+- **`make hooks`**: Configura `.githooks` e permissões canônicas.
+- **`make test`**: Valida inicialização limpa em modo batch (`make batch`).
+- **`make treesit`**: Compila gramáticas Tree-sitter essenciais.
+- **`make ci`**: Bateria completa de validação local.
+
 ```sh
-make hooks   # Configura .githooks e permissões canônicas
-make test    # Valida inicialização limpa em modo batch (make batch)
-make treesit # Compila gramáticas Tree-sitter essenciais
-make ci      # Bateria completa de validação local
+make hooks
+make test
+make treesit
+make ci
 ```
 
 > 🤝 **Instruções Detalhadas:** Consulte o [CONTRIBUTING.md](CONTRIBUTING.md) para convenções de commits, arquitetura modular Elisp, diretrizes de lazy-loading e quality gates.

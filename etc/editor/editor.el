@@ -67,16 +67,16 @@
     (add-hook 'tty-setup-hook #'evil-init-esc)
     (add-hook 'window-setup-hook #'evil-init-esc))
 
-  (setq evil-normal-state-cursor   'box
+(setq evil-emacs-state-cursor      'box
+        evil-normal-state-cursor   'box
         evil-visual-state-cursor   'box
         evil-motion-state-cursor   'box
         evil-insert-state-cursor   '(bar . 2)
-        evil-emacs-state-cursor    '(bar . 2)
         evil-replace-state-cursor  '(hbar . 4)
         evil-operator-state-cursor '(hbar . 4))
 
   (defun emacs/set-terminal-cursor (linux-code pty-code)
-    "Send static (`noblink') cursor escape sequence to terminal when frame is non-graphic."
+    "Send dynamic (`blink') cursor escape sequence in PTY and static (`noblink') only in raw TTY."
     (unless (display-graphic-p (selected-frame))
       (let* ((term (or (and (fboundp 'tty-type) (tty-type (selected-frame)))
                        (getenv "TERM")))
