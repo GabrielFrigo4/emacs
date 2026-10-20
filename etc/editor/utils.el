@@ -7,7 +7,6 @@
   :ensure t :defer t
   :bind (("C-\\" . treemacs)
          ("M-\\" . treemacs)
-         ("M-["  . treemacs)
          ("C-c t" . treemacs))
   :config
   (setq treemacs-width (- (expt 2 5) (expt 2 2))

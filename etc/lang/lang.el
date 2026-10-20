@@ -72,7 +72,7 @@
 (use-package pyvenv
   :ensure (:type git :host github :repo "emacsmirror/pyvenv" :branch "master")
   :defer t
-  :hook (python-mode . pyvenv-mode))
+  :hook ((python-mode python-ts-mode) . pyvenv-mode))
 
 (use-package jupyter
   :ensure (:type git :host github :repo "emacsmirror/jupyter" :branch "master")

@@ -28,8 +28,16 @@
           (force-window-update win)
           (redisplay))))))
 
+(defun auto-scroll-bar-on-change (&rest _)
+  "Trigger `auto-scroll-bar' efficiently without blocking every keystroke."
+  (auto-scroll-bar))
+
 (if scroll/enable
-    (add-hook 'post-command-hook #'auto-scroll-bar)
+    (progn
+      (add-hook 'window-size-change-functions #'auto-scroll-bar-on-change)
+      (add-hook 'window-scroll-functions #'auto-scroll-bar-on-change)
+      (add-hook 'window-configuration-change-hook #'auto-scroll-bar)
+      (run-with-idle-timer 0.15 t #'auto-scroll-bar))
   (use-package yascroll
     :ensure t
     :config

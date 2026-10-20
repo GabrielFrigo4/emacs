@@ -94,6 +94,50 @@ Remove-Item -Recurse -Force "$HOME\.emacs.d\.git*", "$HOME\.emacs.d\.agents", "$
 
 ---
 
+### 🔤 Pré-requisito Visual: Tipografia & Nerd Fonts
+
+> [!IMPORTANT]
+> Esta configuração exige uma **Nerd Font** para renderizar corretamente as ligaduras, os ícones do `dashboard`, `doom-modeline`, árvores de diretórios e glifos do `nerd-icons` (em terminais Linux Raw TTY de 16 cores, o sistema faz _fallback_ automático para modo texto puro).
+> O motor tipográfico (`etc/init/typography.el`) foi homologado e calibrado especificamente com a **`JetBrainsMono Nerd Font`** (`JetBrainsMono NF`) como fonte primária e **`Symbols Nerd Font Mono`** (`NFM.ttf`) como fallback dedicado de ícones.
+
+Para ter a experiência visual completa, instale as fontes antes do primeiro uso:
+
+#### 🐧 Unix (Linux, FreeBSD, macOS) — Instalação Rápida Standalone
+
+Para baixar a **JetBrainsMono Nerd Font** (fonte primária homologada com ligaduras) e a **Symbols Nerd Font Mono** (fallback universal de ícones para o `nerd-icons`), execute os comandos abaixo:
+
+```sh
+FONTS_DIR="${HOME}/.local/share/fonts"
+mkdir -p "${FONTS_DIR}" && _TMP_DIR="$(mktemp -d)"
+
+curl -fsSL -o "${_TMP_DIR}/JetBrainsMono.zip" \
+  "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip"
+unzip -qo "${_TMP_DIR}/JetBrainsMono.zip" -d "${FONTS_DIR}"
+
+curl -fsSL -o "${_TMP_DIR}/NerdFontsSymbolsOnly.zip" \
+  "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/NerdFontsSymbolsOnly.zip"
+unzip -qo "${_TMP_DIR}/NerdFontsSymbolsOnly.zip" -d "${FONTS_DIR}"
+
+rm -rf "${_TMP_DIR}" "${FONTS_DIR}/OFL.txt" "${FONTS_DIR}/LICENSE"* "${FONTS_DIR}/README.md"
+command -v fc-cache > "/dev/null" 2>&1 && fc-cache -f "${FONTS_DIR}"
+```
+
+#### 🪟 Windows (PowerShell / Winget)
+
+Para instalar de forma rápida no Windows utilizando o gerenciador de pacotes nativo:
+
+```powershell
+winget install -e --id DEVCOM.JetBrainsMonoNerdFont
+```
+
+> 💡 **Dica Interna do Emacs:** Caso já tenha a `JetBrainsMono Nerd Font` instalada e queira baixar apenas a fonte complementar de ícones (`Symbols Nerd Font Mono` / `NFM.ttf`) diretamente de dentro do Emacs, basta executar:
+>
+> ```elisp
+> M-x nerd-icons-install-fonts
+> ```
+
+---
+
 ### ⚙️ Integração com o Universal Environment
 
 Quando operado a partir do [Universal Environment](https://github.com/GabrielFrigo4/environment):

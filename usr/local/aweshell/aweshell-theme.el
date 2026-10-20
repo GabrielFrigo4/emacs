@@ -158,7 +158,7 @@ Set to t to restrict Git inspection to local directories only."
       (cond
        ((null branch)
         (let ((head (string-trim
-                     (shell-command-to-string "git rev-parse --short HEAD 2>/dev/null"))))
+                     (shell-command-to-string "git rev-parse --short HEAD 2> /dev/null"))))
           (unless (string-empty-p head)
             (concat "HEAD@" head))))
        ((string-match "^(HEAD detached at \\(.+\\))$" branch)
@@ -171,7 +171,7 @@ Set to t to restrict Git inspection to local directories only."
     (not (string-empty-p
           (string-trim
            (shell-command-to-string
-            "git status --porcelain --ignore-submodules=dirty 2>/dev/null"))))))
+            "git status --porcelain --ignore-submodules=dirty 2> /dev/null"))))))
 
 ;; ============================================================================
 ;;  UNIVERSAL SHELL THEME ENGINE (`multi', `pill', `micro')

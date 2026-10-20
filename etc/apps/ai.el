@@ -68,7 +68,7 @@ With prefix ARG (C-u C-c RET), open `gptel-menu'."
              (boundp 'gptel-backend)
              (eq gptel-backend ollama-backend)
              (not (ollama-detect-p)))
-        (message "[AVISO] Daemon Ollama offline em localhost:11434. Inicie o servico ou troque de modelo (C-c m).")
+        (message "[AVISO] Daemon Ollama offline em localhost:11434. Inicie o servico ou troque de modelo (C-c M).")
       (if (fboundp 'gptel-send)
           (call-interactively #'gptel-send)
         (message "[AVISO] gptel nao esta carregado.")))))

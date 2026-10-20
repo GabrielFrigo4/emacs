@@ -55,13 +55,14 @@
                      evil-motion-state-map))
     (define-key map (kbd "C-z") #'emacs/toggle-evil-state))
 
-  (dolist (key (list [escape] (kbd "<escape>") (kbd "ESC")))
-    (define-key evil-insert-state-map   key #'evil-normal-state)
-    (define-key evil-replace-state-map  key #'evil-normal-state)
-    (define-key evil-operator-state-map key #'evil-normal-state)
-    (define-key evil-visual-state-map   key #'evil-exit-visual-state)
-    (define-key evil-normal-state-map   key #'evil-force-normal-state)
-    (define-key evil-motion-state-map   key #'evil-force-normal-state))
+  ;; Usa exclusivamente [escape] para nunca sobrescrever o prefixo ASCII ESC (\e)
+  ;; que inicia as sequências ANSI CSI/SS3 das teclas de seta no TTY/PTY.
+  (define-key evil-insert-state-map   [escape] #'evil-normal-state)
+  (define-key evil-replace-state-map  [escape] #'evil-normal-state)
+  (define-key evil-operator-state-map [escape] #'evil-normal-state)
+  (define-key evil-visual-state-map   [escape] #'evil-exit-visual-state)
+  (define-key evil-normal-state-map   [escape] #'evil-force-normal-state)
+  (define-key evil-motion-state-map   [escape] #'evil-force-normal-state)
 
   (setq evil-emacs-state-cursor      'box
         evil-normal-state-cursor     'box

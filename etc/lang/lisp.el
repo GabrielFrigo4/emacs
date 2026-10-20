@@ -4,6 +4,7 @@
 ;; ----------------------------------------------------------------
 
 (use-package slime
+  :ensure t
   :defer t
   :init
   (setq inferior-lisp-program

@@ -6,7 +6,7 @@
 ;; ================================
 ;; GARBAGE COLLECTION
 ;; ================================
-(defvar gc-cons-threshold-original gc-cons-threshold)
+(defvar gc-cons-threshold-default (* 16 1024 1024))
 (setq gc-cons-threshold most-positive-fixnum)
 (setq read-process-output-max (expt 2 20))
 
@@ -160,9 +160,9 @@
 (setq initial-major-mode 'fundamental-mode)
 (setq initial-scratch-message nil)
 
-(setq ido-enable-flex-matching t)
-(setq ido-everywhere t)
-(ido-mode 1)
+;; Ido desativado para não conflitar com o Vertico (carregado em etc/editor/completion.el)
+(setq ido-enable-flex-matching nil
+      ido-everywhere nil)
 
 (when (fboundp 'which-key-mode)
   (which-key-mode 1))
@@ -249,4 +249,7 @@
 ;; ================================
 ;; RESTORE GC DEFAULTS
 ;; ================================
-(setq gc-cons-threshold gc-cons-threshold-original)
+(add-hook 'emacs-startup-hook
+          (lambda ()
+            (setq gc-cons-threshold gc-cons-threshold-default
+                  gc-cons-percentage 0.1)))

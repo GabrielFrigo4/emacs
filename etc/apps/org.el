@@ -14,7 +14,7 @@
 
 (use-package org
   :ensure nil
-  :bind (("C-c l" . org-store-link)
+  :bind (("C-c L" . org-store-link)
          ("C-c a" . org-agenda)
          ("C-c c" . org-capture)
          :map org-mode-map
@@ -60,9 +60,10 @@
   ;; --------------------------------
   ;; SOURCE FACES
   ;; --------------------------------
-  (defface org-block-begin-line '((t (:underline "#646260" :foreground "#10CFFC" :background "#41403F" :extend t))) "")
-  (defface org-block '((t (:background "#3A3938" :extend t))) "")
-  (defface org-block-end-line '((t (:underline "#646260" :foreground "#10CFFC" :background "#41403F" :extend t))) "")
+  (when (display-graphic-p)
+    (set-face-attribute 'org-block-begin-line nil :underline "#646260" :foreground "#10CFFC" :background "#41403F" :extend t)
+    (set-face-attribute 'org-block nil :background "#3A3938" :extend t)
+    (set-face-attribute 'org-block-end-line nil :underline "#646260" :foreground "#10CFFC" :background "#41403F" :extend t))
 
   ;; --------------------------------
   ;; LANGUAGES
@@ -102,9 +103,6 @@
   (setq-default org-modern-fold-stars
                 '(("▶" . "▼") ("▷" . "▽") ("►" . "◆") ("▻" . "◇") ("▸" . "▾") ("▹" . "▿"))))
 
-(use-package org-superstar
-  :ensure (:type git :host github :repo "emacsmirror/org-superstar" :branch "master")
-  :hook (org-mode . org-superstar-mode))
 
 (use-package ob-mermaid
   :ensure (:type git :host github :repo "emacsmirror/ob-mermaid" :branch "master")

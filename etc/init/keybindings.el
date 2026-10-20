@@ -16,7 +16,7 @@
 ;; ================================
 
 (defun emacs/setup-input-decode (&optional frame)
-  "Configure terminal key decoding and prevent CSI prefix hijacking."
+  "Configure terminal key decoding and prevent CSI/SS3 prefix hijacking."
   (with-selected-frame (or frame (selected-frame))
     (when (fboundp 'normal-erase-is-backspace-mode)
       (normal-erase-is-backspace-mode (if (display-graphic-p) 1 0)))
@@ -25,7 +25,33 @@
     (define-key input-decode-map "\x7f" [backspace])
     (define-key input-decode-map "\C-h" [backspace])
     (unless (display-graphic-p)
-      (global-unset-key (kbd "M-[")))))
+      ;; Traduz imediatamente sequências CSI (\e[) e SS3 (\eO) no input-decode-map do terminal
+      (dolist (pair '(("\e[A"  . [up])      ("\eOA"  . [up])
+                      ("\e[B"  . [down])    ("\eOB"  . [down])
+                      ("\e[C"  . [right])   ("\eOC"  . [right])
+                      ("\e[D"  . [left])    ("\eOD"  . [left])
+                      ("\e[H"  . [home])    ("\eOH"  . [home])
+                      ("\e[F"  . [end])     ("\eOF"  . [end])
+                      ("\e[1~" . [home])    ("\e[7~" . [home])
+                      ("\e[4~" . [end])     ("\e[8~" . [end])
+                      ("\e[2~" . [insert])
+                      ("\e[5~" . [prior])   ("\e[6~" . [next])
+                      ("\e[1;2A" . [S-up])    ("\e[1;2B" . [S-down])
+                      ("\e[1;2C" . [S-right]) ("\e[1;2D" . [S-left])
+                      ("\e[1;5A" . [C-up])    ("\e[1;5B" . [C-down])
+                      ("\e[1;5C" . [C-right]) ("\e[1;5D" . [C-left])
+                      ("\e[1;3A" . [M-up])    ("\e[1;3B" . [M-down])
+                      ("\e[1;3C" . [M-right]) ("\e[1;3D" . [M-left])))
+        (define-key input-decode-map (car pair) (cdr pair)))
+      (global-unset-key (kbd "M-["))
+      (global-unset-key (kbd "M-O"))
+      (with-eval-after-load 'evil
+        (define-key evil-normal-state-map (kbd "M-[") nil)
+        (define-key evil-normal-state-map (kbd "M-O") nil)
+        (define-key evil-motion-state-map (kbd "M-[") nil)
+        (define-key evil-motion-state-map (kbd "M-O") nil)
+        (define-key evil-insert-state-map (kbd "M-[") nil)
+        (define-key evil-insert-state-map (kbd "M-O") nil)))))
 
 (emacs/setup-input-decode)
 (add-hook 'tty-setup-hook #'emacs/setup-input-decode)
@@ -73,7 +99,8 @@
    (t
     (keyboard-escape-quit))))
 
-(global-set-key (kbd "<escape>") #'emacs/escape-dwim)
+(when (display-graphic-p)
+  (global-set-key (kbd "<escape>") #'emacs/escape-dwim))
 
 (global-set-key [backspace]           #'backward-delete-char-untabify)
 (global-set-key (kbd "<backspace>")   #'backward-delete-char-untabify)

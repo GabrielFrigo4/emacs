@@ -50,8 +50,14 @@
 (use-package dashboard
   :ensure (:type git :host github :repo "emacsmirror/dashboard" :branch "master")
   :config
-  (dashboard-setup-startup-hook)
-  (setq initial-buffer-choice (lambda () (get-buffer-create "*dashboard*")))
+  (let ((has-file-arg (seq-some (lambda (arg)
+                                  (and (not (string-prefix-p "-" arg))
+                                       (not (member (file-name-nondirectory arg)
+                                                    '("emacs" "emacs.exe")))))
+                                (cdr command-line-args))))
+    (unless has-file-arg
+      (dashboard-setup-startup-hook)
+      (setq initial-buffer-choice (lambda () (get-buffer-create "*dashboard*")))))
   (setq dashboard-center-content t)
   (setq dashboard-show-shortcuts nil)
   (setq dashboard-items '((recents  . 5)
@@ -157,7 +163,8 @@
                     (set-frame-parameter frame 'menu-bar-lines 1))
                 (set-frame-parameter frame 'menu-bar-lines 0)
                 (when (fboundp 'xterm-mouse-mode)
-                  (xterm-mouse-mode 1))
+                  (xterm-mouse-mode 1)
+                  (ignore-errors (send-string-to-terminal "\e[?1003l" frame)))
                 (interface/apply-tty-faces frame)))))
 
 ;; --------------------------------
