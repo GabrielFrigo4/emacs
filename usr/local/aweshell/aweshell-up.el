@@ -1,24 +1,7 @@
 ;;; aweshell-up.el --- Quick parent directory navigation for Eshell -*- lexical-binding: t; -*-
-
-;; ============================================================================
-;;  AWESHELL-UP.EL
-;; ============================================================================
-
-;; Copyright (C) 2016 Peter W. V. Tran-Jørgensen
-;; Author: Peter W. V. Tran-Jørgensen <peter.w.v.jorgensen@gmail.com>
-;; Maintainer: Gabriel Frigo <gabriel.frigo4@gmail.com>
-;; Version: 0.0.5
-;; Package-Requires: ((emacs "25.1"))
-;; Keywords: eshell
-
-;; This file is free software: you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
-
-;; ============================================================================
-;;  CODE
-;; ============================================================================
+;; ----------------------------------------------------------------
+;; Module: Aweshell Parent Directory Navigation
+;; ----------------------------------------------------------------
 
 (require 'subr-x)
 

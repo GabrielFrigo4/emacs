@@ -18,13 +18,12 @@
       inhibit-startup-message t
       inhibit-startup-echo-area-message user-login-name
       inhibit-default-init t
-      frame-inhibit-implied-resize t
       gc-cons-threshold most-positive-fixnum
       gc-cons-percentage 0.6)
 
-(push '(tool-bar-lines . 0) default-frame-alist)
-(push '(vertical-scroll-bars . nil) default-frame-alist)
 (unless (display-graphic-p)
+  (push '(tool-bar-lines . 0) default-frame-alist)
+  (push '(vertical-scroll-bars . nil) default-frame-alist)
   (push '(menu-bar-lines . 0) default-frame-alist)
   (setq inhibit-message t)
   (add-hook 'emacs-startup-hook

@@ -5,4 +5,5 @@
 
 (custom-set-variables
  '(custom-safe-themes '(default)))
-(custom-set-faces)
+(custom-set-faces
+ '(default ((t (:family "JetBrainsMono NF" :foundry "JB" :slant normal :weight regular :height 120 :width normal)))))

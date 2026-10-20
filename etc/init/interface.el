@@ -67,8 +67,6 @@
               (setq-local display-line-numbers-type nil)
               (display-line-numbers-mode -1))))
 
-(elpaca-wait)
-
 ;; --------------------------------
 ;; TTY HIGH-CONTRAST FACE ADAPTER
 ;; --------------------------------
@@ -182,6 +180,7 @@
   "Configure newly created graphical FRAME."
   (when (display-graphic-p frame)
     (select-frame frame)
+    (set-frame-size frame 100 31)
     (if-windows
      (sleep-for 0.036)
      (sleep-for 0.032))

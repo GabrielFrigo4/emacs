@@ -36,7 +36,9 @@
 (use-package glsl-mode
   :ensure t
   :config
-  (when treesit/enable
+  (when (and treesit/enable
+             (fboundp 'treesit-ready-p)
+             (treesit-ready-p 'c t))
     (require 'treesit)
     (require 'c-ts-mode)))
 (use-package json-mode :ensure t)

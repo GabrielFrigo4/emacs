@@ -1,40 +1,7 @@
 ;;; aweshell-did-you-mean.el --- "Did you mean" helper for Eshell -*- lexical-binding: t; -*-
-
-;; ============================================================================
-;;  AWESHELL/DID-YOU-MEAN.EL
-;; ============================================================================
-
-;; Copyright (C) 2015  Chunyang Xu
-
-;; Author: Chunyang Xu <xuchunyang56@gmail.com>
-;; URL: https://github.com/xuchunyang/aweshell/did-you-mean
-;; Package-Requires: ((emacs "24.1") (cl-lib "0.5"))
-;; Keywords: eshell
-;; Version: 0.2
-
-;; This program is free software; you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation, either version 3 of the License, or
-;; (at your option) any later version.
-
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
-
-;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-;; ============================================================================
-;;  COMMENTARY
-;; ============================================================================
-
-;; Setup:
-;;   (aweshell/did-you-mean-setup)
-
-;; ============================================================================
-;;  CODE
-;; ============================================================================
+;; ----------------------------------------------------------------
+;; Module: Aweshell Did-You-Mean Helper
+;; ----------------------------------------------------------------
 
 (require 'cl-lib)
 (require 'eshell)

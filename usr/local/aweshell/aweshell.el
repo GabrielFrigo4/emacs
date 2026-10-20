@@ -1,232 +1,7 @@
 ;;; aweshell.el --- Awesome Emacs Shell -*- lexical-binding: t; -*-
-
-;; ============================================================================
-;;  AWESHELL.EL
-;; ============================================================================
-
-;; Filename: aweshell.el
-;; Description: Awesome Eshell
-;; Author: Andy Stewart <lazycat.manatee@gmail.com>
-;; Maintainer: Gabriel Frigo <gabriel.frigo4@gmail.com>
-;; Copyright (C) 2018, Andy Stewart, all rights reserved.
-;; Created: 2018-08-13 23:18:35
-;; Version: 5.0
-;; Last-Updated: 2026-09-17 02:23:00
-;;           By: Gabriel Frigo
-;; URL: https://github.com/GabrielFrigo4/aweshell
-;; Keywords: eshell, terminal, shell
-;; Compatibility: GNU Emacs 27.1+ / 30+
-
-;; Features that might be required by this library:
-;; `eshell' `aweshell-theme' `aweshell-history' `aweshell-did-you-mean'
-;; `aweshell-up' `aweshell-exec-path' `cl-lib' `subr-x'
-;;
-
-;; ============================================================================
-;;  LICENSE
-;; ============================================================================
-;;
-;; This program is free software; you can redistribute it and/or modify
-;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation; either version 3, or (at your option)
-;; any later version.
-
-;; This program is distributed in the hope that it will be useful,
-;; but WITHOUT ANY WARRANTY; without even the implied warranty of
-;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-;; GNU General Public License for more details.
-
-;; You should have received a copy of the GNU General Public License
-;; along with this program; see the file COPYING.  If not, write to
-;; the Free Software Foundation, Inc., 51 Franklin Street, Fifth
-;; Floor, Boston, MA 02110-1301, USA.
-
-;; ============================================================================
-;;  COMMENTARY
-;; ============================================================================
-;;
-;; I created `multi-term.el' and use it many years.
-;; Now I'm a big fans of `eshell'.
-;;
-;; So i write `aweshell.el' to extension `eshell' with below features:
-;; 1. Create and manage multiple eshell buffers.
-;; 2. Add some useful commands, such as: clear buffer, toggle sudo etc.
-;; 3. Display extra information and color like zsh, powered by `aweshell-theme'
-;; 4. Add Fish-like history autosuggestions.
-;; 5. Validate and highlight command before post to eshell.
-;; 6. Change buffer name by directory change.
-;; 7. Add completions for git command.
-;; 8. Fix error `command not found' in MacOS.
-;; 9. Integrate `aweshell/up'.
-;; 10. Unpack archive file.
-;; 11. Open file with alias e.
-;; 12. Output "did you mean ..." helper when you typo.
-;; 13. Make cat file with syntax highlight.
-;; 14. Alert user when background process finished or aborted.
-;; 15. Complete shell command arguments like IDE feeling.
-;; 16. Dedicated shell window like IDE bottom terminal window.
-;;
-
-;; ============================================================================
-;;  INSTALLATION
-;; ============================================================================
-;;
-;; Put `aweshell.el', `aweshell/did-you-mean.el', `aweshell-theme.el', `aweshell/up.el.el', `aweshell/exec-path.el' to your load-path.
-;; The load-path is usually ~/elisp/.
-;; It's set in your ~/.emacs like this:
-;; (add-to-list 'load-path (expand-file-name "~/elisp"))
-;;
-;; And the following to your ~/.emacs startup file.
-;;
-;;
-;; Binding your favorite key to functions:
-;;
-;; `aweshell/new'
-;; `aweshell/next'
-;; `aweshell/prev'
-;; `aweshell/clear-buffer'
-;; `aweshell/sudo-toggle'
-;; `aweshell/switch-buffer'
-;; `aweshell/dedicated-toggle'
-;; `aweshell/dedicated-open'
-;; `aweshell/dedicated-close'
-;;
-
-;; ============================================================================
-;;  CUSTOMIZE
-;; ============================================================================
-;;
-;; `aweshell/complete-selection-key'
-;; `aweshell/clear-buffer-key'
-;; `aweshell/sudo-toggle-key'
-;; `aweshell/search-history-key'
-;;
-;; `aweshell/valid-command-color'
-;; `aweshell/neutral-command-color'
-;; `aweshell/invalid-command-color'
-;; `aweshell/use-aweshell/exec-path'
-;; `aweshell/dedicated-window-height'
-;;
-;; All of the above can customize by:
-;;      M-x customize-group RET aweshell RET
-;;
-
-;; ============================================================================
-;;  CHANGE LOG
-;; ============================================================================
-;; 2025/11/12
-;;      * Fix: aweshell/validate-command displays incorrect color for command when aweshell/validate-executable is nil
-;;
-;; 2022/06/16
-;;      * Fix: aweshell/switch-buffer failed when there are killed buffers in `aweshell/buffer-list`
-;;
-;; 2020/03/28
-;;      * Hide hl-line in shell.
-;;
-;; 2020/01/14
-;;      * Fix issue #49
-;;
-;; 2019/09/12
-;;      * Use `cl-lib' instead of `cl'
-;;
-;; 2019/07/17
-;;      * Fix #37 issue: aweshell/dedicated-toggle failed after user use cd command in aweshell.
-;;
-;; 2019/07/16
-;;      * Add `aweshell/dedicated-toggle' command.
-;;      * Refactory code.
-;;
-;; 2019/04/29
-;;      * Add interactive command `aweshell/switch-buffer'.
-;;
-;; 2019/04/07
-;;      * Increased startup speed, loaded `aweshell/did-you-mean' plugin when idle
-;;
-;; 2019/1/2
-;;      * When the command includes * or \ , the `pcomplete-completions' command will report an error,
-;;        So company menu will be disabled when these characters are included.
-;;
-;; 2018/12/28
-;;      * When the command includes " or [ , the `pcomplete-completions' command will report an error,
-;;        So company menu will be disabled when these characters are included.
-;;
-;; 2018/12/27
-;;      * Fix backtrace when type command: git clone "
-;;
-;; 2018/12/22
-;;      * Mix best history and complete arguments just when history not exist in completion arguments.
-;;
-;; 2018/12/15
-;;      * Mix best match history and shell completions in company's completion menu.
-;;      * Fix error when completion.
-;;
-;; 2018/12/14
-;;      * Add new option `aweshell/autosuggest-backend' to swtich between fish-style and company-style.
-;;
-;; 2018/11/12
-;;      * Remove Mac color, use hex color instead.
-;;
-;; 2018/10/19
-;;      * Alert user when background process finished or aborted.
-;;
-;; 2018/09/19
-;;      * Make `aweshell/exec-path' optional. Disable with variable`aweshell/use-aweshell/exec-path'.
-;;
-;; 2018/09/17
-;;      * Use `ido-completing-read' instead `completing-read' to provide fuzz match.
-;;
-;; 2018/09/10
-;;      * Built-in `aweshell/did-you-mean' plugin.
-;;
-;; 2018/09/07
-;;      * Add docs about `aweshell/up', `aweshell/emacs' and `aweshell/unpack'
-;;      * Add `aweshell/cat-with-syntax-highlight' make cat file with syntax highlight.
-;;
-;; 2018/09/06
-;;      * Require `cl' to fix function `subseq' definition.
-;;
-;; 2018/08/16
-;;      * Just run git relative code when git in exec-path.
-;;      * Use `esh-parse-shell-history' refacotry code.
-;;      * Try to fix error "Shell command failed with code 1 and no output" cause by LANG environment variable.
-;;
-;; 2018/08/15
-;;      * Remove face settings.
-;;      * Add `aweshell/search-history' and merge bash/zsh history in `esh-autosuggest' .
-;;      * Fix history docs.
-;;
-;; 2018/08/14
-;;      * Save buffer in `aweshell/buffer-list', instead save buffer name.
-;;      * Change aweshell buffer name by directory change.
-;;      * Refacotry code.
-;;      * Fix error "wrong-type-argument stringp nil" by `aweshell/validate-command'
-;;      * Add some handy aliases.
-;;      * Make `aweshell/validate-command' works with eshell aliases.
-;;      * Synchronal buffer name with shell path by `aweshell/theme-fish-path'.
-;;      * Use `aweshell/theme-theme-pipeline' as default theme.
-;;      * Complete customize options in docs.
-;;      * Redirect `clear' alias to `aweshell/clear-buffer'.
-;;      * Add completions for git command.
-;;      * Adjust `ls' alias.
-;;
-;; 2018/08/13
-;;      * First released.
-;;
-
-;; ============================================================================
-;;  ACKNOWLEDGEMENTS
-;; ============================================================================
-;;
-;; Samray: copy `aweshell/clear-buffer', `aweshell/sudo-toggle' and `aweshell/search-history'
-;; casouri: copy `aweshell/validate-command' and `aweshell/sync-dir-buffer-name'
-;;
-
-;; ============================================================================
-;;  TODO
-;; ============================================================================
-;;
-;;
-;;
+;; ----------------------------------------------------------------
+;; Module: Aweshell — Universal Emacs Shell
+;; ----------------------------------------------------------------
 
 ;; ============================================================================
 ;;  REQUIRE & FORWARD DECLARATIONS
@@ -1016,42 +791,68 @@ Otherwise return nil."
 (defalias 'eshell/up 'aweshell/up)
 (defalias 'eshell/up-peek 'aweshell/up-peek)
 
-(defcustom aweshell/theme 'aweshell/theme-theme-zshrc
-  "The eshell prompt theme to use.
-Available themes:
-  `aweshell/theme-theme-lambda'     - Minimal lambda theme
-  `aweshell/theme-theme-dakrone'    - Directory shrinking
-  `aweshell/theme-theme-pipeline'   - Oh-my-zsh style
-  `aweshell/theme-theme-zshrc'      - Zshrc replica (default)
-  `aweshell/theme-theme-multiline-with-status' - Multiline status"
+(defcustom aweshell/theme 'aweshell/theme-multi
+  "The Eshell prompt theme to use.
+Available Universal Shell themes:
+  `aweshell/theme-multi' - 3-line Powerline header (auto-adapts to `pill' on Raw TTY)
+  `aweshell/theme-pill'  - Single-line rounded pill header (GUI/PTY & Raw TTY)
+  `aweshell/theme-micro' - Ultra-compact single-line prompt (GUI/PTY & Raw TTY)"
   :type 'function
   :group 'aweshell)
 
 (defvar aweshell/themes-list
-  '(aweshell/theme-theme-lambda
-    aweshell/theme-theme-dakrone
-    aweshell/theme-theme-pipeline
-    aweshell/theme-theme-zshrc
-    aweshell/theme-theme-multiline-with-status)
-  "List of available themes for Aweshell.")
+  '(aweshell/theme-multi
+    aweshell/theme-pill
+    aweshell/theme-micro)
+  "List of canonical Universal Shell themes for Aweshell.")
+
+(defun aweshell/set-theme (style)
+  "Set Aweshell prompt theme to STYLE (`multi', `pill', `micro', or function symbol)."
+  (let* ((name (if (symbolp style) (symbol-name style) (format "%s" style)))
+         (clean (string-remove-prefix "aweshell/theme-" (downcase (string-trim name))))
+         (fn (pcase clean
+               ("multi" #'aweshell/theme-multi)
+               ("pill"  #'aweshell/theme-pill)
+               ("micro" #'aweshell/theme-micro)
+               (_       (let ((sym (intern name)))
+                          (if (fboundp sym) sym #'aweshell/theme-multi))))))
+    (setq-default aweshell/theme fn)
+    (setq-default eshell-prompt-function fn)
+    (setq-default eshell-prompt-regexp aweshell/theme-prompt-regexp)
+    (dolist (buf (buffer-list))
+      (with-current-buffer buf
+        (when (derived-mode-p 'eshell-mode)
+          (setq-local aweshell/theme fn)
+          (setq-local eshell-prompt-function fn)
+          (setq-local eshell-prompt-regexp aweshell/theme-prompt-regexp))))
+    fn))
 
 (defun aweshell/select-theme ()
-  "Interactively selects a theme for Aweshell and applies it immediately."
+  "Interactively select a Universal Shell theme (`multi', `pill', `micro') for Aweshell."
   (interactive)
   (let ((selected (completing-read
-                   "Select theme: "
-                   (mapcar #'symbol-name aweshell/themes-list) nil t nil nil
-                   (symbol-name aweshell/theme))))
+                   "Aweshell theme (multi/pill/micro): "
+                   '("multi" "pill" "micro") nil t nil nil "multi")))
     (unless (string-empty-p selected)
-      (setq aweshell/theme (intern selected))
-      (setq eshell-prompt-function aweshell/theme)
-      (message "Theme set to: %s" aweshell/theme))))
+      (let ((fn (aweshell/set-theme selected)))
+        (message "Aweshell theme set to: %s" fn)))))
+
+(defun eshell/theme (&optional style)
+  "View or switch Aweshell prompt theme (`multi', `pill', `micro') from inside Eshell."
+  (if (or (null style) (string-empty-p (format "%s" style)))
+      (format "Current Aweshell theme: %s (available: multi, pill, micro)" aweshell/theme)
+    (let ((fn (aweshell/set-theme style)))
+      (format "Aweshell theme switched to %s" fn))))
+
+(defalias 'eshell/prompt-style 'eshell/theme)
 
 (setq-default eshell-highlight-prompt t)
+(setq-default eshell-prompt-regexp aweshell/theme-prompt-regexp)
 (setq-default eshell-prompt-function aweshell/theme)
 (add-hook 'eshell-mode-hook
           (lambda ()
             (setq-local eshell-highlight-prompt t)
+            (setq-local eshell-prompt-regexp aweshell/theme-prompt-regexp)
             (setq-local eshell-prompt-function aweshell/theme)))
 
 (defun aweshell/lock-output-filter ()
@@ -1082,6 +883,8 @@ Updates alias definitions in memory and writes to disk only when changed,
 suppressing minibuffer write messages."
   (require 'em-alias)
   (let ((aliases `(("clear" "clear-scrollback")
+                   ("cls" "clear-scrollback")
+                   ("clr" "clear-scrollback")
                    ("ll" "ls -la $*")
                    ("la" "ls -a $*")
                    ("l"  "ls -l $*")
@@ -1095,6 +898,13 @@ suppressing minibuffer write messages."
                    ("rm" "rm -i $*")
                    ("cp" "cp -i $*")
                    ("mv" "mv -i $*")
+                   ("gs" "git status $*")
+                   ("ga" "git add $*")
+                   ("gc" "git commit $*")
+                   ("gp" "git push $*")
+                   ("gl" "git pull $*")
+                   ("gd" "git diff $*")
+                   ("glog" "git log --oneline --graph --decorate $*")
                    ("e" "find-file $1")
                    ("ee" "find-file-other-window $1")
                    ("gcc" "gcc -fdiagnostics-color=always $*")

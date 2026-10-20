@@ -8,7 +8,9 @@
 ;;; ================================
 
 (defvar typography/primary-fonts
-  '("JetBrains Mono"
+  '("JetBrainsMono NF"
+    "JetBrainsMono Nerd Font"
+    "JetBrains Mono"
     "Fira Code"
     "Hack"
     "Cascadia Code"
@@ -92,7 +94,7 @@
       (with-selected-frame target-frame
         ;; 1. Monospace primary font
         (when-let* ((primary (typography/find-first-font typography/primary-fonts)))
-          (let ((height (if (eq window-system 'w32) 115 110)))
+          (let ((height 120))
             (set-face-attribute 'default target-frame :family primary :height height)
             (add-to-list 'default-frame-alist `(font . ,(format "%s-%d" primary (/ height 10))))))
         ;; 2. Emoji & symbol fallback

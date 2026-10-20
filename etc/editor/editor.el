@@ -13,6 +13,8 @@
   (setq evil-want-integration t)
   (setq evil-want-keybinding nil)
   (setq evil-default-state 'emacs)
+  (setq evil-intercept-esc 'always)
+  (setq evil-esc-delay 0.01)
   :config
   (evil-mode 1)
 
@@ -32,52 +34,94 @@
   (setq-default evil-replace-state-modes  '())
   (setq-default evil-operator-state-modes '())
 
+  (defun evil-initial-state-for-buffer (&optional _buffer)
+    "Always start every buffer in `emacs' state unless explicitly toggled with C-z."
+    'emacs)
+
+  (defun emacs/toggle-evil-state ()
+    "Toggle cleanly between Emacs state and Evil Normal state."
+    (interactive)
+    (if (evil-emacs-state-p)
+        (evil-normal-state)
+      (evil-emacs-state)))
+
+  (global-set-key (kbd "C-z") #'emacs/toggle-evil-state)
+  (dolist (map (list evil-emacs-state-map
+                     evil-normal-state-map
+                     evil-insert-state-map
+                     evil-visual-state-map
+                     evil-replace-state-map
+                     evil-operator-state-map
+                     evil-motion-state-map))
+    (define-key map (kbd "C-z") #'emacs/toggle-evil-state))
+
+  (dolist (key (list [escape] (kbd "<escape>") (kbd "ESC")))
+    (define-key evil-insert-state-map   key #'evil-normal-state)
+    (define-key evil-replace-state-map  key #'evil-normal-state)
+    (define-key evil-operator-state-map key #'evil-normal-state)
+    (define-key evil-visual-state-map   key #'evil-exit-visual-state)
+    (define-key evil-normal-state-map   key #'evil-force-normal-state)
+    (define-key evil-motion-state-map   key #'evil-force-normal-state))
+
+  (when (fboundp 'evil-init-esc)
+    (add-hook 'tty-setup-hook #'evil-init-esc)
+    (add-hook 'window-setup-hook #'evil-init-esc))
+
   (setq evil-normal-state-cursor   'box
-        evil-insert-state-cursor   '(bar . 2)
-        evil-visual-state-cursor   'hollow
-        evil-replace-state-cursor  '(hbar . 3)
-        evil-operator-state-cursor '(hbar . 3)
+        evil-visual-state-cursor   'box
         evil-motion-state-cursor   'box
-        evil-emacs-state-cursor    '(bar . 2))
+        evil-insert-state-cursor   '(bar . 2)
+        evil-emacs-state-cursor    '(bar . 2)
+        evil-replace-state-cursor  '(hbar . 4)
+        evil-operator-state-cursor '(hbar . 4))
 
   (defun emacs/set-terminal-cursor (linux-code pty-code)
-    "Send cursor escape sequence to terminal if current frame is non-graphic."
+    "Send static (`noblink') cursor escape sequence to terminal when frame is non-graphic."
     (unless (display-graphic-p (selected-frame))
-      (let ((term (or (and (fboundp 'tty-type) (tty-type (selected-frame)))
-                      (getenv "TERM"))))
+      (let* ((term (or (and (fboundp 'tty-type) (tty-type (selected-frame)))
+                       (getenv "TERM")))
+             (raw-tty (and (fboundp 'display-raw-tty-p)
+                           (display-raw-tty-p (selected-frame)))))
         (ignore-errors
-          (if (and term (string-equal term "linux"))
-              (send-string-to-terminal linux-code)
-            (send-string-to-terminal pty-code))))))
+          (cond
+           ((and term (string-equal term "linux"))
+            (send-string-to-terminal linux-code))
+           ((not raw-tty)
+            (send-string-to-terminal pty-code)))))))
 
-  (add-hook 'evil-emacs-state-entry-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?2c" "\e[5 q")))
-  (add-hook 'evil-insert-state-entry-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?2c" "\e[5 q")))
-  (add-hook 'minibuffer-setup-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?3c" "\e[5 q")))
-  (add-hook 'evil-operator-state-entry-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?4c" "\e[3 q")))
-  (add-hook 'evil-replace-state-entry-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?4c" "\e[3 q")))
-  (add-hook 'evil-visual-state-entry-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?5c" "\e[1 q")))
-  (add-hook 'evil-normal-state-entry-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))
-  (add-hook 'evil-insert-state-exit-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))
-  (add-hook 'evil-operator-state-exit-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))
-  (add-hook 'minibuffer-exit-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))
-  (add-hook 'evil-replace-state-exit-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))
-  (add-hook 'evil-visual-state-exit-hook
-            (lambda () (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))
+  (defun emacs/sync-evil-terminal-cursor (&rest _)
+    "Synchronize terminal cursor shape with current Evil state."
+    (unless (display-graphic-p (selected-frame))
+      (cond
+       ((minibufferp)
+        (emacs/set-terminal-cursor "\e[?3c" "\e[6 q"))
+       ((not (bound-and-true-p evil-local-mode))
+        (emacs/set-terminal-cursor "\e[?2c" "\e[6 q"))
+       ((or (evil-emacs-state-p) (evil-insert-state-p))
+        (emacs/set-terminal-cursor "\e[?2c" "\e[6 q"))
+       ((or (evil-replace-state-p) (evil-operator-state-p))
+        (emacs/set-terminal-cursor "\e[?4c" "\e[4 q"))
+       ((evil-visual-state-p)
+        (emacs/set-terminal-cursor "\e[?5c" "\e[2 q"))
+       (t
+        (emacs/set-terminal-cursor "\e[?6c" "\e[2 q")))))
+
+  (add-hook 'evil-emacs-state-entry-hook    #'emacs/sync-evil-terminal-cursor)
+  (add-hook 'evil-insert-state-entry-hook   #'emacs/sync-evil-terminal-cursor)
+  (add-hook 'evil-operator-state-entry-hook #'emacs/sync-evil-terminal-cursor)
+  (add-hook 'evil-replace-state-entry-hook  #'emacs/sync-evil-terminal-cursor)
+  (add-hook 'evil-visual-state-entry-hook   #'emacs/sync-evil-terminal-cursor)
+  (add-hook 'evil-normal-state-entry-hook   #'emacs/sync-evil-terminal-cursor)
+  (add-hook 'evil-motion-state-entry-hook   #'emacs/sync-evil-terminal-cursor)
+  (add-hook 'minibuffer-setup-hook          #'emacs/sync-evil-terminal-cursor)
+  (add-hook 'minibuffer-exit-hook           #'emacs/sync-evil-terminal-cursor)
+  (add-hook 'buffer-list-update-hook        #'emacs/sync-evil-terminal-cursor)
+  (add-hook 'window-configuration-change-hook #'emacs/sync-evil-terminal-cursor)
+  (add-hook 'tty-setup-hook                 #'emacs/sync-evil-terminal-cursor)
   (add-hook 'suspend-hook
-            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[0 q")))
+            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[2 q")))
   (add-hook 'kill-emacs-hook
-            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[0 q"))))
+            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[2 q"))))
 
 (use-package evil-tutor
   :defer t

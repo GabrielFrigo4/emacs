@@ -1,60 +1,7 @@
 ;;; aweww.el --- Awesome EWW -*- lexical-binding: t; -*-
-
-;; ============================================================================
-;;  AWEWW.EL
-;; ============================================================================
-
-;; Filename: aweww.el
-;; Description: Awesome EWW - Enhanced Emacs Web Wowser
-;; Author: Gabriel Frigo <gabriel.frigo4@gmail.com>
-;; Copyright (C) 2025, Gabriel Frigo, all rights reserved.
-;; Version: 2.0
-;; URL: https://github.com/GabrielFrigo4/aweww
-;; Keywords: eww, browser, web
-;; Compatibility: GNU Emacs 29.1+
-;;
-;; Features that might be required by this library:
-;;
-;; `eww' `shr' `shrface' `shr-tag-pre-highlight'
-
-;; ============================================================================
-;;  LICENSE
-;; ============================================================================
-;;
-;; Permission is hereby granted, free of charge, to any person obtaining
-;; a copy of this software and associated documentation files (the
-;; "Software"), to deal in the Software without restriction, including
-;; without limitation the rights to use, copy, modify, merge, publish,
-;; distribute, sublicense, and/or sell copies of the Software, and to
-;; permit persons to whom the Software is furnished to do so, subject to
-;; the following conditions:
-;;
-;; The above copyright notice and this permission notice shall be
-;; included in all copies or substantial portions of the Software.
-;;
-;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-;; EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-;; MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-;; NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
-;; BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
-;; ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-;; CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-;; SOFTWARE.
-
-;; ============================================================================
-;;  COMMENTARY
-;; ============================================================================
-;;
-;; AWEWW (Awesome EWW) is a configuration layer and extension for the
-;; built-in Emacs Web Wowser (EWW) browser. It enhances the browsing
-;; experience with:
-;;
-;; 1. Dynamic content width based on frame size.
-;; 2. Cleanup of excessive blank lines after rendering.
-;; 3. Integration with 'shrface' for better faces and code highlighting.
-;; 4. Intuitive keybindings for common browsing tasks.
-;; 5. Toggles for readable mode, images, and colors.
-;; 6. Visual-line-mode for comfortable reading.
+;; ----------------------------------------------------------------
+;; Module: Aweww — Enhanced Emacs Web Wowser
+;; ----------------------------------------------------------------
 
 ;; ============================================================================
 ;;  DEPENDENCIES
@@ -98,10 +45,11 @@
 ;; ============================================================================
 
 (defun aweww/set-shr-width (&rest _args)
-  "Adjust `shr-width' based on the current frame width, buffer-locally."
-  (when (and (frame-live-p (selected-frame))
-             (display-graphic-p (selected-frame)))
-    (setq-local shr-width (- (frame-width) aweww/default-width-offset))))
+  "Adjust `shr-width' based on the current frame or window width, buffer-locally."
+  (when (frame-live-p (selected-frame))
+    (setq-local shr-width
+                (max 40 (- (window-body-width (selected-window))
+                           aweww/default-width-offset)))))
 
 (advice-add 'eww-render :before #'aweww/set-shr-width)
 

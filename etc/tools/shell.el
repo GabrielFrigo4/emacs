@@ -11,7 +11,7 @@
 
 (use-package aweshell
   :ensure nil
-  :commands (aweshell/new aweshell/toggle aweshell/dedicated-toggle aweshell/switch-buffer aweshell/next aweshell/prev)
+  :commands (aweshell/new aweshell/toggle aweshell/dedicated-toggle aweshell/switch-buffer aweshell/next aweshell/prev aweshell/select-theme)
   :init
   (defalias 'esh 'aweshell/new)
   (defalias 'eshell 'aweshell/new)
@@ -21,8 +21,10 @@
   (if-windows
    (setq-default aweshell/validate-delay (expt 2 -1))
    (setq-default aweshell/validate-delay (expt 2 -2)))
+  (add-hook 'eshell-mode-hook (lambda () (require 'aweshell)))
   :config
-  (setq aweshell/theme 'aweshell/theme-theme-zshrc))
+  (setq aweshell/theme #'aweshell/theme-multi)
+  (aweshell/set-theme 'multi))
 
 (when-unix
  (setq-default explicit-shell-file-name (or (executable-find "zsh") "/bin/sh"))
@@ -40,9 +42,8 @@
   :ensure nil
   :config
   (setq-default eshell-banner-message "Welcome to the Awesome Emacs Shell\n")
-  (setq-default epe-git-enable t)
   (setq-default eshell-bad-command-tolerance (expt 2 64))
-
+  (defalias 'eshell 'aweshell/new)
   (defalias 'eshell/cls   'eshell/clear-scrollback)
   (defalias 'eshell/clr   'eshell/clear-scrollback)
   (defalias 'eshell/where 'eshell/which)

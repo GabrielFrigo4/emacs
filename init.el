@@ -206,7 +206,7 @@
 ;; --------------------------------
 ;; Feature Modules
 ;; --------------------------------
-(dolist (feature '("apps" "editor" "lang" "tools"))
+(dolist (feature '("tools" "editor" "lang" "apps"))
   (load-directory-recursive (expand-file-name feature etc-dir)))
 
 ;; --------------------------------

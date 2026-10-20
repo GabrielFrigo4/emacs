@@ -34,7 +34,24 @@
 (global-set-key (kbd "C-c i")    'insert-char)
 (global-set-key (kbd "M-s q")    'replace-regexp)
 (global-set-key (kbd "M-s r")    'replace-string)
-(global-set-key (kbd "<escape>") 'keyboard-escape-quit)
+(defun emacs/escape-dwim ()
+  "Exit Evil non-normal/non-emacs state if active; otherwise run `keyboard-escape-quit'."
+  (interactive)
+  (cond
+   ((and (bound-and-true-p evil-local-mode)
+         (fboundp 'evil-visual-state-p)
+         (evil-visual-state-p))
+    (evil-exit-visual-state))
+   ((and (bound-and-true-p evil-local-mode)
+         (fboundp 'evil-emacs-state-p)
+         (fboundp 'evil-normal-state-p)
+         (not (evil-emacs-state-p))
+         (not (evil-normal-state-p)))
+    (evil-normal-state))
+   (t
+    (keyboard-escape-quit))))
+
+(global-set-key (kbd "<escape>") #'emacs/escape-dwim)
 
 (global-set-key (kbd "<backspace>")    'backward-delete-char)
 (global-set-key (kbd "S-<backspace>")  'backward-delete-char-untabify)
