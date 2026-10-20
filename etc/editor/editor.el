@@ -91,9 +91,11 @@
       (cond
        ((minibufferp)
         (emacs/set-terminal-cursor "\e[?2c" "\e[5 q"))
+       ((evil-emacs-state-p)
+        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q"))
        ((not (bound-and-true-p evil-local-mode))
-        (emacs/set-terminal-cursor "\e[?2c" "\e[5 q"))
-       ((or (evil-emacs-state-p) (evil-insert-state-p))
+        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q"))
+       ((evil-insert-state-p)
         (emacs/set-terminal-cursor "\e[?2c" "\e[5 q"))
        ((or (evil-replace-state-p) (evil-operator-state-p))
         (emacs/set-terminal-cursor "\e[?4c" "\e[3 q"))
