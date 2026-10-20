@@ -41,7 +41,7 @@
 
 (use-package lsp-treemacs
   :ensure (:type git :host github :repo "emacsmirror/lsp-treemacs" :branch "master")
-  :after (lsp-mode treemacs)
-  :config (lsp-treemacs-sync-mode 1))
+  :after lsp-mode
+  :commands lsp-treemacs-sync-mode)
 
 (provide 'feature-lsp)

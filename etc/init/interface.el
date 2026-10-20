@@ -139,7 +139,10 @@
 (if (not (display-graphic-p))
     (progn
       (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
-      (when (fboundp 'xterm-mouse-mode) (xterm-mouse-mode 1))
+      (when (fboundp 'xterm-mouse-mode)
+        (add-hook 'emacs-startup-hook
+                  (lambda ()
+                    (xterm-mouse-mode 1))))
       (interface/apply-tty-faces))
   (when (fboundp 'menu-bar-mode) (menu-bar-mode 1)))
 

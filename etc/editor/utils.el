@@ -12,8 +12,7 @@
   :config
   (setq treemacs-width (- (expt 2 5) (expt 2 2))
         treemacs-no-png-images (not (display-graphic-p)))
-  (treemacs-follow-mode 1)
-  (treemacs-filewatch-mode 1))
+)
 
 (use-package imenu-list
   :ensure (imenu-list :host github 
