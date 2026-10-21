@@ -46,6 +46,33 @@
   (doom-modeline-indent-info nil)
   (doom-modeline-minor-modes nil))
 
+;; --------------------------------
+;; DASHBOARD FRAME ADAPTER
+;; --------------------------------
+
+(defun interface/dashboard-adapt-to-frame (&optional frame)
+  "Adapt dashboard banner and icons to FRAME (GUI logo vs. terminal ASCII).
+Evaluated per client frame so a daemon started without a display still
+renders the graphical logo on GUI frames created by emacsclient."
+  (let ((raw-tty (display-raw-tty-p frame)))
+    (setq dashboard-startup-banner (if (display-graphic-p frame) 'logo 2)
+          dashboard-display-icons-p (not raw-tty)
+          dashboard-icon-type (if raw-tty 'text 'nerd-icons)
+          dashboard-set-heading-icons (not raw-tty)
+          dashboard-set-file-icons (not raw-tty))))
+
+(defun interface/dashboard-buffer-for-frame ()
+  "Return the *dashboard* buffer rendered for the selected frame."
+  (let ((previous-banner dashboard-startup-banner)
+        (previous-icons dashboard-display-icons-p))
+    (interface/dashboard-adapt-to-frame (selected-frame))
+    (when (and (fboundp 'dashboard-insert-startupify-lists)
+               (or (daemonp)
+                   (not (equal previous-banner dashboard-startup-banner))
+                   (not (eq previous-icons dashboard-display-icons-p))))
+      (dashboard-insert-startupify-lists t)))
+  (get-buffer-create "*dashboard*"))
+
 (use-package dashboard
   :ensure (:type git :host github :repo "emacsmirror/dashboard" :branch "master")
   :config
@@ -56,16 +83,12 @@
                                 (cdr command-line-args))))
     (unless has-file-arg
       (dashboard-setup-startup-hook)
-      (setq initial-buffer-choice (lambda () (get-buffer-create "*dashboard*")))))
+      (setq initial-buffer-choice #'interface/dashboard-buffer-for-frame)))
   (setq dashboard-center-content t)
   (setq dashboard-show-shortcuts nil)
   (setq dashboard-items '((recents  . 5)
                           (projects . 5)))
-  (setq dashboard-display-icons-p (not (display-raw-tty-p)))
-  (setq dashboard-icon-type (if (display-raw-tty-p) 'text 'nerd-icons))
-  (setq dashboard-set-heading-icons (not (display-raw-tty-p)))
-  (setq dashboard-set-file-icons (not (display-raw-tty-p)))
-  (setq dashboard-startup-banner (if (display-graphic-p) 'logo 2))
+  (interface/dashboard-adapt-to-frame)
   (add-hook 'dashboard-mode-hook
             (lambda ()
               (setq-local display-line-numbers nil)
