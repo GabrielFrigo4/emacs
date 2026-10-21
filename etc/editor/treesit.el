@@ -252,7 +252,7 @@
 
 (use-package treesit-ispell
   :if treesit/enable
-  :ensure (:type git :host github :repo "erickgnavar/treesit-ispell" :branch "main")
+  :ensure (:type git :host github :repo "emacsmirror/treesit-ispell" :branch "master")
   :defer t
   :bind ("C-c s" . treesit-ispell-run))
 
