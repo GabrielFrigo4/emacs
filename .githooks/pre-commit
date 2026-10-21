@@ -16,111 +16,125 @@ echo "🔍 [pre-commit] Executing Emacs quality & syntax gates..."
 ### --------------------------------
 echo "  ↳ Checking whitespace and formatting (git diff --check)..."
 if ! git diff --check --cached; then
-	echo "❌ [pre-commit] Whitespace or EOF formatting error detected!" >&2
-	echo "   Run 'git diff --check --cached' to inspect issues." >&2
-	exit 1
+    echo "❌ [pre-commit] Whitespace or EOF formatting error detected!" >&2
+    echo "    Run 'git diff --check --cached' to inspect issues." >&2
+    exit 1
 fi
 
 ### --------------------------------
 ### Git Index File Modes Check
 ### --------------------------------
 echo "  ↳ Validating Git Index file modes (0755 vs 0644)..."
-_staged_files=$(git diff --cached --name-only --diff-filter=d 2> "/dev/null" || true)
-if [ -n "${_staged_files}" ]; then
-	_bad_modes=0
-	for _f in ${_staged_files}; do
-		[ ! -f "${_f}" ] && continue
-		_meta=$(git ls-files -s -- "${_f}" 2> "/dev/null" || true)
-		[ -z "${_meta}" ] && continue
-		_mode=$(echo "${_meta}" | awk '{print $1}')
-		case "${_mode}" in
-			160000|120000) continue ;;
-		esac
+if git diff --cached --name-only --diff-filter=d 2> "/dev/null" | {
+    _bad_modes=0
+    while IFS= read -r _f; do
+        [ -z "${_f}" ] && continue
+        [ ! -f "${_f}" ] && continue
 
-		_has_shebang=0
-		read -r _first_line < "${_f}" 2> "/dev/null" || _first_line=""
-		case "${_first_line}" in
-			"#!"*) _has_shebang=1 ;;
-		esac
+        _meta=$(git ls-files -s -- "${_f}" 2> "/dev/null" || true)
+        [ -z "${_meta}" ] && continue
+        _mode=$(echo "${_meta}" | awk '{print $1}')
+        case "${_mode}" in
+            160000|120000) continue ;;
+        esac
 
-		case "${_f}" in
-			.githooks/*) _is_hook=1 ;;
-			*) _is_hook=0 ;;
-		esac
+        _has_shebang=0
+        read -r _first_line < "${_f}" 2> "/dev/null" || _first_line=""
+        case "${_first_line}" in
+            "#!"*) _has_shebang=1 ;;
+        esac
 
-		case "${_f}" in
-			*.md|*.txt|*.json|*.yaml|*.yml|*.toml|*.el|*.lua|*.vim|*.ini|*.conf|*.css|*.html|*.svg|*.png|*.jpg|*.sample|.gitignore|.gitmodules|.gitattributes)
-				_is_doc=1 ;;
-			*) _is_doc=0 ;;
-		esac
+        case "${_f}" in
+            .githooks/*) _is_hook=1 ;;
+            *) _is_hook=0 ;;
+        esac
 
-		if [ "${_mode}" = "100755" ]; then
-			if [ "${_is_doc}" -eq 1 ] && [ "${_is_hook}" -eq 0 ]; then
-				echo "❌ [pre-commit] Arquivo de documentação/dados com bit executável no Git Index: ${_f}" >&2
-				echo "   Execute: git update-index --chmod=-x \"${_f}\"" >&2
-				_bad_modes=$((_bad_modes + 1))
-			elif [ "${_has_shebang}" -eq 0 ] && [ "${_is_hook}" -eq 0 ]; then
-				case "${_f}" in
-					*.cmd|*.ps1|*.nu|*.bat) ;;
-					*)
-						echo "❌ [pre-commit] Arquivo sem shebang com bit executável no Git Index: ${_f}" >&2
-						echo "   Execute: git update-index --chmod=-x \"${_f}\"" >&2
-						_bad_modes=$((_bad_modes + 1))
-						;;
-				esac
-			fi
-		elif [ "${_mode}" = "100644" ]; then
-			if [ "${_is_hook}" -eq 1 ] && [ "${_f##*.}" != "sample" ]; then
-				echo "❌ [pre-commit] Gancho Git sem permissão de execução no Git Index: ${_f}" >&2
-				echo "   Execute: git update-index --chmod=+x \"${_f}\"" >&2
-				_bad_modes=$((_bad_modes + 1))
-			elif [ "${_has_shebang}" -eq 1 ]; then
-				echo "❌ [pre-commit] Script com shebang sem permissão de execução no Git Index: ${_f}" >&2
-				echo "   Execute: git update-index --chmod=+x \"${_f}\"" >&2
-				_bad_modes=$((_bad_modes + 1))
-			fi
-		fi
-	done
-	if [ "${_bad_modes}" -gt 0 ]; then
-		exit 1
-	fi
+        case "${_f}" in
+            *.md|*.txt|*.json|*.yaml|*.yml|*.toml|*.el|*.lua|*.vim|*.ini|*.conf|*.css|*.html|*.svg|*.png|*.jpg|*.sample|.gitignore|.gitmodules|.gitattributes)
+                _is_doc=1 ;;
+            *) _is_doc=0 ;;
+        esac
+
+        if [ "${_mode}" = "100755" ]; then
+            if [ "${_is_doc}" -eq 1 ] && [ "${_is_hook}" -eq 0 ]; then
+                echo "❌ [pre-commit] Arquivo de documentação com bit executável: ${_f}" >&2
+                echo "    Execute: git update-index --chmod=-x \"${_f}\"" >&2
+                _bad_modes=$((_bad_modes + 1))
+            elif [ "${_has_shebang}" -eq 0 ] && [ "${_is_hook}" -eq 0 ]; then
+                case "${_f}" in
+                    *.cmd|*.ps1|*.nu|*.bat) ;;
+                    *)
+                        echo "❌ [pre-commit] Arquivo sem shebang com bit executável: ${_f}" >&2
+                        echo "    Execute: git update-index --chmod=-x \"${_f}\"" >&2
+                        _bad_modes=$((_bad_modes + 1))
+                        ;;
+                esac
+            fi
+        elif [ "${_mode}" = "100644" ]; then
+            if [ "${_is_hook}" -eq 1 ] && [ "${_f##*.}" != "sample" ]; then
+                echo "❌ [pre-commit] Gancho Git sem permissão de execução: ${_f}" >&2
+                echo "    Execute: git update-index --chmod=+x \"${_f}\"" >&2
+                _bad_modes=$((_bad_modes + 1))
+            elif [ "${_has_shebang}" -eq 1 ]; then
+                echo "❌ [pre-commit] Script com shebang sem permissão de execução: ${_f}" >&2
+                echo "    Execute: git update-index --chmod=+x \"${_f}\"" >&2
+                _bad_modes=$((_bad_modes + 1))
+            fi
+        fi
+    done
+    exit "${_bad_modes}"
+}; then
+    :
+else
+    exit 1
 fi
 
 ### --------------------------------
 ### Shell Scripts Syntax Check
 ### --------------------------------
 if [ -d "bin" ]; then
-	echo "  ↳ Validating shell scripts syntax (sh -n)..."
-	find bin -name "*.sh" -not -path "./.git/*" -exec sh -n {} +
+    echo "  ↳ Validating shell scripts syntax (sh -n)..."
+    find bin -name "*.sh" -not -path "./.git/*" -exec sh -n {} +
 fi
 
 ### --------------------------------
 ### Emacs Batch Startup Validation
 ### --------------------------------
 if command -v emacs > "/dev/null" 2>&1; then
-	echo "  ↳ Validating Emacs batch configuration load..."
-	if ! emacs -Q --batch -l early-init.el -l init.el --eval '(message "Emacs pre-commit batch OK")' > "/dev/null" 2>&1; then
-		echo "❌ [pre-commit] Emacs batch initialization failed!" >&2
-		exit 1
-	fi
+    echo "  ↳ Validating Emacs batch configuration load..."
+    _emacs_tmp_dir="$(mktemp -d 2> "/dev/null" || mktemp -d -t 'emacs-precommit.XXXXXX')"
+
+    if ! emacs -Q --batch \
+        --eval "(setq user-emacs-directory \"${_emacs_tmp_dir}/\")" \
+        -l early-init.el -l init.el \
+        --eval '(message "Emacs pre-commit batch OK")' > "/dev/null" 2>&1; then
+        echo "❌ [pre-commit] Emacs batch initialization failed!" >&2
+        rm -rf "${_emacs_tmp_dir}"
+        exit 1
+    fi
+    rm -rf "${_emacs_tmp_dir}"
 fi
 
 ### --------------------------------
 ### Markdown Prettier Validation
 ### --------------------------------
 if command -v prettier > "/dev/null" 2>&1; then
-	echo "  ↳ Validating staged Markdown files with Prettier..."
-	_unformatted_md=""
-	for _md_file in $(git diff --cached --name-only --diff-filter=d | grep '\.md$' || true); do
-		if [ -f "${_md_file}" ] && ! prettier --check "${_md_file}" > "/dev/null" 2>&1; then
-			_unformatted_md="${_unformatted_md} ${_md_file}"
-		fi
-	done
-	if [ -n "${_unformatted_md}" ]; then
-		echo "❌ [pre-commit] Unformatted Markdown files detected:${_unformatted_md}" >&2
-		echo "   Run 'prettier --write <file>' to format." >&2
-		exit 1
-	fi
+    echo "  ↳ Validating staged Markdown files with Prettier..."
+    _unformatted_md=""
+    while IFS= read -r _md_file; do
+        [ -z "${_md_file}" ] && continue
+        if [ -f "${_md_file}" ] && ! prettier --check "${_md_file}" > "/dev/null" 2>&1; then
+            _unformatted_md="${_unformatted_md} ${_md_file}"
+        fi
+    done <<EOF
+$(git diff --cached --name-only --diff-filter=d | grep '\.md$' || true)
+EOF
+
+    if [ -n "${_unformatted_md}" ]; then
+        echo "❌ [pre-commit] Unformatted Markdown files detected:${_unformatted_md}" >&2
+        echo "    Run 'prettier --write <file>' to format." >&2
+        exit 1
+    fi
 fi
 
 echo "✅ [pre-commit] All Emacs quality gates passed cleanly!"
