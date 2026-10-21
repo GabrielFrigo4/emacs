@@ -36,6 +36,17 @@
     (with-eval-after-load 'gnus
       (funcall clean-empty-dir (expand-file-name "gnus/" etc-dir)))))
 
+(with-eval-after-load 'dired
+  (cond
+   ((memq system-type '(gnu gnu/linux cygwin))
+    (setq dired-use-ls-dired t))
+   ((let ((gls (executable-find "gls")))
+      (when gls
+        (setq insert-directory-program gls
+              dired-use-ls-dired t))))
+   (t
+    (setq dired-use-ls-dired nil))))
+
 (set-language-environment "UTF-8")
 (prefer-coding-system 'utf-8)
 

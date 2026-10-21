@@ -38,6 +38,8 @@
 (use-package js2-mode :ensure t)
 (use-package typescript-mode :ensure t)
 (use-package php-mode :ensure t)
+(use-package kotlin-mode :ensure t :defer t)
+(use-package nix-mode :ensure t :defer t)
 (use-package scala-mode :ensure t)
 (use-package clojure-mode :ensure t)
 (use-package fasm-mode :ensure (:type git :host github :repo "GabrielFrigo4/fasm-mode"))
@@ -67,6 +69,9 @@
   (use-package zig-ts-mode :ensure t :defer t)
   (use-package scala-ts-mode :ensure t :defer t)
   (use-package clojure-ts-mode :ensure t :defer t)
+  (use-package kotlin-ts-mode :ensure (:type git :host github :repo "emacsmirror/kotlin-ts-mode") :defer t)
+  (use-package nix-ts-mode :ensure (:type git :host github :repo "nix-community/nix-ts-mode") :defer t)
+  (use-package typst-ts-mode :ensure (:type git :host github :repo "emacsmirror/typst-ts-mode") :defer t :mode "\\.typ\\'")
   (use-package haskell-ts-mode :ensure nil :defer t))
 
 (use-package pyvenv
@@ -135,6 +140,6 @@
 (add-to-list 'auto-mode-alist '("\\.riscv\\'" . riscv-mode))
 
 (when treesit/enable
-  (add-to-list 'auto-mode-alist '("\\go.mod\\'" . go-mod-ts-mode)))
+  (add-to-list 'auto-mode-alist '("go\\.mod\\'" . go-mod-ts-mode)))
 
 (provide 'feature-lang)

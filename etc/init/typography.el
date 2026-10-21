@@ -3,9 +3,9 @@
 ;; Module: Emacs Adaptive Typography & Font Engine
 ;; ----------------------------------------------------------------
 
-;;; ================================
-;;; FONT CANDIDATES & FALLBACKS
-;;; ================================
+;; ================================
+;; FONT CANDIDATES & FALLBACKS
+;; ================================
 
 (defvar typography/primary-fonts
   '("JetBrainsMono NF"
@@ -33,9 +33,9 @@
     "Symbola")
   "Prioritized list of symbol and Nerd Font fallback fonts.")
 
-;;; ================================
-;;; DISCOVERY & RESOLUTION
-;;; ================================
+;; ================================
+;; DISCOVERY & RESOLUTION
+;; ================================
 
 (defun typography/find-first-font (fonts)
   "Find the first available font from FONTS on a graphical display."
@@ -43,9 +43,9 @@
     (let ((available (font-family-list)))
       (seq-find (lambda (font) (member font available)) fonts))))
 
-;;; ================================
-;;; WINDOWS DIRECTWRITE BACKEND
-;;; ================================
+;; ================================
+;; WINDOWS DIRECTWRITE BACKEND
+;; ================================
 
 (defun typography/setup-w32-directwrite ()
   "Configure DirectWrite font backend on Windows for crisp rendering."
@@ -55,9 +55,9 @@
     (when (display-graphic-p)
       (set-frame-parameter nil 'font-backend '(directwrite gdi)))))
 
-;;; ================================
-;;; HARFBUZZ LIGATURES
-;;; ================================
+;; ================================
+;; HARFBUZZ LIGATURES
+;; ================================
 
 (defun typography/setup-ligatures ()
   "Enable ligatures for programming modes via composition-function-table."
@@ -83,30 +83,28 @@
                               (car char-regex)
                               `([,(cdr char-regex) 0 font-shape-gstring]))))))
 
-;;; ================================
-;;; GUI FONT & GLYPH CONFIGURATION
-;;; ================================
+;; ================================
+;; GUI FONT & GLYPH CONFIGURATION
+;; ================================
 
 (defun typography/setup-gui-fonts (&optional frame)
   "Configure primary monospace font and glyph fallbacks for FRAME."
   (let ((target-frame (or frame (selected-frame))))
     (when (display-graphic-p target-frame)
       (with-selected-frame target-frame
-        ;; 1. Monospace primary font
         (when-let* ((primary (typography/find-first-font typography/primary-fonts)))
           (let ((height 120))
             (set-face-attribute 'default target-frame :family primary :height height)
             (add-to-list 'default-frame-alist `(font . ,(format "%s-%d" primary (/ height 10))))))
-        ;; 2. Emoji & symbol fallback
         (when (fboundp 'set-fontset-font)
           (when-let* ((emoji (typography/find-first-font typography/emoji-fonts)))
             (set-fontset-font t 'emoji (font-spec :family emoji) nil 'prepend))
           (when-let* ((symbol (typography/find-first-font typography/symbol-fonts)))
             (set-fontset-font t 'symbol (font-spec :family symbol) nil 'append)))))))
 
-;;; ================================
-;;; TTY CONSOLE FALLBACK
-;;; ================================
+;; ================================
+;; TTY CONSOLE FALLBACK
+;; ================================
 
 (defun typography/setup-tty (&optional frame)
   "Configure clean, resilient ANSI terminal typography."
@@ -121,9 +119,9 @@
       (when (fboundp 'set-terminal-parameter)
         (set-terminal-parameter (frame-terminal target) 'background-mode 'dark)))))
 
-;;; ================================
-;;; ENGINE INITIALIZATION
-;;; ================================
+;; ================================
+;; ENGINE INITIALIZATION
+;; ================================
 
 (defun typography/init (&optional frame)
   "Initialize adaptive typography engine based on active display environment."

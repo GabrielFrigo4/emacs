@@ -6,8 +6,12 @@
 (use-package yasnippet
   :ensure t
   :custom
+  (yas-verbosity 1)
   (yas-snippet-dirs (list (expand-file-name "snippets" usr-dir)))
   :config
+  (let ((snip-dir (expand-file-name "snippets" usr-dir)))
+    (unless (file-directory-p snip-dir)
+      (make-directory snip-dir t)))
   (when lsp/enable
     (yas-global-mode 1)))
 
@@ -31,8 +35,12 @@
 
   (when lsp/enable
     (dolist (mode '(c-mode c++-mode c-or-c++-mode go-mode))
-      (add-hook (intern (concat (symbol-name (treesit/get-mode mode)) "-hook")) #'lsp-deferred))
+      (add-hook (intern (concat (symbol-name mode) "-hook")) #'lsp-deferred)
+      (let ((ts-mode (treesit/get-mode mode)))
+        (unless (eq ts-mode mode)
+          (add-hook (intern (concat (symbol-name ts-mode) "-hook")) #'lsp-deferred))))
 
+    (add-hook 'go-mode-hook #'lsp/go-install-save-hooks)
     (add-hook (intern (concat (symbol-name (treesit/get-mode 'go-mode)) "-hook")) #'lsp/go-install-save-hooks)))
 
 (use-package lsp-ui

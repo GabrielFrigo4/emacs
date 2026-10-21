@@ -19,10 +19,10 @@ Este repositório contém a configuração pessoal do **GNU Emacs (versão 30+, 
 - **Baseline Moderno (GNU Emacs 30+):** Exige GNU Emacs 30.1+ com Tree-sitter nativo no core C (ABI ≥ 14) e suporte opcional a compilação nativa AOT/JIT (`libgccjit`).
 - **Startup Instantâneo & Resiliente:** Feature toggles defensivos e isolamento de módulos com `condition-case`.
 - **Controle Dinâmico:** Flags customizáveis via variáveis de ambiente (`EMACS_AI`, `EMACS_LSP`, `EMACS_TREESIT`).
-- **LSP Integrado:** Eglot nativo de alta performance para linguagens compiladas e interpretadas.
+- **LSP Integrado:** lsp-mode de alta performance para linguagens compiladas e interpretadas.
 - **Gerenciador Elpaca:** Gestão assíncrona e declarativa de pacotes.
 - **Modos Pessoais Integrados:** Pacotes locais em `usr/local/` (`aweshell` com os 3 temas canônicos do Universal Shell — `multi`, `pill` e `micro` — adaptativos entre GUI/PTY e Raw TTY, além de `aweww` para leitura web dinâmica).
-- **Tipografia Homologada:** Projetado e calibrado para **`JetBrainsMono NF`** (`:height 120`), proporcionando proporção equilibrada em Org-mode, mode-line e ícones de buffer, com geometria inicial centrada (`100x31`).
+- **Tipografia Homologada:** Projetado e calibrado para **`JetBrainsMono NF`** (`:height 120`), proporcionando proporção equilibrada em Org-mode, mode-line e ícones de buffer, com geometria inicial centrada (`81x27`).
 - **Ergonomia Híbrida Emacs + Evil (`C-z` & `ESC`) e Cursores Dinâmicos (`blink` em GUI/PTY e `noblink` em TTY):** Inicia sempre em **Emacs state** nativo em todos os modos e alterna instantaneamente para **Evil Normal state** via `C-z` (e retorno do Insert/Visual/Replace ao Normal state via `ESC`). Sincroniza os formatos de cursor dinâmicos e piscantes (`blink`) idênticos ao Vim/NeoVim/Helix em GUI (`box`, `bar`, `hbar`) e PTY (`\e[1 q`, `\e[3 q`, `\e[5 q`), ficando estático (`noblink`) apenas em consoles Linux Raw TTY (`\e[?2c` a `\e[?6c`, com auto-cura `\e%G\e[?16;238;0c`).
 
 ---

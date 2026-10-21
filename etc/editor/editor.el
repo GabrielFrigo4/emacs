@@ -55,8 +55,6 @@
                      evil-motion-state-map))
     (define-key map (kbd "C-z") #'emacs/toggle-evil-state))
 
-  ;; Usa exclusivamente [escape] para nunca sobrescrever o prefixo ASCII ESC (\e)
-  ;; que inicia as sequências ANSI CSI/SS3 das teclas de seta no TTY/PTY.
   (define-key evil-insert-state-map   [escape] #'evil-normal-state)
   (define-key evil-replace-state-map  [escape] #'evil-normal-state)
   (define-key evil-operator-state-map [escape] #'evil-normal-state)

@@ -25,7 +25,6 @@
     (define-key input-decode-map "\x7f" [backspace])
     (define-key input-decode-map "\C-h" [backspace])
     (unless (display-graphic-p)
-      ;; Traduz imediatamente sequências CSI (\e[) e SS3 (\eO) no input-decode-map do terminal
       (dolist (pair '(("\e[A"  . [up])      ("\eOA"  . [up])
                       ("\e[B"  . [down])    ("\eOB"  . [down])
                       ("\e[C"  . [right])   ("\eOC"  . [right])

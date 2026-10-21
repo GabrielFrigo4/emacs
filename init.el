@@ -142,7 +142,6 @@
 ;; ================================
 ;; LOCAL PACKAGES
 ;; ================================
-;; Add user local packages (usr/local/*) to load-path
 (let ((local-pkgs-dir (expand-file-name "local" usr-dir)))
   (when (file-directory-p local-pkgs-dir)
     (dolist (pkg (directory-files local-pkgs-dir t "^[^.]"))
@@ -160,7 +159,6 @@
 (setq initial-major-mode 'fundamental-mode)
 (setq initial-scratch-message nil)
 
-;; Ido desativado para não conflitar com o Vertico (carregado em etc/editor/completion.el)
 (setq ido-enable-flex-matching nil
       ido-everywhere nil)
 
@@ -175,7 +173,7 @@
 ;; LOAD ELISP FILES
 ;; ================================
 (setq custom-file (expand-file-name "custom.el" etc-dir))
-(add-hook 'elpaca-after-init-hook (lambda () (load custom-file 'noerror)))
+(add-hook 'elpaca-after-init-hook (lambda () (load custom-file t t)))
 
 ;; ================================
 ;; MODULAR CONFIGURATION
@@ -249,7 +247,10 @@
 ;; ================================
 ;; RESTORE GC DEFAULTS
 ;; ================================
-(add-hook 'emacs-startup-hook
-          (lambda ()
-            (setq gc-cons-threshold gc-cons-threshold-default
-                  gc-cons-percentage 0.1)))
+(defun emacs/restore-gc-defaults ()
+  "Restore normal garbage collection thresholds after startup."
+  (setq gc-cons-threshold gc-cons-threshold-default
+        gc-cons-percentage 0.1))
+
+(add-hook 'elpaca-after-init-hook #'emacs/restore-gc-defaults)
+(add-hook 'emacs-startup-hook #'emacs/restore-gc-defaults)

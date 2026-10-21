@@ -18,7 +18,6 @@
 (use-package doom-themes
   :ensure (:type git :host github :repo "doomemacs/themes" :branch "master")
   :init
-  ;; Corrigir ciclo de heranca de faces no GNU Emacs 31+ (gnus-group-news-low <-> gnus-group-news-low-empty)
   (with-eval-after-load 'doom-themes-base
     (when (boundp 'doom-themes-base-faces)
       (when-let* ((face-entry (assoc 'gnus-group-news-low-empty doom-themes-base-faces)))
@@ -90,6 +89,8 @@
                         (fringe                        :background "unspecified-bg" :foreground "black" :weight bold)
                         (vertical-border               :foreground "black"   :background "unspecified-bg" :weight bold)
                         (window-divider                :foreground "black"   :weight bold)
+                        (window-divider-first-pixel    :foreground "black"   :weight bold)
+                        (window-divider-last-pixel     :foreground "black"   :weight bold)
                         (line-number                   :foreground "black"   :background "unspecified-bg" :weight bold)
                         (line-number-current-line      :foreground "yellow"  :background "unspecified-bg" :weight bold)
                         (mode-line                     :foreground "white"   :background "blue"  :weight bold :box nil)
@@ -141,6 +142,12 @@
 
 (when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
 (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
+(when (fboundp 'window-divider-mode)
+  (when (facep 'window-divider-first-pixel)
+    (set-face-attribute 'window-divider-first-pixel nil :inherit 'window-divider))
+  (when (facep 'window-divider-last-pixel)
+    (set-face-attribute 'window-divider-last-pixel nil :inherit 'window-divider))
+  (window-divider-mode 1))
 
 (if (not (display-graphic-p))
     (progn
@@ -150,7 +157,6 @@
         (add-hook 'emacs-startup-hook
                   (lambda ()
                     (xterm-mouse-mode 1)
-                    ;; Desativa relatórios de movimento contínuo que inundam o PTY
                     (send-string-to-terminal "\e[?1003l"))))
       (interface/apply-tty-faces))
   (when (fboundp 'menu-bar-mode) (menu-bar-mode 1)))
@@ -195,8 +201,8 @@
     (select-frame frame)
     (set-frame-size frame 81 27)
     (if-windows
-     (sleep-for 0.036)
-     (sleep-for 0.032))
+     (async-sleep 0.036)
+     (async-sleep 0.032))
     (frame/center-screen frame)))
 
 (dolist (frame (frame-list))
@@ -331,6 +337,7 @@
 ;; --------------------------------
 ;; SERVER CONFIGURATION
 ;; --------------------------------
+
 (setq server-name "server")
 (when-windows
  (setq server-auth-dir (expand-file-name "var/server/auth/" emacs-dir)))

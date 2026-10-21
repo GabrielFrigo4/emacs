@@ -11,7 +11,9 @@
   :config
   (setq-default markdown-enable-math t)
   (setq markdown-fontify-code-blocks-natively t)
-  (if treesit/enable
+  (if (and treesit/enable
+           (fboundp 'treesit-language-available-p)
+           (treesit-language-available-p 'mermaid))
       (add-to-list 'markdown-code-lang-modes '("mermaid" . mermaid-ts))
     (add-to-list 'markdown-code-lang-modes '("mermaid" . mermaid))))
 
@@ -26,14 +28,19 @@
   (setq mermaid-output-format "png"))
 
 (when treesit/enable
-  (use-package markdown-ts-mode
-    :ensure t
-    :mode ("\\.md\\'" . markdown-ts-mode)
-    :hook (markdown-ts-mode . apheleia-mode)
-    :bind (:map markdown-ts-mode-map ("C-c C-e" . markdown-do)))
+  (if (>= emacs-major-version 31)
+      (use-package markdown-ts-mode
+        :ensure nil
+        :defer t
+        :hook (markdown-ts-mode . apheleia-mode))
+    (use-package markdown-ts-mode
+      :ensure t
+      :defer t
+      :hook (markdown-ts-mode . apheleia-mode)
+      :bind (:map markdown-ts-mode-map ("C-c C-e" . markdown-do))))
 
   (use-package mermaid-ts-mode
     :ensure t
-    :mode ("\\.mermaid\\'" . mermaid-ts-mode)))
+    :defer t))
 
 (provide 'feature-markdown)

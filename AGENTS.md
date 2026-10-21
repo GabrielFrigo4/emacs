@@ -6,7 +6,7 @@
 
 ## 🧭 Identidade e Papel
 
-O repositório `.emacs.d` provê um ambiente de desenvolvimento extensível, centrado no GNU Emacs, com suporte modular a Org-mode, LSP (Eglot), Elpaca package manager, EAF e integrações com IA.
+O repositório `.emacs.d` provê um ambiente de desenvolvimento extensível, centrado no GNU Emacs, com suporte modular a Org-mode, LSP (lsp-mode), Elpaca package manager, EAF e integrações com IA.
 
 ---
 
@@ -42,7 +42,7 @@ O repositório `.emacs.d` provê um ambiente de desenvolvimento extensível, cen
     - **Detecção Real do Tipo de Terminal (`tty-type` vs `getenv "TERM"`):** No GNU Emacs, subsistemas de subprocessos (`tramp`, `comint`, `server`) redefinem `TERM=dumb` em `process-environment`. Portanto, toda detecção de terminal DEVE consultar `(tty-type frame)` (em `display-raw-tty-p` e `emacs/set-terminal-cursor`), nunca apenas `(getenv "TERM")`.
     - **Em GUI e PTY 24-Bit (`-nw` em KDE Konsole, Alacritty, etc.):** Mantém o tema `doom-dark+` com fundo `#1e1e1e`, ícones Nerd Fonts ativos e banner ASCII limpo (`2`) no Dashboard quando em modo terminal (`-nw`).
     - **Em Raw TTY (`display-raw-tty-p`):** Aplica `interface/apply-tty-faces` por frame usando os 8 nomes ANSI canônicos do `tty-color-alist` (`"black"`, `"red"`, `"green"`, `"yellow"`, `"blue"`, `"magenta"`, `"cyan"`, `"white"`) combinados com `:weight 'bold` para acessar as cores brilhantes (8–15) sem falhar em terminfos de 8 cores (`TERM=linux` e `TERM=xterm`).
-    - **Aweshell / Eshell:** Validação de executáveis em tempo real com cache em hash-table $O(1)$ (`aweshell/executable-cache`), realce imediato via `after-change-functions` (comandos válidos em verde negrito, inválidos em vermelho, flags em amarelo, separadores/pipes em ciano, strings e números destacados) e prompt `aweshell/theme-theme-zshrc` adaptativo (ícones Nerd Font em GUI/PTY e Box Drawing/ASCII limpo em Raw TTY).
+    - **Aweshell / Eshell:** Validação de executáveis em tempo real com cache em hash-table $O(1)$ (`aweshell/executable-cache`), realce imediato via `after-change-functions` (comandos válidos em verde negrito, inválidos em vermelho, flags em amarelo, separadores/pipes em ciano, strings e números destacados) e prompt `aweshell/theme-multi` adaptativo (ícones Nerd Font em GUI/PTY e Box Drawing/ASCII limpo em Raw TTY).
 
 ---
 

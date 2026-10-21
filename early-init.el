@@ -13,13 +13,38 @@
 (setq package-enable-at-startup nil
       site-run-file nil
       load-prefer-newer t
-      byte-compile-warnings '(not obsolete)
       inhibit-startup-screen t
       inhibit-startup-message t
       inhibit-startup-echo-area-message user-login-name
       inhibit-default-init t
       gc-cons-threshold most-positive-fixnum
       gc-cons-percentage 0.6)
+
+(defun emacs/external-file-p (&optional file)
+  "Return non-nil if FILE belongs to external packages (var/, opt/) or system."
+  (let* ((target (or file
+                     (and (fboundp 'macroexp--file-name) (macroexp--file-name))
+                     load-true-file-name
+                     load-file-name
+                     (and (boundp 'byte-compile-current-file) byte-compile-current-file)
+                     buffer-file-name))
+         (full (and (stringp target) (expand-file-name target)))
+         (root (expand-file-name user-emacs-directory))
+         (var-prefix (expand-file-name "var/" root))
+         (opt-prefix (expand-file-name "opt/" root)))
+    (and full
+         (or (string-prefix-p var-prefix full)
+             (string-prefix-p opt-prefix full)
+             (not (string-prefix-p root full))))))
+
+(with-eval-after-load 'macroexp
+  (advice-add 'macroexp--warn-and-return :around
+              (lambda (orig-fn msg form &optional category compile-only symbol)
+                (if (and (or (eq category 'obsolete)
+                             (and (listp category) (memq 'obsolete category)))
+                         (emacs/external-file-p))
+                    form
+                  (funcall orig-fn msg form category compile-only symbol)))))
 
 (unless (display-graphic-p)
   (push '(tool-bar-lines . 0) default-frame-alist)
@@ -31,7 +56,6 @@
               (setq inhibit-message nil)
               (redraw-display))))
 
-;; Auto-detect native compilation before configuring eln-cache
 (when (featurep 'native-compile)
   (setq-default native-comp-async-report-warnings-errors 'silent)
   (let ((eln-cache-dir (expand-file-name "var/cache/eln-cache/" user-emacs-directory)))
