@@ -11,6 +11,8 @@
     (setq user-emacs-directory (file-name-as-directory (file-truename (file-name-directory file))))))
 
 (setq package-enable-at-startup nil
+      package-user-dir (expand-file-name "var/lib/elpa" user-emacs-directory)
+      package-gnupghome-dir (expand-file-name "var/lib/elpa/gnupg" user-emacs-directory)
       site-run-file nil
       load-prefer-newer t
       inhibit-startup-screen t

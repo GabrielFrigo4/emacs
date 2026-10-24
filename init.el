@@ -35,7 +35,9 @@
 (setq eshell-directory-name (expand-file-name "eshell/" var-dir))
 (setq eshell-aliases-file (expand-file-name "eshell/alias" usr-dir))
 
-(setq package-gnupghome-dir (expand-file-name "lib/elpa/gnupg" var-dir))
+(setq package-user-dir (expand-file-name "lib/elpa" var-dir)
+      package-gnupghome-dir (expand-file-name "lib/elpa/gnupg" var-dir)
+      url-configuration-directory (expand-file-name "cache/url/" var-dir))
 (setq download-directory (expand-file-name "Downloads" home-dir))
 
 (setq vault-dir (or (getenv "VAULT_DIR")
