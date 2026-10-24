@@ -70,8 +70,23 @@
         evil-replace-state-cursor    '(hbar . 4)
         evil-operator-state-cursor   '(hbar . 4))
 
-  (defun emacs/set-terminal-cursor (linux-code pty-code)
-    "Send dynamic (`blink') cursor escape sequence in PTY and static (`noblink') only in raw TTY."
+  (defun emacs/ensure-sanitized-linux-terminfo ()
+    "Ensure a sanitized ~/.terminfo/l/linux entry exists to prevent terminfo cnorm/cvvis from clobbering cursor shape."
+    (when (and (string-equal (or (getenv "TERM") "") "linux")
+               (executable-find "tic")
+               (not (file-exists-p (expand-file-name "~/.terminfo/l/linux"))))
+      (let ((default-directory (expand-file-name "~"))
+            (source "linux|linux console with sanitized cursor,\n\tcnorm=\\E[?25h,\n\tcvvis=\\E[?25h,\n\tcivis=\\E[?25l,\n\tuse=linux,\n"))
+        (ignore-errors
+          (make-directory (expand-file-name "~/.terminfo") t)
+          (with-temp-buffer
+            (insert source)
+            (call-process-region (point-min) (point-max) "tic" nil nil nil "-o" (expand-file-name "~/.terminfo") "-"))))))
+
+  (emacs/ensure-sanitized-linux-terminfo)
+
+  (defun emacs/set-terminal-cursor (linux-code pty-code &optional bsd-code)
+    "Send dynamic (`blink') cursor escape sequence in PTY, static (`noblink') in Linux TTY, and monochrome tone in FreeBSD TTY."
     (unless (display-graphic-p (selected-frame))
       (let* ((term (or (and (fboundp 'tty-type) (tty-type (selected-frame)))
                        (getenv "TERM")))
@@ -81,6 +96,8 @@
           (cond
            ((and term (string-equal term "linux"))
             (send-string-to-terminal linux-code))
+           ((and raw-tty bsd-code)
+            (send-string-to-terminal bsd-code))
            ((not raw-tty)
             (send-string-to-terminal pty-code)))))))
 
@@ -89,19 +106,19 @@
     (unless (display-graphic-p (selected-frame))
       (cond
        ((minibufferp)
-        (emacs/set-terminal-cursor "\e[?2c" "\e[5 q"))
+        (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" "\e]12;#e5e5e5\7"))
        ((evil-emacs-state-p)
-        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q"))
+        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" "\e]12;#ffffff\7"))
        ((not (bound-and-true-p evil-local-mode))
-        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q"))
+        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" "\e]12;#ffffff\7"))
        ((evil-insert-state-p)
-        (emacs/set-terminal-cursor "\e[?2c" "\e[5 q"))
+        (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" "\e]12;#d4d4d4\7"))
        ((or (evil-replace-state-p) (evil-operator-state-p))
-        (emacs/set-terminal-cursor "\e[?4c" "\e[3 q"))
+        (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" "\e]12;#a8a8a8\7"))
        ((evil-visual-state-p)
-        (emacs/set-terminal-cursor "\e[?5c" "\e[1 q"))
+        (emacs/set-terminal-cursor "\e[?5c" "\e[1 q" "\e]12;#858585\7"))
        (t
-        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q")))))
+        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" "\e]12;#ffffff\7")))))
 
   (add-hook 'evil-emacs-state-entry-hook    #'emacs/sync-evil-terminal-cursor)
   (add-hook 'evil-insert-state-entry-hook   #'emacs/sync-evil-terminal-cursor)
@@ -118,15 +135,16 @@
                                 '(bar . 2)))))
   (add-hook 'minibuffer-setup-hook          #'emacs/sync-minibuffer-cursor)
   (advice-add 'evil-refresh-cursor :after   #'emacs/sync-minibuffer-cursor)
+  (advice-add 'evil-refresh-cursor :after   #'emacs/sync-evil-terminal-cursor)
   (add-hook 'minibuffer-setup-hook          #'emacs/sync-evil-terminal-cursor)
   (add-hook 'minibuffer-exit-hook           #'emacs/sync-evil-terminal-cursor)
   (add-hook 'buffer-list-update-hook        #'emacs/sync-evil-terminal-cursor)
   (add-hook 'window-configuration-change-hook #'emacs/sync-evil-terminal-cursor)
   (add-hook 'tty-setup-hook                 #'emacs/sync-evil-terminal-cursor)
   (add-hook 'suspend-hook
-            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q")))
+            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" "\e]112\7")))
   (add-hook 'kill-emacs-hook
-            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q"))))
+            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" "\e]112\7"))))
 
 (use-package evil-tutor
   :defer t
