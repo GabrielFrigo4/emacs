@@ -23,4 +23,7 @@
 ## 🛡️ Atributos Entregues
 
 - **Zero Pendências:** Ambiente modular Elisp sem código morto, monolítico ou dependências instáveis.
+- **Projeto Aweww ("LSP da Web"):** Engine de hidratação de DOM via navegadores headless, isolamento de perfil temporário, cascata soberana `firefox-first` com paridade Linux/FreeBSD/Windows e chave de alternância `M-x aweww-switch-browser`.
+- **Player Multimídia Headless (`mpv` JSON-IPC):** Interceptação de URLs de mídia e YouTube com controle interativo por teclas (`P`, `X`, `+`, `-`, `>`, `<`) e sentinelas defensivas prevenindo processos zumbis.
+- **Ergonomia no Terminal (`-nw`):** Ativação de `xterm-mouse-mode`, respostas curtas (`use-short-answers t`) e blindagem de avisos de compilação em macros obsoletas no Emacs 31+.
 - **Sincronização:** Total alinhamento com os 22 Princípios de Engenharia UNIX do Universal Environment.
