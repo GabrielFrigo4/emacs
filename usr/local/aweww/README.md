@@ -14,7 +14,7 @@
 
 ## 🧭 Visão Geral
 
-O **`aweww`** (Awesome EWW) eleva a experiência nativa do navegador `eww` do GNU Emacs. Em vez de páginas esticadas ou com quebras de linha irregulares, o Aweww calcula margens dinâmicas baseadas na largura da janela (`frame-width`), integra renderização tipográfica no estilo Org-mode via `shrface`, realça blocos de código com syntax highlighting e fornece atalhos de tecla única no estilo modal (`R`, `I`, `C`).
+O **`aweww`** (Awesome EWW) eleva a experiência nativa do navegador `eww` do GNU Emacs para o paradigma inovador de **"LSP da Web"**. Em vez de páginas esticadas ou travadas por renderizadores estáticos sem JavaScript, o Aweww orquestra navegadores headless efêmeros via CDP/CLI, isolamento temporário de perfil, cálculo dinâmico de margens responsivas (`frame-width`), renderização tipográfica no estilo Org-mode via `shrface`, syntax highlighting em blocos de código e interceptação de mídia com reprodução headless leve via `mpv` com controle JSON-IPC.
 
 ---
 
@@ -22,7 +22,9 @@ O **`aweww`** (Awesome EWW) eleva a experiência nativa do navegador `eww` do GN
 
 ```mermaid
 flowchart TD
-    URL["🌐 Navegação URL / M-x eww"] --> RENDER["⚙️ eww-render"]
+    URL["🌐 Navegação URL / M-x eww"] --> CHECK{"🎵 Mídia ou YouTube?"}
+    CHECK -->|Sim| MPV["📻 aweww-play-media<br/>(mpv headless + socket IPC + auto-clean)"]
+    CHECK -->|Não| RENDER["⚙️ eww-render"]
     RENDER --> ADVICE["📐 Advice: aweww/set-shr-width<br/>(Calcula largura responsiva frame-width - offset)"]
     ADVICE --> PARSE["📝 Parse HTML com libxml2/shr"]
     PARSE --> HOOK_SETUP["🎨 Hook: aweww/mode-setup<br/>(Aplica keybindings modais e faces)"]
@@ -30,20 +32,26 @@ flowchart TD
     PARSE --> HOOK_READ["📖 Hook: aweww/auto-readable<br/>(Aciona eww-readable se ativo)"]
     HOOK_CLEAN --> BUFFER["✨ Buffer Formatado & Legível"]
     HOOK_READ --> BUFFER
+    BUFFER --> HYDRATE["⚡ Tecla D: aweww-hydrate-current-buffer<br/>(LSP da Web via Headless Firefox/Chromium)"]
+    HYDRATE --> BUFFER
 ```
 
 ---
 
 ## ✨ Funcionalidades em Destaque
 
-| Recurso                           | Descrição                                                                            |
-| :-------------------------------- | :----------------------------------------------------------------------------------- |
-| **Largura Responsiva Dinâmica**   | O conteúdo se adapta automaticamente à largura do frame via `shr-width` dinâmico.    |
-| **Leitura Imersiva (Readable)**   | Ativação automática ou manual com um único toque na tecla `R`.                       |
-| **Controle Instantâneo de Mídia** | Alterne renderização de imagens (`I`) ou cores CSS (`C`) para economia de recursos.  |
-| **Higienização de Espaçamento**   | Remove quebras de linha duplas e espaços órfãos pós-renderização.                    |
-| **Sintaxe em Blocos de Código**   | Integração pronta com `shr-tag-pre-highlight` para realce de trechos `<pre>`.        |
-| **Tipografia Org-Mode**           | Suporte transparente a `shrface` para cabeçalhos e títulos visualmente estruturados. |
+| Recurso                           | Descrição                                                                                 |
+| :-------------------------------- | :---------------------------------------------------------------------------------------- |
+| **LSP da Web (Hidratação DOM)**   | Executa páginas modernas com JS via navegador headless e renderiza o DOM no `shr`.        |
+| **Cascata Soberana de Browsers**  | `firefox-first` padrão (Firefox -> Chromium -> Brave -> Chrome -> Edge) com paridade 1:1. |
+| **Perfil Efêmero Isolado**        | Execução headless em diretório temporário isolado sem conflito com o navegador gráfico.   |
+| **Player Headless MPV com IPC**   | Intercepta YouTube e áudio para reprodução assíncrona leve via `mpv` com zero zumbis.     |
+| **Largura Responsiva Dinâmica**   | O conteúdo se adapta automaticamente à largura do frame via `shr-width` dinâmico.         |
+| **Leitura Imersiva (Readable)**   | Ativação automática ou manual com um único toque na tecla `R`.                            |
+| **Controle Instantâneo de Mídia** | Alterne renderização de imagens (`I`) ou cores CSS (`C`) para economia de recursos.       |
+| **Higienização de Espaçamento**   | Remove quebras de linha duplas e espaços órfãos pós-renderização.                         |
+| **Sintaxe em Blocos de Código**   | Integração pronta com `shr-tag-pre-highlight` para realce de trechos `<pre>`.             |
+| **Tipografia Org-Mode**           | Suporte transparente a `shrface` para cabeçalhos e títulos visualmente estruturados.      |
 
 ---
 
@@ -51,15 +59,23 @@ flowchart TD
 
 Ao navegar no buffer `*eww*`, as teclas rápidas operam diretamente sem prefixos complexos:
 
-|  Tecla  | Comando                 | Ação                                                   |
-| :-----: | :---------------------- | :----------------------------------------------------- |
-| **`R`** | `aweww/toggle-readable` | Alterna modo de leitura sem distrações (_Reader View_) |
-| **`I`** | `aweww/toggle-images`   | Liga/Desliga exibição de imagens na página             |
-| **`C`** | `aweww/toggle-colors`   | Liga/Desliga cores e estilos CSS originais             |
-| **`H`** | `eww-list-histories`    | Exibe histórico navegacional                           |
-| **`B`** | `eww-back-url`          | Retorna à página anterior                              |
-| **`F`** | `eww-forward-url`       | Avança à página seguinte                               |
-| **`q`** | `quit-window`           | Fecha a janela do navegador graciosamente              |
+|  Tecla  | Comando                        | Ação                                                   |
+| :-----: | :----------------------------- | :----------------------------------------------------- |
+| **`R`** | `aweww/toggle-readable`        | Alterna modo de leitura sem distrações (_Reader View_) |
+| **`I`** | `aweww/toggle-images`          | Liga/Desliga exibição de imagens na página             |
+| **`C`** | `aweww/toggle-colors`          | Liga/Desliga cores e estilos CSS originais             |
+| **`D`** | `aweww-hydrate-current-buffer` | Re-hidrata a página atual via motor headless (LSP Web) |
+| **`P`** | `aweww-mpv-toggle-pause`       | Alterna pausa do fluxo ativo no `mpv`                  |
+| **`X`** | `aweww-mpv-stop`               | Encerra reprodução no `mpv` e remove sockets IPC       |
+| **`+`** | `aweww-mpv-volume-up`          | Aumenta volume do player em 5%                         |
+| **`-`** | `aweww-mpv-volume-down`        | Diminui volume do player em 5%                         |
+| **`>`** | `aweww-mpv-seek-forward`       | Avança 10 segundos no fluxo multimídia                 |
+| **`<`** | `aweww-mpv-seek-backward`      | Retrocede 10 segundos no fluxo multimídia              |
+| **`H`** | `eww-list-histories`           | Exibe histórico navegacional                           |
+| **`B`** | `eww-back-url`                 | Retorna à página anterior                              |
+| **`F`** | `eww-forward-url`              | Avança à página seguinte                               |
+| **`s`** | `eww-search-words`             | Pesquisa termos na web via mecanismo configurado       |
+| **`q`** | `quit-window`                  | Fecha a janela do navegador graciosamente              |
 
 ---
 
@@ -114,7 +130,11 @@ O `aweww` possui variáveis declarativas customizáveis:
     ;; Ativa modo readable automaticamente em todas as paginas
     (setq aweww/auto-readable t)
     ;; Define a margem dinâmica das bordas do frame (padrao: 8 colunas)
-    (setq aweww/default-width-offset 8)))
+    (setq aweww/default-width-offset 8)
+    ;; Estratégia de resolução de navegador headless ('firefox-first, 'chromium-first, 'custom-list)
+    (setq aweww-browser-strategy 'firefox-first)
+    ;; Ativa interceptação leve de mídia para mpv headless
+    (setq aweww-intercept-media t)))
 ```
 
 ---

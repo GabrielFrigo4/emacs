@@ -41,10 +41,15 @@
   (advice-add 'macroexp--warn-and-return :around
               (lambda (orig-fn msg form &optional category compile-only symbol)
                 (if (and (or (eq category 'obsolete)
-                             (and (listp category) (memq 'obsolete category)))
+                             (and (listp category) (memq 'obsolete category))
+                             (and (stringp msg) (string-match-p "is obsolete" msg)))
                          (emacs/external-file-p))
                     form
                   (funcall orig-fn msg form category compile-only symbol)))))
+
+(with-eval-after-load 'warnings
+  (push '(defvaralias obsolete) warning-suppress-types)
+  (push '(macroexp obsolete) warning-suppress-types))
 
 (unless (display-graphic-p)
   (push '(tool-bar-lines . 0) default-frame-alist)

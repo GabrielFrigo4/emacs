@@ -63,6 +63,8 @@
   (blink-cursor-mode t))
 (setq-default visible-bell nil)
 (setq-default ring-bell-function #'ignore)
+(setq use-short-answers t)
+(xterm-mouse-mode 1)
 (setq-default inhibit-startup-screen t)
 (setq-default inhibit-compacting-font-caches t)
 (setq-default truncate-lines nil)

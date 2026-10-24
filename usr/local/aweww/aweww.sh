@@ -76,6 +76,16 @@ _aweww_doctor() {
 	else
 		echo "  ⚠️  git não encontrado no PATH."
 	fi
+	for _b in firefox chromium brave google-chrome microsoft-edge; do
+		if command -v "${_b}" > "/dev/null" 2>&1; then
+			echo "  ✅ ${_b} detectado: $(command -v "${_b}")"
+		fi
+	done
+	if command -v mpv > "/dev/null" 2>&1; then
+		echo "  ✅ mpv detectado: $(command -v mpv)"
+	else
+		echo "  ⚠️  mpv não encontrado no PATH (multimídia headless indisponível)."
+	fi
 }
 
 _cmd="${1:-help}"
