@@ -503,7 +503,7 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
           (setq-local aweww-current-html html)
           (setq-local aweww-current-engine (or engine-label "Nativo"))
           (setq-local aweww-reader-mode-active nil)
-          (setq-local eww-data (list :url url :title (or (plist-get eww-data :title) url)))
+          (setq-local eww-data (list :url url :source html :dom dom :title (or (plist-get eww-data :title) url)))
           (aweww--history-push url html (or (plist-get eww-data :title) url))
           (aweww--update-headerline)
           (when aweww/auto-readable
