@@ -53,6 +53,10 @@
   (push '(defvaralias obsolete) warning-suppress-types)
   (push '(macroexp obsolete) warning-suppress-types))
 
+(dolist (param '((width . 81) (height . 27)))
+  (add-to-list 'default-frame-alist param)
+  (add-to-list 'initial-frame-alist param))
+
 (unless (display-graphic-p)
   (push '(tool-bar-lines . 0) default-frame-alist)
   (push '(tool-bar-lines . 0) initial-frame-alist)

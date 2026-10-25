@@ -253,16 +253,19 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
 ;; FRAME MANAGEMENT
 ;; --------------------------------
 
-(setq frame-resize-pixelwise t)
+(setq frame-resize-pixelwise nil)
 (dolist (param '((width . 81) (height . 27)))
   (add-to-list 'default-frame-alist param)
   (add-to-list 'initial-frame-alist param))
 
 (defun frame/center-screen (&optional frame)
-  "Center Frame (or the Current Frame) on the Screen."
+  "Center Frame (or the Current Frame) on the Screen.
+Under Wayland (PGTK), positioning is managed exclusively by the compositor."
   (interactive)
   (let ((target (or frame (selected-frame))))
-    (when (display-graphic-p target)
+    (when (and (display-graphic-p target)
+               (not (eq (frame-parameter target 'window-system) 'pgtk))
+               (not (eq (window-system target) 'pgtk)))
       (let* ((frame-width (frame-pixel-width target))
              (frame-height (frame-pixel-height target))
              (display-width (display-pixel-width target))
@@ -276,15 +279,17 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
   (when (display-graphic-p frame)
     (select-frame frame)
     (set-frame-size frame 81 27)
-    (if-windows
-     (async-sleep 0.036)
-     (async-sleep 0.032))
     (frame/center-screen frame)))
 
 (dolist (frame (frame-list))
   (frame/new-setup frame))
 
 (add-hook 'after-make-frame-functions #'frame/new-setup)
+(add-hook 'window-setup-hook
+          (lambda ()
+            (when (display-graphic-p)
+              (set-frame-size (selected-frame) 81 27)
+              (frame/center-screen (selected-frame)))))
 
 ;; --------------------------------
 ;; BUFFER MANAGEMENT
