@@ -136,7 +136,7 @@ Options:
   :group 'aweww)
 
 (defcustom aweww-search-engine-alist
-  '((duckduckgo . "https://duckduckgo.com/?q=%s")
+  '((duckduckgo . "https://html.duckduckgo.com/html/?q=%s")
     (google     . "https://www.google.com/search?q=%s")
     (searxng    . "https://searx.be/search?q=%s"))
   "Alist mapping search engine symbols to format URL strings."
@@ -534,6 +534,7 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
           (goto-char (point-min))
           (aweww/cleanup-newlines)
           (aweww-mode)
+          (eww-size-text-inputs)
           (setq-local aweww-current-url url)
           (setq-local aweww-current-html html)
           (setq-local aweww-current-engine (or engine-label "Nativo"))
@@ -628,13 +629,17 @@ If no headless browser supporting --dump-dom is available, dispatch to external 
   "Normalize INPUT string to a valid URL or search query."
   (let ((trimmed (string-trim input)))
     (cond
+     ((string-match-p "^https?://\\(?:www\\.\\)?duckduckgo\\.com/?$" trimmed)
+      "https://html.duckduckgo.com/html/")
+     ((string-match-p "^\\(?:www\\.\\)?duckduckgo\\.com/?$" trimmed)
+      "https://html.duckduckgo.com/html/")
      ((string-match-p "^https?://" trimmed)
       trimmed)
      ((string-match-p "^[a-zA-Z0-9.-]+\\.[a-zA-Z]\\{2,\\}\\(/.*\\)?$" trimmed)
       (concat "https://" trimmed))
      (t
       (let* ((engine-fmt (alist-get aweww-search-engine aweww-search-engine-alist
-                                    "https://duckduckgo.com/?q=%s"))
+                                    "https://html.duckduckgo.com/html/?q=%s"))
              (encoded (url-hexify-string trimmed)))
         (format engine-fmt encoded))))))
 
@@ -814,12 +819,16 @@ With prefix EXTERNAL (or C-u), open link in external browser."
 (add-hook 'kill-emacs-hook #'aweww-mpv-stop)
 
 (defun aweww-browse-url-advice (orig-fun url &rest args)
-  "Intercept streamable media URLs for `mpv' or dispatch to Aweww."
+  "Intercept streamable media URLs for `mpv' or dispatch to Aweww.
+If a form submission includes POST data, force native engine since
+headless --dump-dom cannot convey HTTP request bodies."
   (cond
    ((and aweww-intercept-media (aweww-media-url-p url))
     (aweww-play-media url))
    ((derived-mode-p 'aweww-mode 'eww-mode)
-    (aweww url))
+    (let ((is-post (or (and (boundp 'url-request-data) url-request-data)
+                       (equal (and (boundp 'url-request-method) url-request-method) "POST"))))
+      (aweww url is-post)))
    (t
     (apply orig-fun url args))))
 
@@ -990,20 +999,23 @@ With prefix argument FORCE-NATIVE (C-u), bypass headless browser and use native 
                       (when (derived-mode-p 'aweww-mode 'eww-mode)
                         (or aweww-current-url (plist-get eww-data :url))))
          current-prefix-arg))
-  (let ((normalized-url (aweww--normalize-url url)))
+  (let* ((is-post (or (and (boundp 'url-request-data) url-request-data)
+                      (equal (and (boundp 'url-request-method) url-request-method) "POST")))
+         (effective-force-native (or force-native is-post))
+         (normalized-url (if is-post url (aweww--normalize-url url))))
     (if (and aweww-intercept-media (aweww-media-url-p normalized-url))
         (aweww-play-media normalized-url)
       (let ((target-buf (aweww--get-buffer normalized-url)))
         (with-current-buffer target-buf
           (let ((inhibit-read-only t)
-              (inhibit-modification-hooks t))
+                (inhibit-modification-hooks t))
             (erase-buffer)
             (insert (format "⏳ [Aweww] Carregando: %s...\n" normalized-url))))
         (aweww-fetch
          normalized-url
          (lambda (html engine)
            (aweww-render-html html normalized-url target-buf engine))
-         force-native)))))
+         effective-force-native)))))
 
 ;;;###autoload
 (defun aweww/open-url (url)
