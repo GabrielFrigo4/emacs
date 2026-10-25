@@ -44,7 +44,10 @@
   (doom-modeline-env-version t)
   (doom-modeline-buffer-encoding t)
   (doom-modeline-indent-info nil)
-  (doom-modeline-minor-modes nil))
+  (doom-modeline-minor-modes nil)
+  :config
+  (add-to-list 'doom-modeline-mode-alist '(ewm-surface-mode . special))
+  (add-to-list 'doom-modeline-mode-alist '(exwm-mode . special)))
 
 ;; --------------------------------
 ;; DASHBOARD FRAME ADAPTER
