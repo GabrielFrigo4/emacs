@@ -11,6 +11,7 @@
 (require 'shr)
 (require 'url nil t)
 (require 'json nil t)
+(require 'xml nil t)
 (require 'shr-tag-pre-highlight nil t)
 (require 'shrface nil t)
 
@@ -29,6 +30,16 @@
 
 (defcustom aweww/auto-readable nil
   "If non-nil, automatically call `eww-readable' after each page render."
+  :type 'boolean
+  :group 'aweww)
+
+(defcustom aweww-content-width 88
+  "Target content width in columns for centered viewing in Aweww."
+  :type 'integer
+  :group 'aweww)
+
+(defcustom aweww-center-content t
+  "If non-nil, automatically center web content in Aweww windows."
   :type 'boolean
   :group 'aweww)
 
@@ -107,6 +118,10 @@ and formats an authentic desktop User-Agent string tailored for the OS architect
                  (string :tag "Personalizado"))
   :group 'aweww)
 
+(defconst aweww-mobile-user-agent
+  "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"
+  "Mobile User-Agent string used to bypass anti-bot shields on search engines like Google.")
+
 (defcustom aweww-virtual-time-budget 2500
   "Virtual time budget in milliseconds given to Chromium to run JavaScript before dumping DOM."
   :type 'integer
@@ -129,15 +144,18 @@ and formats an authentic desktop User-Agent string tailored for the OS architect
 Options:
   `duckduckgo' - DuckDuckGo
   `google'     - Google Search
+  `youtube'    - YouTube Videos
   `searxng'    - SearXNG instance"
   :type '(choice (const :tag "DuckDuckGo" duckduckgo)
                  (const :tag "Google" google)
+                 (const :tag "YouTube" youtube)
                  (const :tag "SearXNG" searxng))
   :group 'aweww)
 
 (defcustom aweww-search-engine-alist
   '((duckduckgo . "https://html.duckduckgo.com/html/?q=%s")
     (google     . "https://www.google.com/search?q=%s")
+    (youtube    . "https://www.youtube.com/results?search_query=%s")
     (searxng    . "https://searx.be/search?q=%s"))
   "Alist mapping search engine symbols to format URL strings."
   :type '(alist :key-type symbol :value-type string)
@@ -198,11 +216,35 @@ Options:
 (setq-default shr-width 80)
 
 (defun aweww/calculate-shr-width ()
-  "Calculate optimal `shr-width' based on current window width."
-  (if (frame-live-p (selected-frame))
-      (max 40 (- (window-body-width (selected-window))
-                 aweww/default-width-offset))
-    80))
+  "Calculate optimal `shr-width' based on centered content width or window width."
+  (if aweww-center-content
+      aweww-content-width
+    (if (frame-live-p (selected-frame))
+        (max 40 (- (window-body-width (selected-window))
+                   aweww/default-width-offset))
+      80)))
+
+(defun aweww--update-window-margins (&optional window)
+  "Center content in WINDOW if `aweww-center-content' is non-nil."
+  (let ((win (or window (get-buffer-window (current-buffer)))))
+    (when (and (window-live-p win)
+               (with-current-buffer (window-buffer win)
+                 (derived-mode-p 'aweww-mode 'eww-mode)))
+      (if (not aweww-center-content)
+          (set-window-margins win nil nil)
+        (let* ((total-width (window-total-width win))
+               (target-width (min aweww-content-width (max 40 (- total-width 4))))
+               (margin (max 0 (/ (- total-width target-width) 2))))
+          (set-window-margins win margin margin))))))
+
+(defun aweww-toggle-centering ()
+  "Toggle automatic buffer content centering in current Aweww buffer."
+  (interactive)
+  (setq-local aweww-center-content (not aweww-center-content))
+  (aweww--update-window-margins (selected-window))
+  (setq-local shr-width (aweww/calculate-shr-width))
+  (message "[aweww] Centralização de conteúdo: %s"
+           (if aweww-center-content "Ativada" "Desativada")))
 
 (defun aweww/set-shr-width (&rest _args)
   "Adjust `shr-width' dynamically, buffer-locally."
@@ -417,13 +459,17 @@ Returns the directory path and sets permissions to 0700."
 Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
   (let* ((browser (aweww--find-headless-browser))
          (profile (aweww--create-ephemeral-profile))
+         (is-google (string-match-p "google\\.[a-z.]+" url))
+         (ua (if is-google
+                 aweww-mobile-user-agent
+               (aweww--resolve-user-agent browser)))
          (args (append
                 '("--headless"
                   "--disable-gpu"
                   "--disable-blink-features=AutomationControlled")
                 (when (zerop (user-uid))
                   '("--no-sandbox"))
-                (list (format "--user-agent=%s" (aweww--resolve-user-agent browser))
+                (list (format "--user-agent=%s" ua)
                       (format "--virtual-time-budget=%d" aweww-virtual-time-budget)
                       (format "--user-data-dir=%s" profile)
                       "--dump-dom"
@@ -499,29 +545,184 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
 ;;  RENDERING, POLISH & HEADERLINE
 ;; ============================================================================
 
+(defun aweww--headerline-format ()
+  "Compute dynamic headerline with left-aligned info and right-aligned keybindings."
+  (let* ((url (or aweww-current-url "about:blank"))
+         (engine (or aweww-current-engine "Nativo"))
+         (domain (condition-case nil
+                     (url-host (url-generic-parse-url url))
+                   (error url)))
+         (left (format " AWEWW │ %s │ %s%s"
+                       (or domain url)
+                       engine
+                       (if aweww-reader-mode-active " │ Leitura" "")))
+         (mpv (if (and aweww--mpv-process (process-live-p aweww--mpv-process))
+                  " [▶ MPV Ativo: P=Pausa, +/-=Vol] "
+                ""))
+         (right "[s] Busca  [y] YouTube  [R] Leitura  [O] Firefox  [q] Sair ")
+         (full-right (concat mpv right))
+         (win-w (window-width))
+         (avail (max 2 (- win-w (string-width left) (string-width full-right))))
+         (spacing (make-string avail ?\s)))
+    (concat
+     (propertize left 'face '(:weight bold :inherit header-line))
+     (propertize spacing 'face 'header-line)
+     (if (not (string-empty-p mpv))
+         (propertize mpv 'face '(:weight bold :foreground "#98bb6c" :inherit header-line))
+       "")
+     (propertize right 'face '(:inherit header-line :weight normal)))))
+
 (defun aweww--update-headerline ()
   "Update the informative headerline in current Aweww buffer."
   (when (derived-mode-p 'aweww-mode 'eww-mode)
-    (let* ((url (or aweww-current-url "about:blank"))
-           (engine (or aweww-current-engine "Nativo"))
-           (domain (condition-case nil
-                       (url-host (url-generic-parse-url url))
-                     (error url)))
-           (reader-flag (if aweww-reader-mode-active " [Modo Leitura]" ""))
-           (mpv-info (if (and aweww--mpv-process (process-live-p aweww--mpv-process))
-                         " | 🎵 MPV: Tocando"
-                       ""))
-           (text (format " [Aweww] 🌐 %s | ⚡ %s%s%s | [s] Busca [R] Leitura [O] Firefox [q] Sair"
-                         (or domain url) engine reader-flag mpv-info)))
-      (setq-local header-line-format
-                  (propertize text 'face '(:weight bold :inherit mode-line-inactive))))))
+    (setq-local header-line-format '(:eval (aweww--headerline-format)))))
+
+(defun aweww--beautify-buffer ()
+  "Expunge unwanted web artifacts, orphan bullets, and excessive blank lines."
+  (let ((inhibit-read-only t)
+        (inhibit-modification-hooks t))
+    (save-excursion
+      ;; Remove lines containing only SVG placeholders, file input artifacts, or blank SVG spans
+      (goto-char (point-min))
+      (while (re-search-forward "^[ \t]*\\(?:\\[?SVG Image\\]?\\|Browse No file selected\\|No file selected\\|[ \t]\\)+\n?" nil t)
+        (replace-match ""))
+      ;; Remove orphan bullet/list lines with no accompanying text
+      (goto-char (point-min))
+      (while (re-search-forward "^[ \t]*[*•-][ \t]*\n?" nil t)
+        (replace-match ""))
+      ;; Remove trailing whitespace on all lines
+      (goto-char (point-min))
+      (while (re-search-forward "[ \t]+$" nil t)
+        (replace-match ""))
+      ;; Collapse three or more consecutive newlines into at most two
+      (goto-char (point-min))
+      (while (re-search-forward "\n\n\n+" nil t)
+        (replace-match "\n\n"))
+      ;; Remove extraneous leading blank lines
+      (goto-char (point-min))
+      (while (looking-at "\n+")
+        (replace-match "")))))
+
+(defun aweww--parse-youtube-results (html)
+  "Extract structured video search results from YouTube HTML or embedded JSON."
+  (or
+   ;; Strategy 1: Extract from ytInitialData JSON
+   (when (string-match "var ytInitialData = \\({.*?}\\);</script>" html)
+     (condition-case nil
+         (let* ((json-str (match-string 1 html))
+                (data (json-parse-string json-str :object-type 'plist))
+                (contents (plist-get (plist-get (plist-get data :contents) :twoColumnSearchResultsRenderer) :primaryContents))
+                (section-renderers (plist-get (plist-get contents :sectionListRenderer) :contents))
+                (items nil))
+           (dolist (sec (append section-renderers nil))
+             (let ((item-section (plist-get sec :itemSectionRenderer)))
+               (when item-section
+                 (dolist (it (append (plist-get item-section :contents) nil))
+                   (let ((video (plist-get it :videoRenderer)))
+                     (when video
+                       (let* ((vid-id (plist-get video :videoId))
+                              (title-runs (plist-get (plist-get video :title) :runs))
+                              (title (if title-runs (plist-get (elt title-runs 0) :text) ""))
+                              (duration (plist-get (plist-get video :lengthText) :simpleText))
+                              (owner-runs (plist-get (plist-get video :ownerText) :runs))
+                              (channel (if owner-runs (plist-get (elt owner-runs 0) :text) ""))
+                              (views (plist-get (plist-get video :viewCountText) :simpleText))
+                              (published (plist-get (plist-get video :publishedTimeText) :simpleText)))
+                         (when (and vid-id (not (string-empty-p title)))
+                           (push (list :id vid-id
+                                       :title title
+                                       :duration (or duration "N/A")
+                                       :channel (or channel "")
+                                       :views (or views "")
+                                       :published (or published ""))
+                                 items)))))))))
+           (nreverse items))
+       (error nil)))
+   ;; Strategy 2: Fallback regex on HTML anchors
+   (let ((pos 0)
+         (items nil))
+     (while (and (< (length items) 25)
+                 (string-match "<a[^>]+href=\"/watch\\?v=\\([a-zA-Z0-9_-]+\\)\"[^>]*title=\"\\([^\"]+\\)\"" html pos))
+       (let ((vid-id (match-string 1 html))
+             (title (match-string 2 html)))
+         (setq pos (match-end 0))
+         (unless (seq-some (lambda (x) (string= (plist-get x :id) vid-id)) items)
+           (push (list :id vid-id
+                       :title title
+                       :duration ""
+                       :channel ""
+                       :views ""
+                       :published "")
+                 items))))
+     (nreverse items))))
+
+(defun aweww--format-youtube-catalog (query videos)
+  "Generate clean HTML document representing YouTube VIDEOS catalog for QUERY."
+  (let ((buf (list "<!DOCTYPE html><html><body>"
+                   "<div class=\"aweww-catalog-header\">"
+                   "<h2>Pesquisa no YouTube: " (xml-escape-string (or query "Vídeos")) "</h2>"
+                   "<p><em>" (number-to-string (length videos)) " vídeos encontrados • Pressione <b>RET</b> em qualquer título para reproduzir via MPV</em></p>"
+                   "<hr>"
+                   "</div>"
+                   "<ol class=\"aweww-video-list\">")))
+    (dolist (v videos)
+      (let* ((id (plist-get v :id))
+             (title (plist-get v :title))
+             (duration (plist-get v :duration))
+             (channel (plist-get v :channel))
+             (views (plist-get v :views))
+             (published (plist-get v :published))
+             (url (concat "https://www.youtube.com/watch?v=" id))
+             (meta-parts (delq nil (list
+                                    (unless (string-empty-p channel) (concat "<b>Canal:</b> " (xml-escape-string channel)))
+                                    (unless (string-empty-p duration) (concat "<b>Duração:</b> " (xml-escape-string duration)))
+                                    (unless (string-empty-p views) (concat "<b>Visualizações:</b> " (xml-escape-string views)))
+                                    (unless (string-empty-p published) (concat "<b>Publicado:</b> " (xml-escape-string published))))))
+             (meta-str (string-join meta-parts " │ ")))
+        (push (format "<li><h3><a href=\"%s\">▶ %s</a></h3><p>%s</p><br></li>"
+                      url
+                      (xml-escape-string title)
+                      meta-str)
+              buf)))
+    (push "</ol></body></html>" buf)
+    (string-join (nreverse buf) "\n")))
+
+(defun aweww--render-media-player-card (url)
+  "Render a clean playback card in `*aweww*' buffer for stream URL."
+  (let ((buf (aweww--get-buffer url)))
+    (with-current-buffer buf
+      (let ((inhibit-read-only t)
+            (inhibit-modification-hooks t))
+        (erase-buffer)
+        (aweww-mode)
+        (setq-local aweww-current-url url)
+        (setq-local aweww-current-engine "MPV-Player")
+        (let* ((card-html (format "<!DOCTYPE html><html><body><h2>▶ Reproduzindo no MPV</h2><p><b>URL do Fluxo:</b> <a href=\"%s\">%s</a></p><hr><p><b>Controles Interativos no Teclado:</b></p><ul><li><b>[P]</b> Alternar Pausa / Reprodução</li><li><b>[+]</b> Aumentar Volume (+5%%)</li><li><b>[-]</b> Diminuir Volume (-5%%)</li><li><b>[&gt;]</b> Avançar 10 segundos</li><li><b>[&lt;]</b> Retroceder 10 segundos</li><li><b>[X]</b> Parar e Encerrar MPV</li><li><b>[O]</b> Abrir no Navegador Externo (Firefox GUI)</li><li><b>[q]</b> Fechar Janela</li></ul></body></html>"
+                                  url url))
+               (dom (with-temp-buffer
+                      (insert card-html)
+                      (libxml-parse-html-region (point-min) (point-max)))))
+          (when dom
+            (setq-local shr-width (aweww/calculate-shr-width))
+            (shr-insert-document dom)
+            (aweww--beautify-buffer)
+            (aweww--update-window-margins)))
+        (goto-char (point-min))
+        (aweww--update-headerline)))))
 
 (defun aweww-render-html (html url &optional target-buffer engine-label)
   "Render HTML string into TARGET-BUFFER (or `*aweww*') for URL."
-  (let ((dom (with-temp-buffer
-               (insert html)
-               (libxml-parse-html-region (point-min) (point-max))))
-        (buf (or target-buffer (aweww--get-buffer url))))
+  (let* ((is-yt-search (string-match-p "youtube\\.com/results" url))
+         (yt-videos (when is-yt-search (aweww--parse-youtube-results html)))
+         (effective-html (if (and is-yt-search yt-videos)
+                             (let ((query (when (string-match "[?&]search_query=\\([^&]+\\)" url)
+                                            (url-unhex-string (match-string 1 url)))))
+                               (aweww--format-youtube-catalog (or query "Vídeos") yt-videos))
+                           html))
+         (dom (with-temp-buffer
+                (insert effective-html)
+                (libxml-parse-html-region (point-min) (point-max))))
+         (buf (or target-buffer (aweww--get-buffer url))))
     (if (not dom)
         (message "[aweww] Erro ao analisar árvore DOM de %s." url)
       (with-current-buffer buf
@@ -531,8 +732,8 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
           (setq-local shr-width (aweww/calculate-shr-width))
           (aweww/build-rendering-functions)
           (shr-insert-document dom)
+          (aweww--beautify-buffer)
           (goto-char (point-min))
-          (aweww/cleanup-newlines)
           (aweww-mode)
           (eww-size-text-inputs)
           (setq-local aweww-current-url url)
@@ -542,6 +743,7 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
           (setq-local eww-data (list :url url :source html :dom dom :title (or (plist-get eww-data :title) url)))
           (aweww--history-push url html (or (plist-get eww-data :title) url))
           (aweww--update-headerline)
+          (aweww--update-window-margins)
           (when aweww/auto-readable
             (aweww-toggle-readable))
           (message "[aweww] Concluído (%s): %s" (or engine-label "Render") url))))))
@@ -699,6 +901,13 @@ With prefix EXTERNAL (or C-u), open link in external browser."
          (search-url (format engine-fmt encoded)))
     (aweww search-url)))
 
+(defun aweww-youtube-search (query)
+  "Search YouTube directly for QUERY and display an elegant video catalog."
+  (interactive "sPesquisar no YouTube: ")
+  (let ((search-url (format "https://www.youtube.com/results?search_query=%s"
+                            (url-hexify-string query))))
+    (aweww search-url)))
+
 ;; ============================================================================
 ;;  MULTIMEDIA INTERCEPTION (MPV IPC & ZERO ZOMBIE INVARIANT)
 ;; ============================================================================
@@ -824,7 +1033,8 @@ If a form submission includes POST data, force native engine since
 headless --dump-dom cannot convey HTTP request bodies."
   (cond
    ((and aweww-intercept-media (aweww-media-url-p url))
-    (aweww-play-media url))
+    (aweww-play-media url)
+    (aweww--render-media-player-card url))
    ((derived-mode-p 'aweww-mode 'eww-mode)
     (let ((is-post (or (and (boundp 'url-request-data) url-request-data)
                        (equal (and (boundp 'url-request-method) url-request-method) "POST"))))
@@ -864,23 +1074,20 @@ headless --dump-dom cannot convey HTTP request bodies."
 ;; ============================================================================
 
 (defun aweww/cleanup-newlines ()
-  "Remove excessive blank lines in Aweww buffers.
-Replaces three or more consecutive newlines with exactly two."
-  (let ((inhibit-read-only t))
-    (save-excursion
-      (goto-char (point-min))
-      (while (re-search-forward "\n\n\n+" nil t)
-        (replace-match "\n\n")))))
+  "Run buffer beautification and newline cleanup."
+  (aweww--beautify-buffer))
 
 (defun aweww/cleanup-newlines-deferred ()
-  "Run newline cleanup after EWW finishes rendering."
-  (run-at-time 0 nil #'aweww/cleanup-newlines))
+  "Run newline cleanup and beautification after EWW finishes rendering."
+  (run-at-time 0 nil #'aweww--beautify-buffer))
 
 (defun aweww/mode-setup ()
   "Configure buffer-local settings for Aweww buffers."
   (visual-line-mode 1)
   (display-line-numbers-mode -1)
-  (setq-local truncate-lines nil))
+  (setq-local truncate-lines nil)
+  (add-hook 'window-configuration-change-hook #'aweww--update-window-margins nil t)
+  (aweww--update-window-margins))
 
 (defun shrface-eww-setup ()
   "Configure `shrface' in Aweww/EWW buffer."
@@ -902,6 +1109,8 @@ Replaces three or more consecutive newlines with exactly two."
     (define-key map (kbd "RET") #'aweww-follow-link)
     (define-key map [mouse-2] #'aweww-follow-link)
     (define-key map (kbd "s") #'aweww-search)
+    (define-key map (kbd "y") #'aweww-youtube-search)
+    (define-key map (kbd "M-c") #'aweww-toggle-centering)
     (define-key map (kbd "o") #'aweww)
     (define-key map (kbd "g") #'aweww-reload)
     (define-key map (kbd "r") #'aweww-reload)
@@ -974,10 +1183,12 @@ Replaces three or more consecutive newlines with exactly two."
                         (if mpv-ok (format "✅ Detectado (%s)" mpv-ok) "⚠️  Não detectado")))
         (insert "\n💡 Dicas de Uso:\n")
         (insert "  - [s]   Pesquisar diretamente no DuckDuckGo/Google com JS hidratado\n")
+        (insert "  - [y]   Pesquisar vídeos no YouTube com catálogo estruturado e MPV\n")
+        (insert "  - [M-c] Alternar centralização de leitura (margens inteligentes)\n")
         (insert "  - [R]   Alternar Modo Leitura imersivo (Reader View)\n")
         (insert "  - [O]   Abrir página atual no Firefox gráfico completo\n")
         (insert "  - [D]   Forçar re-hidratação via motor headless\n")
-        (insert "  - [RET] Seguir links mantendo o motor do Aweww\n")
+        (insert "  - [RET] Seguir links mantendo o motor do Aweww (ou tocar mídia)\n")
         (insert "  - [B/F] Voltar/Avançar no histórico instantaneamente via cache\n"))
       (special-mode)
       (goto-char (point-min)))
@@ -1004,7 +1215,9 @@ With prefix argument FORCE-NATIVE (C-u), bypass headless browser and use native 
          (effective-force-native (or force-native is-post))
          (normalized-url (if is-post url (aweww--normalize-url url))))
     (if (and aweww-intercept-media (aweww-media-url-p normalized-url))
-        (aweww-play-media normalized-url)
+        (progn
+          (aweww-play-media normalized-url)
+          (aweww--render-media-player-card normalized-url))
       (let ((target-buf (aweww--get-buffer normalized-url)))
         (with-current-buffer target-buf
           (let ((inhibit-read-only t)
@@ -1016,6 +1229,9 @@ With prefix argument FORCE-NATIVE (C-u), bypass headless browser and use native 
          (lambda (html engine)
            (aweww-render-html html normalized-url target-buf engine))
          effective-force-native)))))
+
+;;;###autoload
+(defalias 'aweww-search-youtube #'aweww-youtube-search)
 
 ;;;###autoload
 (defun aweww/open-url (url)
