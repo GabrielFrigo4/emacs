@@ -5,8 +5,8 @@
 
 (defvar ewm-module-file
   (or (getenv "EWM_MODULE_PATH")
-      (let ((p1 (expand-file-name ".local/lib/libewm_core.so" home-dir))
-            (p2 (expand-file-name ".local/lib/libewm.so" home-dir)))
+      (let ((p1 (expand-file-name ".local/lib/libewm_core.so" (or (bound-and-true-p home-dir) (getenv "HOME"))))
+            (p2 (expand-file-name ".local/lib/libewm.so" (or (bound-and-true-p home-dir) (getenv "HOME")))))
         (cond ((file-exists-p p1) p1)
               ((file-exists-p p2) p2)
               (t nil))))
@@ -16,21 +16,28 @@
   "Return non-nil if EWM native module is available."
   (and ewm-module-file (file-exists-p ewm-module-file)))
 
-(defun ewm-start-module ()
-  "Start Emacs Wayland Manager compositor thread."
-  (interactive)
-  (when (ewm-available-p)
-    (let ((site-lisp (expand-file-name ".local/share/emacs/site-lisp/ewm" home-dir)))
-      (when (file-directory-p site-lisp)
-        (add-to-list 'load-path site-lisp)))
-    (setenv "EWM_MODULE_PATH" ewm-module-file)
-    (require 'ewm nil t)
-    (when (fboundp 'ewm-start)
-      (ewm-start (or (getenv "XCURSOR_THEME") "Adwaita")
-                 (string-to-number (or (getenv "XCURSOR_SIZE") "24"))))))
+(let ((site-lisp (expand-file-name ".local/share/emacs/site-lisp/ewm" (or (bound-and-true-p home-dir) (getenv "HOME")))))
+  (when (file-directory-p site-lisp)
+    (add-to-list 'load-path site-lisp)))
+
+(when (ewm-available-p)
+  (setenv "EWM_MODULE_PATH" ewm-module-file))
+
+(with-eval-after-load 'ewm
+  (defun ewm-launch-terminal ()
+    "Launch preferred terminal emulator inside EWM session."
+    (interactive)
+    (start-process "terminal" nil (or (getenv "TERMINAL") "foot")))
+
+  (when (boundp 'ewm-mode-map)
+    (define-key ewm-mode-map (kbd "s-<return>") #'ewm-launch-terminal)
+    (define-key ewm-mode-map (kbd "s-q") #'kill-current-buffer)))
 
 (when (and (string= (getenv "EMACS_OS_MODE") "wayland")
-           (ewm-available-p))
-  (ewm-start-module))
+           (ewm-available-p)
+           (daemonp))
+  (require 'ewm nil t)
+  (when (fboundp 'ewm-start-module)
+    (ewm-start-module)))
 
 (provide 'init-ewm)
