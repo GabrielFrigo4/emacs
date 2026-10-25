@@ -24,7 +24,8 @@
     (setq frame-resize-pixelwise t
           window-resize-pixelwise t)
 
-    (setq exwm-workspace-number 4)
+    (setq exwm-workspace-number 1
+          exwm-workspace-show-all-buffers t)
 
     (add-hook 'exwm-update-class-hook
               (lambda ()
@@ -44,10 +45,10 @@
                          (start-process-shell-command command nil command)))
             ([?\s-q] . kill-current-buffer)
             ,@(mapcar (lambda (i)
-                        `((kbd (format "s-%d" ,i)) .
-                          (lambda ()
-                            (interactive)
-                            (exwm-workspace-switch-create ,i))))
+                        (cons (vector (intern (format "s-%d" i)))
+                              (lambda ()
+                                (interactive)
+                                (exwm-workspace-switch-create i))))
                       (number-sequence 0 9))))
 
     (when (boundp 'doom-modeline-mode-alist)

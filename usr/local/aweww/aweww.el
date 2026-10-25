@@ -252,6 +252,18 @@ Options:
 
 (advice-add 'eww-render :before #'aweww/set-shr-width)
 
+(defun aweww-tag-svg (dom)
+  "Render SVG DOM cleanly without inserting ugly `SVG Image' text placeholders."
+  (when (and (display-images-p)
+             (image-type-available-p 'svg)
+             (not shr-inhibit-images)
+             (dom-attr dom 'width)
+             (dom-attr dom 'height))
+    (funcall shr-put-image-function
+             (list (shr-dom-to-xml (shr-correct-dom-case dom) 'utf-8)
+                   'image/svg+xml)
+             "")))
+
 (defun aweww/build-rendering-functions ()
   "Build and set the SHR rendering functions list.
 Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
@@ -263,7 +275,8 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
                   (textarea . eww-tag-textarea)
                   (select . eww-tag-select)
                   (link . eww-tag-link)
-                  (meta . eww-tag-meta))
+                  (meta . eww-tag-meta)
+                  (svg . aweww-tag-svg))
                 (when (fboundp 'shrface-tag-code)
                   '((code . shrface-tag-code)))
                 (when (fboundp 'shr-tag-pre-highlight)
@@ -578,30 +591,19 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
     (setq-local header-line-format '(:eval (aweww--headerline-format)))))
 
 (defun aweww--beautify-buffer ()
-  "Expunge unwanted web artifacts, orphan bullets, and excessive blank lines."
+  "Collapse excessive blank lines and sanitize artifacts safely without touching form inputs."
   (let ((inhibit-read-only t)
         (inhibit-modification-hooks t))
     (save-excursion
-      ;; Remove lines containing only SVG placeholders, file input artifacts, or blank SVG spans
+      ;; Remove literal SVG Image text artifacts safely without touching form inputs
       (goto-char (point-min))
-      (while (re-search-forward "^[ \t]*\\(?:\\[?SVG Image\\]?\\|Browse No file selected\\|No file selected\\|[ \t]\\)+\n?" nil t)
-        (replace-match ""))
-      ;; Remove orphan bullet/list lines with no accompanying text
-      (goto-char (point-min))
-      (while (re-search-forward "^[ \t]*[*•-][ \t]*\n?" nil t)
-        (replace-match ""))
-      ;; Remove trailing whitespace on all lines
-      (goto-char (point-min))
-      (while (re-search-forward "[ \t]+$" nil t)
-        (replace-match ""))
+      (while (re-search-forward "\\(?:\\[SVG Image\\]\\|SVG Image\\)" nil t)
+        (unless (text-property-not-all (match-beginning 0) (match-end 0) 'eww-form nil)
+          (replace-match "")))
       ;; Collapse three or more consecutive newlines into at most two
       (goto-char (point-min))
       (while (re-search-forward "\n\n\n+" nil t)
-        (replace-match "\n\n"))
-      ;; Remove extraneous leading blank lines
-      (goto-char (point-min))
-      (while (looking-at "\n+")
-        (replace-match "")))))
+        (replace-match "\n\n")))))
 
 (defun aweww--parse-youtube-results (html)
   "Extract structured video search results from YouTube HTML or embedded JSON."
