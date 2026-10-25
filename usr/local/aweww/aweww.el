@@ -779,10 +779,14 @@ With prefix EXTERNAL (or C-u), open link in external browser."
 (add-hook 'kill-emacs-hook #'aweww-mpv-stop)
 
 (defun aweww-browse-url-advice (orig-fun url &rest args)
-  "Intercept streamable media URLs for `mpv' or proceed with normal browser."
-  (if (and aweww-intercept-media (aweww-media-url-p url))
-      (aweww-play-media url)
-    (apply orig-fun url args)))
+  "Intercept streamable media URLs for `mpv' or dispatch to Aweww."
+  (cond
+   ((and aweww-intercept-media (aweww-media-url-p url))
+    (aweww-play-media url))
+   ((derived-mode-p 'aweww-mode 'eww-mode)
+    (aweww url))
+   (t
+    (apply orig-fun url args))))
 
 (advice-add 'eww-browse-url :around #'aweww-browse-url-advice)
 
