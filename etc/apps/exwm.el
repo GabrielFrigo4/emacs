@@ -46,10 +46,22 @@
                 (when (fboundp 'doom-modeline-set-modeline)
                   (doom-modeline-set-modeline 'special))))
 
+    (setq exwm-input-prefix-keys
+          '(?\C-x
+            ?\C-u
+            ?\C-h
+            ?\M-x
+            ?\M-`
+            ?\M-&
+            ?\M-:
+            ?\C-\M-j))
+
+    (define-key exwm-mode-map [?\C-q] #'exwm-input-send-next-key)
+
     (require 'exwm)
     (if (fboundp 'exwm-wm-mode)
         (exwm-wm-mode 1)
       (when (fboundp 'exwm-enable)
-        (exwm-enable))))
+        (exwm-enable)))))
 
 (provide 'init-exwm)

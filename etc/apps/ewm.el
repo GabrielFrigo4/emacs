@@ -42,6 +42,11 @@
               (when (fboundp 'doom-modeline-set-modeline)
                 (doom-modeline-set-modeline 'special)))))
 
+(with-eval-after-load 'ewm-input
+  (setq ewm-input-config
+        '((keyboard :repeat-delay 200 :repeat-rate 50
+                    :xkb-layouts "br" :xkb-options ""))))
+
 (with-eval-after-load 'ewm-layout
   (defun ewm--window-body-pixel-rect-modeline-guard (orig-fn window)
     "Garante que o corpo da janela enviada ao compositor EWM preserve
