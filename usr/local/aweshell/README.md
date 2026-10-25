@@ -50,8 +50,35 @@ flowchart TD
 | **Auto-Sugestões Inteligentes** | Previsão cinza inline baseada no histórico de comandos estilo Fish Shell (`M-h` para aceitar).  |
 | **Validação Sintática**         | Feedback visual em tempo real colorindo comandos existentes vs comandos inválidos.              |
 | **Did You Mean?**               | Sugestões automáticas baseadas em distância Levenshtein para comandos digitados incorretamente. |
-| **Temas Integrados**            | Variações ricas de prompts (Powerline, Zshrc replica, Lambda minimalista).                      |
-| **Aliases Universais**          | Atalhos UNIX nativos embutidos (`ll`, `clear`, `..`, `mkdirp`, `unpack`).                       |
+| **Temas Integrados**            | Paridade 1:1 com os temas do Universal Shell (`multi`, `pill`, `micro`, `zshrc`).               |
+| **Aliases Universais**          | Sincronização direta com os aliases do Quarteto (`agyc`, `upall`, `upsh`, `ll`, `e`, `dired`).  |
+
+---
+
+## 🏛️ O Embaixador do Universal Shell no Emacs
+
+O **Aweshell** atua como a camada de projeção e interoperabilidade do [Universal Shell](../../../../Shell) dentro do ecossistema GNU Emacs. O objetivo do módulo é garantir paridade de fluxo de trabalho entre o terminal de sistema e os buffers do Emacs:
+
+- **Paridade Cromática e Tipográfica:** Os temas de prompt (`multi`, `pill`, `micro`) compartilham a mesma geometria de delimitadores e cálculo de largura do Shell UNIX.
+- **Ecossistema de Aliases:** Todos os atalhos ergonômicos do [Dicionário de Aliases do Shell](../../../../Shell/docs/ALIASES.md) operam nativamente no Aweshell.
+- **Ergonomia Híbrida Lisp:** Comandos de arquivo integram-se diretamente ao ambiente do Emacs (`e` abre em buffer, `ee` em outra janela, `d` abre Dired e `gs`/`magit` gerenciam Git).
+
+### Dicionário de Paridade de Aliases
+
+| Categoria         | Alias Aweshell          | Comando Expandido                       | Papel no Ecossistema                                       |
+| :---------------- | :---------------------- | :-------------------------------------- | :--------------------------------------------------------- |
+| **IA CLI**        | `agyc` / `agy-continue` | `agy -c`                                | Retoma a última sessão do Antigravity CLI                  |
+| **IA CLI**        | `agya` / `agyd`         | `agy --dangerously-skip-permissions`    | Executa o agy CLI aprovando ferramentas automaticamente    |
+| **IA CLI**        | `agyca` / `agycd`       | `agy -c --dangerously-skip-permissions` | Retoma sessão com auto-aprovação total                     |
+| **Sincronização** | `upall`                 | `update-all`                            | Atualiza todo o Quarteto (Shell, Profile, Vault, Editores) |
+| **Sincronização** | `upsh`                  | `update-shell`                          | Atualiza repositório do Shell e recarrega                  |
+| **Sincronização** | `uped`                  | `update-editors`                        | Atualiza suíte de editores e Elisp                         |
+| **Sincronização** | `uprc`                  | `update-profile`                        | Atualiza dotfiles e skills                                 |
+| **Sincronização** | `upmodes`               | `update-emacs-modes`                    | Sincroniza submódulos de modos locais do Emacs             |
+| **Emacs Buffer**  | `e <alvo>`              | `find-file`                             | Abre arquivo no buffer corrente do Emacs                   |
+| **Emacs Buffer**  | `ee <alvo>`             | `find-file-other-window`                | Abre arquivo dividindo a janela                            |
+| **Emacs Buffer**  | `d` / `dired`           | `dired`                                 | Abre navegação de diretórios Dired                         |
+| **Git**           | `gs`, `ga`, `gc`, `gp`  | `git status`, `add`, etc.               | Ciclo de vida Git idêntico ao terminal                     |
 
 ---
 
@@ -59,13 +86,15 @@ flowchart TD
 
 O Aweshell integra temas visuais prontos para uso através de `aweshell-theme`:
 
-| Tema                                             | Características                                                                              |
-| :----------------------------------------------- | :------------------------------------------------------------------------------------------- |
-| **`aweshell/theme-theme-zshrc`**                 | Réplica multi-linha no estilo Zsh com identificação de OS, data/hora, branch Git e latência. |
-| **`aweshell/theme-theme-pipeline`**              | Estilo Oh-My-Zsh / Powerline clássico com blocos de usuário, hostname e path.                |
-| **`aweshell/theme-theme-lambda`**                | Prompt minimalista com glifo lambda (`λ`) limpo e foco total na área de digitação.           |
-| **`aweshell/theme-theme-dakrone`**               | Minimalismo funcional com encurtamento inteligente de diretórios profundos.                  |
-| **`aweshell/theme-theme-multiline-with-status`** | Multi-linha com exibição de código de retorno e tempo decorrido do último comando.           |
+| Tema                                             | Características                                                                    |
+| :----------------------------------------------- | :--------------------------------------------------------------------------------- |
+| **`aweshell/theme-multi`**                       | **(Padrão)** Réplica canônica do prompt Powerline multi-linha do Universal Shell.  |
+| **`aweshell/theme-pill`**                        | Estilo cápsula moderno, com auto-adaptação para caracteres ASCII sob Raw TTY.      |
+| **`aweshell/theme-micro`**                       | Prompt ultra-minimalista de linha única para máxima densidade vertical.            |
+| **`aweshell/theme-theme-zshrc`**                 | Réplica alternativa no estilo Zsh com identificação de OS, data/hora e branch.     |
+| **`aweshell/theme-theme-lambda`**                | Prompt minimalista com glifo lambda (`λ`) limpo e foco total na área de digitação. |
+| **`aweshell/theme-theme-dakrone`**               | Minimalismo funcional com encurtamento inteligente de diretórios profundos.        |
+| **`aweshell/theme-theme-multiline-with-status`** | Multi-linha com exibição de código de retorno e tempo decorrido do último comando. |
 
 Para definir seu tema favorito:
 
