@@ -85,17 +85,30 @@
 
   (emacs/ensure-sanitized-linux-terminfo)
 
-  (defun emacs/scale-color-tone (color factor)
-    "Scale hex COLOR (#rrggbb) luminance by FACTOR (float 0.0 to 1.0)."
-    (if (and (stringp color) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" color))
-        (let* ((r (string-to-number (substring color 1 3) 16))
-               (g (string-to-number (substring color 3 5) 16))
-               (b (string-to-number (substring color 5 7) 16))
-               (nr (min 255 (max 0 (round (* r factor)))))
-               (ng (min 255 (max 0 (round (* g factor)))))
-               (nb (min 255 (max 0 (round (* b factor))))))
-          (format "#%02x%02x%02x" nr ng nb))
-      color))
+  (defun emacs/theme-background-color ()
+    "Resolve active theme background color or fallback based on background-mode."
+    (let ((bg (ignore-errors (face-attribute 'default :background nil t))))
+      (cond
+       ((and (stringp bg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" bg)) bg)
+       ((eq (frame-parameter nil 'background-mode) 'light) "#ffffff")
+       (t "#000000"))))
+
+  (defun emacs/scale-color-tone (color alpha)
+    "Blend hex COLOR (#rrggbb) with theme background by ALPHA (float 0.0 to 1.0)."
+    (let* ((bg (emacs/theme-background-color))
+           (cur (if (and (stringp color) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" color))
+                    color
+                  (if (eq (frame-parameter nil 'background-mode) 'light) "#000000" "#ffffff"))))
+      (let* ((cr (string-to-number (substring cur 1 3) 16))
+             (cg (string-to-number (substring cur 3 5) 16))
+             (cb (string-to-number (substring cur 5 7) 16))
+             (br (string-to-number (substring bg 1 3) 16))
+             (bg-g (string-to-number (substring bg 3 5) 16))
+             (bb (string-to-number (substring bg 5 7) 16))
+             (nr (min 255 (max 0 (round (+ (* cr alpha) (* br (- 1.0 alpha)))))))
+             (ng (min 255 (max 0 (round (+ (* cg alpha) (* bg-g (- 1.0 alpha)))))))
+             (nb (min 255 (max 0 (round (+ (* cb alpha) (* bb (- 1.0 alpha))))))))
+        (format "#%02x%02x%02x" nr ng nb))))
 
   (defun emacs/theme-cursor-color ()
     "Resolve active theme cursor color or default foreground."
