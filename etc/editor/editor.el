@@ -116,17 +116,32 @@
   (defun emacs/theme-cursor-color ()
     "Resolve active theme base cursor color or default foreground."
     (or emacs/base-cursor-color
-        (let ((bg (ignore-errors (face-attribute 'cursor :background nil t)))
+        (let ((bg (or (and (bound-and-true-p doom-themes--colors)
+                           (cadr (or (assq 'cursor doom-themes--colors)
+                                     (assq 'highlight doom-themes--colors))))
+                      (cl-some (lambda (f)
+                                 (when (display-graphic-p f)
+                                   (face-attribute 'cursor :background f t)))
+                               (frame-list))
+                      (ignore-errors (face-attribute 'cursor :background nil t))))
               (fg (ignore-errors (face-attribute 'default :foreground nil t))))
-          (setq emacs/base-cursor-color
-                (cond
-                 ((and (stringp bg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" bg)
-                       (not (string-equal bg "unspecified"))) bg)
-                 ((and (stringp fg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" fg)) fg)
-                 (t (if (eq (frame-parameter nil 'background-mode) 'light) "#000000" "#ffffff")))))))
+          (let ((resolved
+                 (cond
+                  ((and (stringp bg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" bg)
+                        (not (string-equal bg "unspecified"))) bg)
+                  ((and (stringp fg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" fg)) fg)
+                  (t (if (eq (frame-parameter nil 'background-mode) 'light) "#000000" "#ffffff")))))
+            (when (or (bound-and-true-p doom-themes--colors)
+                      (cl-some #'display-graphic-p (frame-list))
+                      (and (stringp bg)
+                           (string-match-p "^#[0-9a-fA-F]\\{6\\}$" bg)
+                           (not (member (downcase bg) '("#000000" "#ffffff")))))
+              (setq emacs/base-cursor-color resolved))
+            resolved))))
 
   (advice-add 'load-theme :after (lambda (&rest _) (setq emacs/base-cursor-color nil)))
   (advice-add 'enable-theme :after (lambda (&rest _) (setq emacs/base-cursor-color nil)))
+  (add-hook 'elpaca-after-init-hook (lambda () (setq emacs/base-cursor-color nil)))
 
   (defun emacs/set-terminal-cursor (linux-code pty-shape factor)
     "Send dynamic cursor escape sequences in PTY and FreeBSD TTY scaled by FACTOR, and static hardware shape in Linux TTY."
@@ -198,6 +213,15 @@
   (add-hook 'buffer-list-update-hook        #'emacs/sync-evil-terminal-cursor)
   (add-hook 'window-configuration-change-hook #'emacs/sync-evil-terminal-cursor)
   (add-hook 'tty-setup-hook                 #'emacs/sync-evil-terminal-cursor)
+  (add-hook 'after-make-frame-functions
+            (lambda (frame)
+              (unless (display-graphic-p frame)
+                (with-selected-frame frame
+                  (emacs/sync-evil-terminal-cursor)))))
+  (add-hook 'server-after-make-frame-hook
+            (lambda ()
+              (unless (display-graphic-p)
+                (emacs/sync-evil-terminal-cursor))))
   (add-hook 'suspend-hook
             (lambda ()
               (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" 1.0)
