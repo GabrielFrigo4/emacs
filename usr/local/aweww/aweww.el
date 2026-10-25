@@ -13,7 +13,6 @@
 (require 'json nil t)
 (require 'shr-tag-pre-highlight nil t)
 (require 'shrface nil t)
-(require 'websocket nil t)
 
 ;; ============================================================================
 ;;  CUSTOMIZE & ENGINE CONFIGURATION
@@ -24,7 +23,7 @@
   :group 'eww)
 
 (defcustom aweww/default-width-offset 8
-  "Number of columns to subtract from frame width for dynamic SHR width."
+  "Number of columns to subtract from window width for dynamic SHR width."
   :type 'integer
   :group 'aweww)
 
@@ -33,21 +32,68 @@
   :type 'boolean
   :group 'aweww)
 
-(defcustom aweww-browser-strategy 'firefox-first
-  "Strategy used to select headless browser for DOM hydration.
+;; ----------------------------------------------------------------------------
+;;  OS-Specific Browser Lists & Strategies
+;; ----------------------------------------------------------------------------
+
+(defcustom aweww-linux-browsers
+  '("chromium-browser" "chromium" "google-chrome-stable" "google-chrome"
+    "brave-browser" "brave" "microsoft-edge-stable" "microsoft-edge" "firefox")
+  "Canonical candidate list of headless browsers for GNU/Linux."
+  :type '(repeat string)
+  :group 'aweww)
+
+(defcustom aweww-bsd-browsers
+  '("chromium" "chrome" "brave" "firefox")
+  "Canonical candidate list of headless browsers for FreeBSD, OpenBSD and NetBSD."
+  :type '(repeat string)
+  :group 'aweww)
+
+(defcustom aweww-darwin-browsers
+  '("chromium" "google-chrome"
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    "brave"
+    "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+    "microsoft-edge"
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"
+    "firefox"
+    "/Applications/Firefox.app/Contents/MacOS/firefox")
+  "Canonical candidate list of headless browsers for macOS."
+  :type '(repeat string)
+  :group 'aweww)
+
+(defcustom aweww-windows-browsers
+  '("chrome.exe" "msedge.exe" "brave.exe" "chromium.exe" "firefox.exe")
+  "Canonical candidate list of headless browsers for Windows."
+  :type '(repeat string)
+  :group 'aweww)
+
+(defcustom aweww-browser-strategy 'auto
+  "Strategy used to select the headless browser for DOM hydration.
 Options:
-  `firefox-first'  - Prioritize Firefox, then Chromium, Brave, Chrome, Edge.
-  `chromium-first' - Prioritize Chromium, then Chrome, Brave, Edge, Firefox.
-  `custom-list'    - Use `aweww-custom-browser-list'."
-  :type '(choice (const :tag "Firefox First (Sovereign & Parity)" firefox-first)
-                 (const :tag "Chromium First" chromium-first)
-                 (const :tag "Custom List" custom-list))
+  `auto'          - Select first available browser from OS-specific candidates list.
+  `chromium-only' - Restrict strictly to Chromium family (with native --dump-dom).
+  `custom-list'   - Use `aweww-custom-browser-list'."
+  :type '(choice (const :tag "Automático por Sistema Operacional" auto)
+                 (const :tag "Apenas Família Chromium (Dump-DOM Puro)" chromium-only)
+                 (const :tag "Lista Personalizada" custom-list))
   :group 'aweww)
 
 (defcustom aweww-custom-browser-list
-  '("firefox" "chromium" "brave" "google-chrome" "microsoft-edge")
-  "Custom list of browser executables checked in order."
+  '("chromium-browser" "chromium" "google-chrome" "brave" "firefox")
+  "Custom list of browser executables checked in order when strategy is `custom-list'."
   :type '(repeat string)
+  :group 'aweww)
+
+(defcustom aweww-user-agent
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+  "Desktop User-Agent string used by headless browser to bypass bot noscript shields."
+  :type 'string
+  :group 'aweww)
+
+(defcustom aweww-virtual-time-budget 2500
+  "Virtual time budget in milliseconds given to Chromium to run JavaScript before dumping DOM."
+  :type 'integer
   :group 'aweww)
 
 (defcustom aweww-profile-dir
@@ -57,6 +103,33 @@ Options:
   "Directory used for isolated ephemeral browser profiles."
   :type 'directory
   :group 'aweww)
+
+;; ----------------------------------------------------------------------------
+;;  Search Engines
+;; ----------------------------------------------------------------------------
+
+(defcustom aweww-search-engine 'duckduckgo
+  "Default search engine for `aweww-search'.
+Options:
+  `duckduckgo' - DuckDuckGo
+  `google'     - Google Search
+  `searxng'    - SearXNG instance"
+  :type '(choice (const :tag "DuckDuckGo" duckduckgo)
+                 (const :tag "Google" google)
+                 (const :tag "SearXNG" searxng))
+  :group 'aweww)
+
+(defcustom aweww-search-engine-alist
+  '((duckduckgo . "https://duckduckgo.com/?q=%s")
+    (google     . "https://www.google.com/search?q=%s")
+    (searxng    . "https://searx.be/search?q=%s"))
+  "Alist mapping search engine symbols to format URL strings."
+  :type '(alist :key-type symbol :value-type string)
+  :group 'aweww)
+
+;; ----------------------------------------------------------------------------
+;;  Multimedia Interception (MPV)
+;; ----------------------------------------------------------------------------
 
 (defcustom aweww-intercept-media t
   "If non-nil, intercept media and YouTube URLs for lightweight `mpv' playback."
@@ -74,6 +147,31 @@ Options:
   :group 'aweww)
 
 ;; ============================================================================
+;;  BUFFER-LOCAL VARIABLES
+;; ============================================================================
+
+(defvar-local aweww-current-url nil
+  "Current URL loaded in this Aweww buffer.")
+
+(defvar-local aweww-current-html nil
+  "Raw HTML string corresponding to current page in this Aweww buffer.")
+
+(defvar-local aweww-current-engine nil
+  "Active rendering engine label for current page in this Aweww buffer.")
+
+(defvar-local aweww-history nil
+  "History list of visited pages as plists: (:url URL :html HTML :title TITLE).")
+
+(defvar-local aweww-history-position -1
+  "Current index within `aweww-history'.")
+
+(defvar-local aweww-reader-mode-active nil
+  "Non-nil if buffer is currently displaying reader view.")
+
+(defvar-local aweww-pre-reader-html nil
+  "Cached full HTML stored when switching to reader view.")
+
+;; ============================================================================
 ;;  SHR CONFIGURATION & DYNAMIC WIDTH
 ;; ============================================================================
 
@@ -83,12 +181,16 @@ Options:
 (setq-default shr-use-colors nil)
 (setq-default shr-width 80)
 
+(defun aweww/calculate-shr-width ()
+  "Calculate optimal `shr-width' based on current window width."
+  (if (frame-live-p (selected-frame))
+      (max 40 (- (window-body-width (selected-window))
+                 aweww/default-width-offset))
+    80))
+
 (defun aweww/set-shr-width (&rest _args)
-  "Adjust `shr-width' based on the current frame or window width, buffer-locally."
-  (when (frame-live-p (selected-frame))
-    (setq-local shr-width
-                (max 40 (- (window-body-width (selected-window))
-                           aweww/default-width-offset)))))
+  "Adjust `shr-width' dynamically, buffer-locally."
+  (setq-local shr-width (aweww/calculate-shr-width)))
 
 (advice-add 'eww-render :before #'aweww/set-shr-width)
 
@@ -114,23 +216,33 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
 (add-hook 'eww-mode-hook #'aweww/build-rendering-functions)
 
 ;; ============================================================================
-;;  HEADLESS BROWSER RESOLUTION & PROFILE ISOLATION
+;;  BROWSER DISCOVERY & PLATFORM RESOLUTION
 ;; ============================================================================
 
+(defun aweww--system-browser-list ()
+  "Return candidate browser binaries tailored for current operating system."
+  (pcase system-type
+    ('gnu/linux aweww-linux-browsers)
+    ('berkeley-unix aweww-bsd-browsers)
+    ('darwin aweww-darwin-browsers)
+    ((or 'windows-nt 'cygwin 'ms-dos) aweww-windows-browsers)
+    (_ aweww-linux-browsers)))
+
 (defun aweww--resolve-browser-list ()
-  "Return list of browser candidate binaries based on `aweww-browser-strategy'."
+  "Return list of candidate browser binaries based on `aweww-browser-strategy'."
   (pcase aweww-browser-strategy
-    ('firefox-first
-     '("firefox" "chromium" "brave" "google-chrome" "microsoft-edge"))
-    ('chromium-first
-     '("chromium" "google-chrome" "brave" "microsoft-edge" "firefox"))
+    ('auto
+     (aweww--system-browser-list))
+    ('chromium-only
+     (seq-remove (lambda (b) (string-match-p "firefox" b))
+                 (aweww--system-browser-list)))
     ('custom-list
      aweww-custom-browser-list)
     (_
-     '("firefox" "chromium"))))
+     (aweww--system-browser-list))))
 
 (defun aweww--find-browser ()
-  "Locate the first available headless browser executable in PATH."
+  "Locate the first available browser executable in PATH."
   (catch 'found
     (dolist (bin (aweww--resolve-browser-list))
       (let ((path (executable-find bin)))
@@ -138,8 +250,21 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
           (throw 'found path))))
     nil))
 
+(defun aweww--browser-supports-dump-dom-p (browser-path)
+  "Return non-nil if BROWSER-PATH natively supports --dump-dom."
+  (and browser-path
+       (let ((name (downcase (file-name-nondirectory browser-path))))
+         (not (string-match-p "firefox" name)))))
+
+(defun aweww--find-headless-browser ()
+  "Locate available headless browser that supports native --dump-dom."
+  (let ((browser (aweww--find-browser)))
+    (if (aweww--browser-supports-dump-dom-p browser)
+        browser
+      nil)))
+
 (defun aweww--ensure-profile-dir ()
-  "Ensure ephemeral isolated browser profile directory exists."
+  "Ensure ephemeral isolated browser profile directory exists with safe permissions."
   (unless (file-directory-p aweww-profile-dir)
     (make-directory aweww-profile-dir t)
     (set-file-modes aweww-profile-dir #o0700))
@@ -149,74 +274,303 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
   "Switch the active headless browser STRATEGY interactively."
   (interactive
    (list (intern (completing-read "Selecione estratégia de browser headless: "
-                                  '("firefox-first" "chromium-first" "custom-list")
-                                  nil t nil nil "firefox-first"))))
+                                  '("auto" "chromium-only" "custom-list")
+                                  nil t nil nil "auto"))))
   (setq aweww-browser-strategy strategy)
   (let ((resolved (aweww--find-browser)))
     (if resolved
-        (message "[aweww] Estratégia: %s (Binário ativo: %s)" strategy resolved)
+        (message "[aweww] Estratégia: %s (Binário: %s | Dump-DOM: %s)"
+                 strategy resolved
+                 (if (aweww--browser-supports-dump-dom-p resolved) "Sim" "Não (Firefox)"))
       (message "[aweww] Estratégia: %s (Nenhum navegador encontrado no PATH)" strategy))))
 
 ;; ============================================================================
-;;  HYDRATION ENGINE (LSP DA WEB)
+;;  HYDRATION & FETCH ENGINES (DUAL-ENGINE ARCHITECTURE)
 ;; ============================================================================
 
-(defun aweww--fetch-dom (url callback)
-  "Fetch hydrated DOM for URL using headless browser, then invoke CALLBACK with html."
-  (let ((browser (aweww--find-browser))
-        (profile (aweww--ensure-profile-dir)))
-    (if (not browser)
-        (message "[aweww] Nenhum navegador headless encontrado no PATH; usando motor EWW nativo.")
-      (let* ((is-firefox (string-match-p "firefox" (file-name-nondirectory browser)))
-             (args (if is-firefox
-                       (list "--headless" (format "--profile=%s" profile) url)
-                     (list "--headless" "--disable-gpu"
-                           (format "--user-data-dir=%s" profile)
-                           "--dump-dom" url)))
-             (buf (generate-new-buffer " *aweww-dom*")))
-        (message "[aweww] Hidratando DOM via %s: %s..." (file-name-nondirectory browser) url)
-        (make-process
-         :name "aweww-dom-fetch"
-         :buffer buf
-         :command (cons browser args)
-         :sentinel
-         (lambda (proc event)
-           (when (memq (process-status proc) '(exit signal))
-             (let ((status (process-exit-status proc)))
-               (if (= status 0)
-                   (with-current-buffer buf
-                     (let ((html (buffer-string)))
-                       (kill-buffer buf)
-                       (funcall callback html)))
-                 (kill-buffer buf)
-                 (message "[aweww] Falha na hidratação headless (%s); mantendo renderização padrão."
-                          (string-trim event)))))))))))
+(defun aweww--safe-kill-buffer (buf)
+  "Kill BUF safely by disassociating and terminating any attached process without prompt."
+  (when (buffer-live-p buf)
+    (let ((proc (get-buffer-process buf)))
+      (when proc
+        (set-process-query-on-exit-flag proc nil)
+        (delete-process proc)))
+    (kill-buffer buf)))
 
-(defun aweww-hydrate-render (html &optional url)
-  "Render HTML string in current or new EWW buffer for URL."
+(defun aweww--fetch-dom-headless (url callback error-callback)
+  "Fetch hydrated DOM for URL using headless browser asynchronously.
+Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
+  (let* ((browser (aweww--find-headless-browser))
+         (profile (aweww--ensure-profile-dir))
+         (args (append
+                '("--headless"
+                  "--disable-gpu")
+                (when (zerop (user-uid))
+                  '("--no-sandbox"))
+                (list (format "--user-agent=%s" aweww-user-agent)
+                      (format "--virtual-time-budget=%d" aweww-virtual-time-budget)
+                      (format "--user-data-dir=%s" profile)
+                      "--dump-dom"
+                      url)))
+         (stdout-buf (generate-new-buffer " *aweww-dom-stdout*"))
+         (stderr-buf (generate-new-buffer " *aweww-dom-stderr*")))
+    (message "[aweww] Hidratando DOM via %s: %s..."
+             (file-name-nondirectory browser) url)
+    (let ((proc (make-process
+                 :name "aweww-dom-fetch"
+                 :buffer stdout-buf
+                 :stderr stderr-buf
+                 :command (cons browser args)
+                 :sentinel
+                 (lambda (proc event)
+                   (when (memq (process-status proc) '(exit signal))
+                     (let ((status (process-exit-status proc)))
+                       (if (and (= status 0)
+                                (buffer-live-p stdout-buf)
+                                (> (buffer-size stdout-buf) 0))
+                           (let ((html (with-current-buffer stdout-buf
+                                         (buffer-string))))
+                             (aweww--safe-kill-buffer stdout-buf)
+                             (aweww--safe-kill-buffer stderr-buf)
+                             (funcall callback html (format "Chromium-Headless (%s)" (file-name-nondirectory browser))))
+                         (let ((err-msg (if (buffer-live-p stderr-buf)
+                                            (with-current-buffer stderr-buf
+                                              (string-trim (buffer-string)))
+                                          (string-trim event))))
+                           (aweww--safe-kill-buffer stdout-buf)
+                           (aweww--safe-kill-buffer stderr-buf)
+                           (message "[aweww] Falha na hidratação headless (%s); decaindo para motor nativo."
+                                    (if (string-empty-p err-msg) event err-msg))
+                           (funcall error-callback)))))))))
+      (set-process-query-on-exit-flag proc nil)
+      (let ((stderr-proc (get-buffer-process stderr-buf)))
+        (when stderr-proc
+          (set-process-query-on-exit-flag stderr-proc nil))))))
+
+(defun aweww--fetch-dom-native (url callback)
+  "Fetch HTML for URL using native `url-retrieve', then invoke CALLBACK with html."
+  (message "[aweww] Baixando via motor nativo (url.el): %s..." url)
+  (url-retrieve
+   url
+   (lambda (status)
+     (if (plist-get status :error)
+         (message "[aweww] Erro na requisição nativa: %s" (plist-get status :error))
+       (goto-char (point-min))
+       (if (re-search-forward "\r?\n\r?\n" nil t)
+           (let ((html (buffer-substring-no-properties (point) (point-max))))
+             (kill-buffer (current-buffer))
+             (funcall callback html "EWW-Nativo (url.el)"))
+         (let ((html (buffer-string)))
+           (kill-buffer (current-buffer))
+           (funcall callback html "EWW-Nativo (url.el)")))))
+   nil t t))
+
+(defun aweww-fetch (url callback &optional force-native)
+  "Fetch HTML for URL, dispatching to headless browser or native fallback."
+  (let ((headless-bin (aweww--find-headless-browser)))
+    (if (and headless-bin (not force-native))
+        (aweww--fetch-dom-headless
+         url
+         callback
+         (lambda ()
+           (aweww--fetch-dom-native url callback)))
+      (when (and (not force-native) (aweww--find-browser))
+        (message "[aweww] Navegador ativo não suporta --dump-dom nativo (ex: Firefox); usando motor nativo com polimento tipográfico."))
+      (aweww--fetch-dom-native url callback))))
+
+;; ============================================================================
+;;  RENDERING, POLISH & HEADERLINE
+;; ============================================================================
+
+(defun aweww--update-headerline ()
+  "Update the informative headerline in current Aweww buffer."
+  (when (derived-mode-p 'aweww-mode 'eww-mode)
+    (let* ((url (or aweww-current-url "about:blank"))
+           (engine (or aweww-current-engine "Nativo"))
+           (domain (condition-case nil
+                       (url-host (url-generic-parse-url url))
+                     (error url)))
+           (reader-flag (if aweww-reader-mode-active " [Modo Leitura]" ""))
+           (mpv-info (if (and aweww--mpv-process (process-live-p aweww--mpv-process))
+                         " | 🎵 MPV: Tocando"
+                       ""))
+           (text (format " [Aweww] 🌐 %s | ⚡ %s%s%s | [s] Busca [R] Leitura [O] Firefox [q] Sair"
+                         (or domain url) engine reader-flag mpv-info)))
+      (setq-local header-line-format
+                  (propertize text 'face '(:weight bold :inherit mode-line-inactive))))))
+
+(defun aweww-render-html (html url &optional target-buffer engine-label)
+  "Render HTML string into TARGET-BUFFER (or `*aweww*') for URL."
   (let ((dom (with-temp-buffer
                (insert html)
-               (libxml-parse-html-region (point-min) (point-max)))))
+               (libxml-parse-html-region (point-min) (point-max))))
+        (buf (or target-buffer (aweww--get-buffer url))))
     (if (not dom)
-        (message "[aweww] Erro ao analisar árvore DOM hidratada.")
-      (let ((inhibit-read-only t))
-        (erase-buffer)
-        (shr-insert-document dom)
-        (goto-char (point-min))
-        (setq-local eww-data (list :url (or url "http://localhost") :title "Aweww Hydrated"))
-        (message "[aweww] DOM hidratado renderizado com sucesso.")))))
+        (message "[aweww] Erro ao analisar árvore DOM de %s." url)
+      (with-current-buffer buf
+        (let ((inhibit-read-only t))
+          (erase-buffer)
+          (setq-local shr-width (aweww/calculate-shr-width))
+          (aweww/build-rendering-functions)
+          (shr-insert-document dom)
+          (goto-char (point-min))
+          (aweww/cleanup-newlines)
+          (aweww-mode)
+          (setq-local aweww-current-url url)
+          (setq-local aweww-current-html html)
+          (setq-local aweww-current-engine (or engine-label "Nativo"))
+          (setq-local aweww-reader-mode-active nil)
+          (setq-local eww-data (list :url url :title (or (plist-get eww-data :title) url)))
+          (aweww--history-push url html (or (plist-get eww-data :title) url))
+          (aweww--update-headerline)
+          (when aweww/auto-readable
+            (aweww-toggle-readable))
+          (message "[aweww] Concluído (%s): %s" (or engine-label "Render") url))))))
+
+;; ============================================================================
+;;  HISTORY CACHE
+;; ============================================================================
+
+(defun aweww--history-push (url html title)
+  "Push new entry (:url URL :html HTML :title TITLE) into `aweww-history'."
+  (when (> aweww-history-position 0)
+    (setq aweww-history (nthcdr aweww-history-position aweww-history)))
+  (unless (and aweww-history
+               (string= (plist-get (car aweww-history) :url) url))
+    (push (list :url url :html html :title title) aweww-history))
+  (setq aweww-history-position 0))
+
+(defun aweww-back-url ()
+  "Go back to previously visited page in Aweww history using cached HTML."
+  (interactive)
+  (let ((next-pos (1+ aweww-history-position)))
+    (if (and aweww-history (< next-pos (length aweww-history)))
+        (let* ((entry (nth next-pos aweww-history))
+               (url (plist-get entry :url))
+               (html (plist-get entry :html)))
+          (setq aweww-history-position next-pos)
+          (aweww-render-html html url (current-buffer) "Cache (Voltar)"))
+      (message "[aweww] Início do histórico alcançado."))))
+
+(defun aweww-forward-url ()
+  "Go forward to next visited page in Aweww history using cached HTML."
+  (interactive)
+  (let ((prev-pos (1- aweww-history-position)))
+    (if (>= prev-pos 0)
+        (let* ((entry (nth prev-pos aweww-history))
+               (url (plist-get entry :url))
+               (html (plist-get entry :html)))
+          (setq aweww-history-position prev-pos)
+          (aweww-render-html html url (current-buffer) "Cache (Avançar)"))
+      (message "[aweww] Fim do histórico alcançado."))))
+
+;; ============================================================================
+;;  READER MODE & HYDRATION ACTIONS
+;; ============================================================================
+
+(defun aweww-toggle-readable ()
+  "Toggle between reader view and original full page in current buffer."
+  (interactive)
+  (when (derived-mode-p 'aweww-mode 'eww-mode)
+    (if aweww-reader-mode-active
+        (when aweww-pre-reader-html
+          (setq aweww-reader-mode-active nil)
+          (let ((orig-html aweww-pre-reader-html)
+                (orig-url aweww-current-url)
+                (orig-engine aweww-current-engine))
+            (aweww-render-html orig-html orig-url (current-buffer) orig-engine)
+            (message "[aweww] Modo leitura desativado (Página completa restaurada).")))
+      (setq aweww-pre-reader-html aweww-current-html)
+      (setq aweww-reader-mode-active t)
+      (eww-readable)
+      (aweww--update-headerline)
+      (message "[aweww] Modo leitura ativado (Pressione [R] para voltar)."))))
 
 (defun aweww-hydrate-current-buffer ()
-  "Re-render current EWW buffer with full JS DOM hydration from headless browser."
+  "Re-render current buffer with full JS DOM hydration from headless browser."
   (interactive)
-  (when (derived-mode-p 'eww-mode)
-    (let ((current-url (plist-get eww-data :url)))
+  (when (derived-mode-p 'aweww-mode 'eww-mode)
+    (let ((current-url (or aweww-current-url (plist-get eww-data :url))))
       (if (not current-url)
           (message "[aweww] Nenhuma URL ativa no buffer atual.")
-        (aweww--fetch-dom
+        (aweww-fetch
          current-url
-         (lambda (html)
-           (aweww-hydrate-render html current-url)))))))
+         (lambda (html engine)
+           (aweww-render-html html current-url (current-buffer) engine)))))))
+
+;; ============================================================================
+;;  LINK NAVIGATION & URL NORMALIZATION
+;; ============================================================================
+
+(defun aweww--normalize-url (input)
+  "Normalize INPUT string to a valid URL or search query."
+  (let ((trimmed (string-trim input)))
+    (cond
+     ((string-match-p "^https?://" trimmed)
+      trimmed)
+     ((string-match-p "^[a-zA-Z0-9.-]+\\.[a-zA-Z]\\{2,\\}\\(/.*\\)?$" trimmed)
+      (concat "https://" trimmed))
+     (t
+      (let* ((engine-fmt (alist-get aweww-search-engine aweww-search-engine-alist
+                                    "https://duckduckgo.com/?q=%s"))
+             (encoded (url-hexify-string trimmed)))
+        (format engine-fmt encoded))))))
+
+(defun aweww--url-at-point ()
+  "Return URL at point in Aweww or EWW buffer, or nil."
+  (or (get-text-property (point) 'shr-url)
+      (get-text-property (point) 'image-url)
+      (get-text-property (point) 'help-echo)
+      (when (fboundp 'thing-at-point)
+        (thing-at-point 'url))))
+
+(defun aweww-follow-link (&optional external)
+  "Follow link at point in Aweww.
+With prefix EXTERNAL (or C-u), open link in external browser."
+  (interactive "P")
+  (let ((url (aweww--url-at-point)))
+    (cond
+     ((null url)
+      (call-interactively #'eww-follow-link))
+     (external
+      (aweww-open-in-external-browser url))
+     (t
+      (aweww url)))))
+
+(defun aweww-open-in-external-browser (&optional url)
+  "Open URL (or current page URL) in system external browser (Firefox/Chrome GUI)."
+  (interactive)
+  (let ((target-url (or url aweww-current-url (plist-get eww-data :url))))
+    (if (not target-url)
+        (message "[aweww] Nenhuma URL ativa para abrir externamente.")
+      (message "[aweww] Abrindo em navegador externo: %s" target-url)
+      (browse-url target-url))))
+
+(defun aweww-copy-page-url ()
+  "Copy current page URL to kill ring."
+  (interactive)
+  (let ((url (or aweww-current-url (plist-get eww-data :url))))
+    (if url
+        (progn
+          (kill-new url)
+          (message "[aweww] URL copiada: %s" url))
+      (message "[aweww] Nenhuma URL ativa."))))
+
+(defun aweww-reload ()
+  "Reload the current Aweww page with fresh hydration."
+  (interactive)
+  (if aweww-current-url
+      (aweww aweww-current-url)
+    (message "[aweww] Nenhuma página ativa para recarregar.")))
+
+(defun aweww-search (query)
+  "Search the web for QUERY using `aweww-search-engine'."
+  (interactive "sPesquisar na Web: ")
+  (let* ((engine-fmt (alist-get aweww-search-engine aweww-search-engine-alist
+                                "https://duckduckgo.com/?q=%s"))
+         (encoded (url-hexify-string query))
+         (search-url (format engine-fmt encoded)))
+    (aweww search-url)))
 
 ;; ============================================================================
 ;;  MULTIMEDIA INTERCEPTION (MPV IPC & ZERO ZOMBIE INVARIANT)
@@ -254,7 +608,8 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
   (when (and aweww--mpv-socket (file-exists-p aweww--mpv-socket))
     (delete-file aweww--mpv-socket)
     (setq aweww--mpv-socket nil))
-  (setq aweww--mpv-current-url nil))
+  (setq aweww--mpv-current-url nil)
+  (aweww--update-headerline))
 
 (defun aweww-mpv-stop ()
   "Stop active mpv playback and expunge IPC socket."
@@ -265,7 +620,8 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
         (run-at-time 0.1 nil #'aweww--mpv-cleanup)
         (message "[aweww/mpv] Reprodução encerrada."))
     (aweww--mpv-cleanup)
-    (message "[aweww/mpv] Nenhum processo ativo.")))
+    (when (called-interactively-p 'interactive)
+      (message "[aweww/mpv] Nenhum processo ativo."))))
 
 (defun aweww-mpv-send-command (cmd-list)
   "Send CMD-LIST to mpv via UNIX domain socket IPC."
@@ -330,7 +686,8 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
            (lambda (proc event)
              (when (memq (process-status proc) '(exit signal))
                (aweww--mpv-cleanup)
-               (message "[aweww/mpv] Finalizado: %s" (string-trim event))))))))
+               (message "[aweww/mpv] Finalizado: %s" (string-trim event))))))
+    (aweww--update-headerline)))
 
 (add-hook 'kill-emacs-hook #'aweww-mpv-stop)
 
@@ -343,114 +700,187 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
 (advice-add 'eww-browse-url :around #'aweww-browse-url-advice)
 
 ;; ============================================================================
-;;  INTERACTIVE COMMANDS
+;;  INTERACTIVE COMMANDS & BUFFER MANAGEMENT
 ;; ============================================================================
 
-(defun aweww/toggle-readable ()
-  "Toggle `eww-readable' in the current EWW buffer."
-  (interactive)
-  (when (derived-mode-p 'eww-mode)
-    (eww-readable)))
+(defun aweww--get-buffer (&optional _url)
+  "Return dedicated `*aweww*' buffer, displaying it if necessary."
+  (let ((buf (get-buffer-create "*aweww*")))
+    (unless (eq (current-buffer) buf)
+      (switch-to-buffer buf))
+    buf))
 
 (defun aweww/toggle-images ()
-  "Toggle images in the current EWW buffer and reload."
+  "Toggle images in current Aweww buffer."
   (interactive)
-  (when (derived-mode-p 'eww-mode)
-    (setq-local shr-inhibit-images (not shr-inhibit-images))
-    (eww-reload)
-    (message "Images %s" (if shr-inhibit-images "disabled" "enabled"))))
+  (setq-local shr-inhibit-images (not shr-inhibit-images))
+  (aweww-reload)
+  (message "Imagens %s" (if shr-inhibit-images "desativadas" "ativadas")))
 
 (defun aweww/toggle-colors ()
-  "Toggle color rendering in the current EWW buffer and reload."
+  "Toggle color rendering in current Aweww buffer."
   (interactive)
-  (when (derived-mode-p 'eww-mode)
-    (setq-local shr-use-colors (not shr-use-colors))
-    (eww-reload)
-    (message "Colors %s" (if shr-use-colors "enabled" "disabled"))))
+  (setq-local shr-use-colors (not shr-use-colors))
+  (aweww-reload)
+  (message "Cores %s" (if shr-use-colors "ativadas" "desativadas")))
 
 ;; ============================================================================
-;;  HOOKS
+;;  HOOKS & FORMATTING
 ;; ============================================================================
 
 (defun aweww/cleanup-newlines ()
-  "Remove excessive blank lines in AWEWW buffers.
+  "Remove excessive blank lines in Aweww buffers.
 Replaces three or more consecutive newlines with exactly two."
-  (when (derived-mode-p 'eww-mode)
-    (let ((inhibit-read-only t))
-      (save-excursion
-        (goto-char (point-min))
-        (while (re-search-forward "\n\n\n+" nil t)
-          (replace-match "\n\n"))))))
+  (let ((inhibit-read-only t))
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "\n\n\n+" nil t)
+        (replace-match "\n\n")))))
 
 (defun aweww/cleanup-newlines-deferred ()
-  "Run newline cleanup after EWW finishes rendering.
-Uses a 0-second timer to ensure this runs after the render completes."
+  "Run newline cleanup after EWW finishes rendering."
   (run-at-time 0 nil #'aweww/cleanup-newlines))
 
 (defun aweww/mode-setup ()
-  "Configure buffer-local settings for EWW buffers."
+  "Configure buffer-local settings for Aweww buffers."
   (visual-line-mode 1)
   (display-line-numbers-mode -1)
-  (setq-local header-line-format nil))
+  (setq-local truncate-lines nil))
 
 (defun shrface-eww-setup ()
-  "Configure `shrface' in the EWW buffer.
-Runs `shrface-regexp' unless `shrface-toggle-bullets' is disabled."
+  "Configure `shrface' in Aweww/EWW buffer."
   (when (and (fboundp 'shrface-regexp)
              (boundp 'shrface-toggle-bullets))
     (unless shrface-toggle-bullets
       (shrface-regexp))))
 
-(defun aweww/auto-readable ()
-  "Call `eww-readable' if `aweww/auto-readable' is non-nil."
-  (when aweww/auto-readable
-    (eww-readable)))
-
-;; ----------------------------------------------------------------------------
-;;  Setup Hooks
-;; ----------------------------------------------------------------------------
-
-(add-hook 'eww-mode-hook #'aweww/mode-setup)
 (add-hook 'eww-after-render-hook #'shrface-eww-setup)
 (add-hook 'eww-after-render-hook #'aweww/cleanup-newlines-deferred)
-(add-hook 'eww-after-render-hook #'aweww/auto-readable)
 
 ;; ============================================================================
-;;  KEYBINDINGS
+;;  AWEWW MAJOR MODE & KEYBINDINGS
 ;; ============================================================================
 
-(with-eval-after-load 'eww
-  (define-key eww-mode-map (kbd "R") #'aweww/toggle-readable)
-  (define-key eww-mode-map (kbd "I") #'aweww/toggle-images)
-  (define-key eww-mode-map (kbd "C") #'aweww/toggle-colors)
-  (define-key eww-mode-map (kbd "D") #'aweww-hydrate-current-buffer)
-  (define-key eww-mode-map (kbd "P") #'aweww-mpv-toggle-pause)
-  (define-key eww-mode-map (kbd "X") #'aweww-mpv-stop)
-  (define-key eww-mode-map (kbd "+") #'aweww-mpv-volume-up)
-  (define-key eww-mode-map (kbd "-") #'aweww-mpv-volume-down)
-  (define-key eww-mode-map (kbd ">") #'aweww-mpv-seek-forward)
-  (define-key eww-mode-map (kbd "<") #'aweww-mpv-seek-backward)
-  (define-key eww-mode-map (kbd "H") #'eww-list-histories)
-  (define-key eww-mode-map (kbd "B") #'eww-back-url)
-  (define-key eww-mode-map (kbd "F") #'eww-forward-url)
-  (define-key eww-mode-map (kbd "s") #'eww-search-words)
-  (define-key eww-mode-map (kbd "q") #'quit-window))
+(defvar aweww-mode-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map eww-mode-map)
+    (define-key map (kbd "RET") #'aweww-follow-link)
+    (define-key map [mouse-2] #'aweww-follow-link)
+    (define-key map (kbd "s") #'aweww-search)
+    (define-key map (kbd "o") #'aweww)
+    (define-key map (kbd "g") #'aweww-reload)
+    (define-key map (kbd "r") #'aweww-reload)
+    (define-key map (kbd "R") #'aweww-toggle-readable)
+    (define-key map (kbd "D") #'aweww-hydrate-current-buffer)
+    (define-key map (kbd "O") #'aweww-open-in-external-browser)
+    (define-key map (kbd "w") #'aweww-copy-page-url)
+    (define-key map (kbd "B") #'aweww-back-url)
+    (define-key map (kbd "F") #'aweww-forward-url)
+    (define-key map (kbd "H") #'eww-list-histories)
+    (define-key map (kbd "I") #'aweww/toggle-images)
+    (define-key map (kbd "C") #'aweww/toggle-colors)
+    (define-key map (kbd "P") #'aweww-mpv-toggle-pause)
+    (define-key map (kbd "X") #'aweww-mpv-stop)
+    (define-key map (kbd "+") #'aweww-mpv-volume-up)
+    (define-key map (kbd "-") #'aweww-mpv-volume-down)
+    (define-key map (kbd ">") #'aweww-mpv-seek-forward)
+    (define-key map (kbd "<") #'aweww-mpv-seek-backward)
+    (define-key map (kbd "q") #'quit-window)
+    map)
+  "Keymap for `aweww-mode'.")
+
+(define-derived-mode aweww-mode eww-mode "Aweww"
+  "Major mode for browsing the web with Aweww (Awesome EWW).
+\\{aweww-mode-map}"
+  (aweww/mode-setup))
 
 ;; ============================================================================
-;;  ENTRY POINT
+;;  DIAGNOSTICS & DOCTOR
 ;; ============================================================================
+
+(defun aweww-doctor ()
+  "Display comprehensive diagnostic report for Aweww engine in a popup buffer."
+  (interactive)
+  (let* ((buf (get-buffer-create "*aweww-doctor*"))
+         (os-type system-type)
+         (candidates (aweww--system-browser-list))
+         (active-browser (aweww--find-browser))
+         (supports-dump (aweww--browser-supports-dump-dom-p active-browser))
+         (libxml-ok (fboundp 'libxml-parse-html-region))
+         (shrface-ok (featurep 'shrface))
+         (highlight-ok (featurep 'shr-tag-pre-highlight))
+         (mpv-ok (executable-find aweww-mpv-program)))
+    (with-current-buffer buf
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert "🌐 Diagnóstico do Componente Aweww (Awesome EWW)\n")
+        (insert "=================================================\n\n")
+        (insert (format "• Sistema Operacional : %s\n" os-type))
+        (insert (format "• Candidatos no SO    : %s\n" (string-join candidates ", ")))
+        (insert (format "• Navegador Ativo     : %s\n"
+                        (if active-browser
+                            (format "%s (PATH: %s)" (file-name-nondirectory active-browser) active-browser)
+                          "Nenhum navegador encontrado")))
+        (insert (format "• Suporte a --dump-dom: %s\n"
+                        (if supports-dump
+                            "✅ Sim (Chromium/Blink V8 nativo)"
+                          (if (and active-browser (string-match-p "firefox" active-browser))
+                              "⚠️  Não (Firefox não possui flag CLI --dump-dom; operando em modo fallback nativo)"
+                            "❌ Não disponível"))))
+        (insert (format "• Suporte libxml2     : %s\n"
+                        (if libxml-ok "✅ Presente no Emacs" "❌ Ausente (compilado sem libxml2)")))
+        (insert (format "• Suporte shrface     : %s\n"
+                        (if shrface-ok "✅ Ativo (Tipografia Org-mode)" "ℹ️  Disponível sob demanda")))
+        (insert (format "• Realce de Sintaxe   : %s\n"
+                        (if highlight-ok "✅ Ativo (shr-tag-pre-highlight)" "ℹ️  Disponível sob demanda")))
+        (insert (format "• Player MPV          : %s\n"
+                        (if mpv-ok (format "✅ Detectado (%s)" mpv-ok) "⚠️  Não detectado")))
+        (insert "\n💡 Dicas de Uso:\n")
+        (insert "  - [s]   Pesquisar diretamente no DuckDuckGo/Google com JS hidratado\n")
+        (insert "  - [R]   Alternar Modo Leitura imersivo (Reader View)\n")
+        (insert "  - [O]   Abrir página atual no Firefox gráfico completo\n")
+        (insert "  - [D]   Forçar re-hidratação via motor headless\n")
+        (insert "  - [RET] Seguir links mantendo o motor do Aweww\n")
+        (insert "  - [B/F] Voltar/Avançar no histórico instantaneamente via cache\n"))
+      (special-mode)
+      (goto-char (point-min)))
+    (unless noninteractive
+      (display-buffer buf))
+    buf))
+
+;; ============================================================================
+;;  ENTRY POINTS & AUTOLOADS
+;; ============================================================================
+
+;;;###autoload
+(defun aweww (url &optional force-native)
+  "Open URL in Aweww with headless DOM hydration and visual polish.
+If URL is not a standard web address, normalize it to search engine query.
+With prefix argument FORCE-NATIVE (C-u), bypass headless browser and use native engine."
+  (interactive
+   (list (read-string "Aweww URL ou busca: "
+                      (when (derived-mode-p 'aweww-mode 'eww-mode)
+                        (or aweww-current-url (plist-get eww-data :url))))
+         current-prefix-arg))
+  (let ((normalized-url (aweww--normalize-url url)))
+    (if (and aweww-intercept-media (aweww-media-url-p normalized-url))
+        (aweww-play-media normalized-url)
+      (let ((target-buf (aweww--get-buffer normalized-url)))
+        (with-current-buffer target-buf
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (insert (format "⏳ [Aweww] Carregando: %s...\n" normalized-url))))
+        (aweww-fetch
+         normalized-url
+         (lambda (html engine)
+           (aweww-render-html html normalized-url target-buf engine))
+         force-native)))))
 
 ;;;###autoload
 (defun aweww/open-url (url)
-  "Open URL in AWEWW (EWW with enhancements).
-Interactively prompts for a URL."
+  "Open URL in Aweww."
   (interactive "sURL: ")
-  (eww url))
-
-;;;###autoload
-(defalias 'aweww 'eww
-  "Launch Awesome EWW (AWEWW).
-This is an alias for `eww' with AWEWW enhancements loaded.")
+  (aweww url))
 
 (provide 'aweww)
 ;;; aweww.el ends here

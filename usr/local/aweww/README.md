@@ -14,7 +14,11 @@
 
 ## 🧭 Visão Geral
 
-O **`aweww`** (Awesome EWW) eleva a experiência nativa do navegador `eww` do GNU Emacs para o paradigma inovador de **"LSP da Web"**. Em vez de páginas esticadas ou travadas por renderizadores estáticos sem JavaScript, o Aweww orquestra navegadores headless efêmeros via CDP/CLI, isolamento temporário de perfil, cálculo dinâmico de margens responsivas (`frame-width`), renderização tipográfica no estilo Org-mode via `shrface`, syntax highlighting em blocos de código e interceptação de mídia com reprodução headless leve via `mpv` com controle JSON-IPC.
+O **`aweww`** (Awesome EWW) eleva a experiência nativa do navegador `eww` do GNU Emacs para o paradigma inovador de **"LSP da Web" sob Arquitetura Dual-Engine**:
+
+1. **Motor Headless Turbo (LSP da Web):** Quando navegadores com suporte nativo a `--dump-dom` (Chromium, Chrome, Brave, Edge) estão disponíveis, o Aweww orquestra uma execução efêmera, injeta um `User-Agent` autêntico de desktop para contornar verificações anti-bot e recolhe o DOM 100% hidratado com JavaScript executado.
+2. **Fallback Soberano Nativo:** Se nenhum navegador externo estiver instalado no sistema, o Aweww decai graciosamente e de forma resiliente para o `url-retrieve` nativo do Emacs, preservando todas as melhorias tipográficas, larguras dinâmicas, syntax highlighting em blocos de código e interceptação de mídia para `mpv`.
+3. **Ponte Gráfica Externa (`O`):** Permite despachar com um único toque a URL da página atual para o seu **Firefox gráfico** caso necessite de interações complexas, logins OAuth ou extensões.
 
 ---
 
@@ -22,147 +26,137 @@ O **`aweww`** (Awesome EWW) eleva a experiência nativa do navegador `eww` do GN
 
 ```mermaid
 flowchart TD
-    URL["🌐 Navegação URL / M-x eww"] --> CHECK{"🎵 Mídia ou YouTube?"}
-    CHECK -->|Sim| MPV["📻 aweww-play-media<br/>(mpv headless + socket IPC + auto-clean)"]
-    CHECK -->|Não| RENDER["⚙️ eww-render"]
-    RENDER --> ADVICE["📐 Advice: aweww/set-shr-width<br/>(Calcula largura responsiva frame-width - offset)"]
-    ADVICE --> PARSE["📝 Parse HTML com libxml2/shr"]
-    PARSE --> HOOK_SETUP["🎨 Hook: aweww/mode-setup<br/>(Aplica keybindings modais e faces)"]
-    PARSE --> HOOK_CLEAN["🧹 Hook: aweww/cleanup-newlines<br/>(Expurga linhas em branco redundantes)"]
-    PARSE --> HOOK_READ["📖 Hook: aweww/auto-readable<br/>(Aciona eww-readable se ativo)"]
-    HOOK_CLEAN --> BUFFER["✨ Buffer Formatado & Legível"]
-    HOOK_READ --> BUFFER
-    BUFFER --> HYDRATE["⚡ Tecla D: aweww-hydrate-current-buffer<br/>(LSP da Web via Headless Firefox/Chromium)"]
-    HYDRATE --> BUFFER
+    INPUT["🌐 M-x aweww / aweww-search / Link RET"] --> CHECK_URL{"🎵 É URL de Mídia?<br/>(YouTube, SoundCloud, mp3)"}
+    CHECK_URL -->|Sim| MPV["📻 aweww-play-media<br/>(mpv headless + socket IPC)"]
+    CHECK_URL -->|Não| DETECT{"🔎 Browser Headless Disponível?"}
+
+    DETECT -->|Sim: Chromium/Brave/Edge| HEADLESS["⚡ Motor Headless (LSP da Web)<br/>• User-Agent desktop autêntico<br/>• --dump-dom + virtual-time-budget<br/>• Perfil isolado 0700<br/>• STDERR silenciado"]
+    DETECT -->|Não: Servidor / Firefox solo| NATIVE["🛡️ Fallback Soberano EWW<br/>• url-retrieve nativo<br/>• Zero dependências externas"]
+
+    HEADLESS --> LIBXML["⚙️ Parse DOM via libxml2"]
+    NATIVE --> LIBXML
+
+    LIBXML --> POLISH["🎨 Suíte de Polimento Estético & Tipográfico<br/>• Org-Mode typography (shrface)<br/>• Syntax highlighting (shr-tag-pre-highlight)<br/>• Largura responsiva (shr-width dinâmico)<br/>• Higienização de espaçamentos órfãos"]
+
+    POLISH --> BUFFER["✨ Buffer Soberano *aweww*<br/>Headerline informativa + Mapa modal rápido"]
 ```
 
 ---
 
 ## ✨ Funcionalidades em Destaque
 
-| Recurso                           | Descrição                                                                                 |
-| :-------------------------------- | :---------------------------------------------------------------------------------------- |
-| **LSP da Web (Hidratação DOM)**   | Executa páginas modernas com JS via navegador headless e renderiza o DOM no `shr`.        |
-| **Cascata Soberana de Browsers**  | `firefox-first` padrão (Firefox -> Chromium -> Brave -> Chrome -> Edge) com paridade 1:1. |
-| **Perfil Efêmero Isolado**        | Execução headless em diretório temporário isolado sem conflito com o navegador gráfico.   |
-| **Player Headless MPV com IPC**   | Intercepta YouTube e áudio para reprodução assíncrona leve via `mpv` com zero zumbis.     |
-| **Largura Responsiva Dinâmica**   | O conteúdo se adapta automaticamente à largura do frame via `shr-width` dinâmico.         |
-| **Leitura Imersiva (Readable)**   | Ativação automática ou manual com um único toque na tecla `R`.                            |
-| **Controle Instantâneo de Mídia** | Alterne renderização de imagens (`I`) ou cores CSS (`C`) para economia de recursos.       |
-| **Higienização de Espaçamento**   | Remove quebras de linha duplas e espaços órfãos pós-renderização.                         |
-| **Sintaxe em Blocos de Código**   | Integração pronta com `shr-tag-pre-highlight` para realce de trechos `<pre>`.             |
-| **Tipografia Org-Mode**           | Suporte transparente a `shrface` para cabeçalhos e títulos visualmente estruturados.      |
+| Recurso                            | Descrição                                                                                |
+| :--------------------------------- | :--------------------------------------------------------------------------------------- |
+| **LSP da Web (Hidratação DOM)**    | Executa páginas modernas com JS via navegador headless e renderiza o DOM no `shr`.       |
+| **Matriz Multiplataforma por SO**  | Resolução inteligente em cascata por SO (Linux, FreeBSD/OpenBSD, macOS, Windows).        |
+| **Pesquisa Integrada (`s`)**       | Busca no DuckDuckGo, Google ou SearXNG com JS hidratado e sem bloqueios de robô.         |
+| **Histórico com Cache em Memória** | Navegação instantânea para trás (`B`) e para frente (`F`) reaproveitando o DOM em cache. |
+| **Ponte Gráfica Externa (`O`)**    | Abre a URL atual no Firefox gráfico completo com um único toque.                         |
+| **Perfil Efêmero Isolado**         | Execução headless em diretório temporário isolado (`0700`) sem conflito com GUI.         |
+| **Player Headless MPV com IPC**    | Intercepta YouTube e áudio para reprodução assíncrona leve via `mpv` com zero zumbis.    |
+| **Largura Responsiva Dinâmica**    | O conteúdo se adapta automaticamente à largura do frame via `shr-width` dinâmico.        |
+| **Leitura Imersiva (Readable)**    | Alternância bidirecional entre artigo limpo e página completa na tecla `R`.              |
+| **Controle Instantâneo de Mídia**  | Alterne renderização de imagens (`I`) ou cores CSS (`C`) para economia de recursos.      |
+| **Sintaxe em Blocos de Código**    | Integração pronta com `shr-tag-pre-highlight` para realce de trechos `<pre>`.            |
+| **Tipografia Org-Mode**            | Suporte transparente a `shrface` para cabeçalhos e títulos visualmente estruturados.     |
+| **Ferramenta de Diagnóstico**      | Comando interativo `M-x aweww-doctor` e CLI `sh aweww.sh doctor`.                        |
 
 ---
 
 ## ⌨️ Mapa de Teclas & Comandos Modais
 
-Ao navegar no buffer `*eww*`, as teclas rápidas operam diretamente sem prefixos complexos:
+Ao navegar no buffer dedicado `*aweww*`, as teclas rápidas operam diretamente sem prefixos complexos:
 
-|  Tecla  | Comando                        | Ação                                                   |
-| :-----: | :----------------------------- | :----------------------------------------------------- |
-| **`R`** | `aweww/toggle-readable`        | Alterna modo de leitura sem distrações (_Reader View_) |
-| **`I`** | `aweww/toggle-images`          | Liga/Desliga exibição de imagens na página             |
-| **`C`** | `aweww/toggle-colors`          | Liga/Desliga cores e estilos CSS originais             |
-| **`D`** | `aweww-hydrate-current-buffer` | Re-hidrata a página atual via motor headless (LSP Web) |
-| **`P`** | `aweww-mpv-toggle-pause`       | Alterna pausa do fluxo ativo no `mpv`                  |
-| **`X`** | `aweww-mpv-stop`               | Encerra reprodução no `mpv` e remove sockets IPC       |
-| **`+`** | `aweww-mpv-volume-up`          | Aumenta volume do player em 5%                         |
-| **`-`** | `aweww-mpv-volume-down`        | Diminui volume do player em 5%                         |
-| **`>`** | `aweww-mpv-seek-forward`       | Avança 10 segundos no fluxo multimídia                 |
-| **`<`** | `aweww-mpv-seek-backward`      | Retrocede 10 segundos no fluxo multimídia              |
-| **`H`** | `eww-list-histories`           | Exibe histórico navegacional                           |
-| **`B`** | `eww-back-url`                 | Retorna à página anterior                              |
-| **`F`** | `eww-forward-url`              | Avança à página seguinte                               |
-| **`s`** | `eww-search-words`             | Pesquisa termos na web via mecanismo configurado       |
-| **`q`** | `quit-window`                  | Fecha a janela do navegador graciosamente              |
-
----
-
-## 🚀 Instalação
-
-### Modo Local / Git Submodule (Recomendado no Ecossistema)
-
-Se você utiliza o **Universal Environment** ou o **GNU Emacs Hub**:
-
-```sh
-# Dentro do diretório ~/.emacs.d/usr/local/
-git submodule add https://github.com/GabrielFrigo4/aweww.git usr/local/aweww
-```
-
-No seu `init.el`:
-
-```elisp
-(add-to-list 'load-path (expand-file-name "usr/local/aweww" user-emacs-directory))
-(require 'aweww)
-```
+|     Tecla     | Comando                          | Ação                                                                 |
+| :-----------: | :------------------------------- | :------------------------------------------------------------------- |
+|   **`RET`**   | `aweww-follow-link`              | Segue o link sob o cursor mantendo a hidratação do Aweww             |
+|    **`s`**    | `aweww-search`                   | Pesquisa termos na web via mecanismo configurado (DuckDuckGo/Google) |
+|    **`o`**    | `aweww`                          | Abre nova URL ou termo de pesquisa                                   |
+| **`r` / `g`** | `aweww-reload`                   | Recarrega a página ativa com nova hidratação                         |
+|    **`R`**    | `aweww-toggle-readable`          | Alterna modo de leitura sem distrações (_Reader View_)               |
+|    **`O`**    | `aweww-open-in-external-browser` | Abre a página atual no navegador externo gráfico (ex: Firefox)       |
+|    **`D`**    | `aweww-hydrate-current-buffer`   | Força re-hidratação via motor headless                               |
+|    **`w`**    | `aweww-copy-page-url`            | Copia a URL da página ativa para a área de transferência             |
+|    **`B`**    | `aweww-back-url`                 | Retorna à página anterior no histórico (instantâneo via cache)       |
+|    **`F`**    | `aweww-forward-url`              | Avança à página seguinte no histórico (instantâneo via cache)        |
+|    **`H`**    | `eww-list-histories`             | Exibe histórico navegacional completo                                |
+|    **`I`**    | `aweww/toggle-images`            | Liga/Desliga exibição de imagens na página                           |
+|    **`C`**    | `aweww/toggle-colors`            | Liga/Desliga cores e estilos CSS originais                           |
+|    **`P`**    | `aweww-mpv-toggle-pause`         | Alterna pausa do fluxo ativo no `mpv`                                |
+|    **`X`**    | `aweww-mpv-stop`                 | Encerra reprodução no `mpv` e remove sockets IPC                     |
+|    **`+`**    | `aweww-mpv-volume-up`            | Aumenta volume do player em 5%                                       |
+|    **`-`**    | `aweww-mpv-volume-down`          | Diminui volume do player em 5%                                       |
+|    **`>`**    | `aweww-mpv-seek-forward`         | Avança 10 segundos no fluxo multimídia                               |
+|    **`<`**    | `aweww-mpv-seek-backward`        | Retrocede 10 segundos no fluxo multimídia                            |
+|    **`q`**    | `quit-window`                    | Fecha a janela do navegador graciosamente                            |
 
 ---
 
-### Via Elpaca
+## 🚀 Instalação & Uso
 
-```elisp
-(use-package aweww
-  :ensure (:type git :host github :repo "GabrielFrigo4/aweww"))
+### No Ecossistema Universal Environment / GNU Emacs Hub
+
+O componente já vem integrado na suíte de aplicativos sob `Editor/Emacs/usr/local/aweww/`.
+
+Para iniciar a navegação interativa:
+
+```text
+M-x aweww
 ```
 
----
+Para realizar uma pesquisa direta:
 
-### Via Quelpa
+```text
+M-x aweww-search
+```
 
-```elisp
-(use-package aweww
-  :quelpa (aweww :fetcher github :repo "GabrielFrigo4/aweww"))
+Para verificar o status do ambiente e navegadores detectados:
+
+```text
+M-x aweww-doctor
 ```
 
 ---
 
 ## ⚙️ Configuração Personalizada
 
-O `aweww` possui variáveis declarativas customizáveis:
+O `aweww` possui variáveis declarativas customizáveis via `M-x customize-group aweww`:
 
 ```elisp
-(use-package eww
+(use-package aweww
   :ensure nil
+  :commands (aweww aweww-search aweww-doctor)
   :config
-  (when (locate-library "aweww")
-    (require 'aweww)
-    ;; Ativa modo readable automaticamente em todas as paginas
-    (setq aweww/auto-readable t)
-    ;; Define a margem dinâmica das bordas do frame (padrao: 8 colunas)
-    (setq aweww/default-width-offset 8)
-    ;; Estratégia de resolução de navegador headless ('firefox-first, 'chromium-first, 'custom-list)
-    (setq aweww-browser-strategy 'firefox-first)
-    ;; Ativa interceptação leve de mídia para mpv headless
-    (setq aweww-intercept-media t)))
+  ;; Motor de busca padrão ('duckduckgo, 'google, 'searxng)
+  (setq aweww-search-engine 'duckduckgo)
+
+  ;; Estratégia de resolução ('auto, 'chromium-only, 'custom-list)
+  (setq aweww-browser-strategy 'auto)
+
+  ;; Tempo limite concedido ao JS para hidratação (ms)
+  (setq aweww-virtual-time-budget 2500)
+
+  ;; Margem dinâmica das bordas da janela
+  (setq aweww/default-width-offset 8)
+
+  ;; Interceptação de mídia leve para mpv
+  (setq aweww-intercept-media t))
 ```
 
 ---
 
-## 📦 Dependências Opcionais Recomendadas
+## 🔍 Diagnóstico do Ambiente (CLI)
 
-Para máxima fidelidade visual, recomenda-se ter instalado:
-
-- [`shrface`](https://github.com/chenyanming/shrface) — Tipografia estruturada com visual de cabeçalhos no padrão Org-mode.
-- [`shr-tag-pre-highlight`](https://github.com/xuchunyang/shr-tag-pre-highlight) — Syntax highlighting automático em blocos de código.
-
----
-
-## 🚀 Setup do Projeto & Ganchos Git
-
-> 🤝 **Guia de Contribuição:** [CONTRIBUTING.md](CONTRIBUTING.md)
-
-Após clonar o repositório, execute o comando abaixo para ativar os quality gates locais (pre-commit, commit-msg):
+Você pode verificar a saúde do componente diretamente pelo terminal:
 
 ```sh
-make hooks
+sh Editor/Emacs/usr/local/aweww/aweww.sh doctor
 ```
 
-Para validar integridade e rodar a suíte completa de CI localmente:
+Para rodar a suíte completa de testes sintáticos:
 
 ```sh
-make test    # Validação batch de todos os .el
-make ci      # Pipeline completo (test + compile + clean)
+sh Editor/Emacs/usr/local/aweww/aweww.sh test
 ```
 
 ---

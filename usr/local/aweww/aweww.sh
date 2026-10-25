@@ -76,15 +76,26 @@ _aweww_doctor() {
 	else
 		echo "  ⚠️  git não encontrado no PATH."
 	fi
-	for _b in firefox chromium brave google-chrome microsoft-edge; do
+	echo "  🌐 Verificando matriz multiplataforma de navegadores:"
+	for _b in chromium-browser chromium google-chrome-stable google-chrome brave-browser brave microsoft-edge-stable microsoft-edge; do
 		if command -v "${_b}" > "/dev/null" 2>&1; then
-			echo "  ✅ ${_b} detectado: $(command -v "${_b}")"
+			echo "    ✅ ${_b} (Dump-DOM V8): $(command -v "${_b}")"
 		fi
 	done
+	if command -v firefox > "/dev/null" 2>&1; then
+		echo "    ℹ️  firefox (Navegação externa GUI / Fallback nativo): $(command -v firefox)"
+	fi
 	if command -v mpv > "/dev/null" 2>&1; then
 		echo "  ✅ mpv detectado: $(command -v mpv)"
 	else
 		echo "  ⚠️  mpv não encontrado no PATH (multimídia headless indisponível)."
+	fi
+	if command -v emacs > "/dev/null" 2>&1; then
+		echo ""
+		echo "📋 [Aweww/Elisp] Relatório interno do motor:"
+		emacs -Q --batch -L "${_AWEWW_ROOT}" -l "${_AWEWW_ROOT}/aweww.el" --eval '
+			(let ((buf (aweww-doctor)))
+			  (message "%s" (with-current-buffer buf (buffer-string))))' 2>&1 | sed 's/^/   /'
 	fi
 }
 

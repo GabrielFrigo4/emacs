@@ -195,7 +195,7 @@
     (when (and (bound-and-true-p evil-mode) (minibufferp))
       (setq-local cursor-type (if (boundp 'evil-insert-state-cursor)
                                   evil-insert-state-cursor
-                                 '(bar . 2)))))
+                                '(bar . 2)))))
   (add-hook 'minibuffer-setup-hook          #'emacs/sync-minibuffer-cursor)
   (advice-add 'evil-refresh-cursor :after   #'emacs/sync-minibuffer-cursor)
   (advice-add 'evil-refresh-cursor :after   #'emacs/sync-evil-terminal-cursor)

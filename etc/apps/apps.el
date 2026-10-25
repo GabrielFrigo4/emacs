@@ -54,6 +54,15 @@
   (when (locate-library "aweww")
     (require 'aweww)))
 
+(use-package aweww
+  :ensure nil
+  :commands (aweww aweww-search aweww-doctor aweww/open-url)
+  :init
+  (when (locate-library "aweww")
+    (autoload 'aweww "aweww" "Navegador Web Aweww com hidratação headless e polimento visual." t)
+    (autoload 'aweww-search "aweww" "Pesquisa na web via Aweww." t)
+    (autoload 'aweww-doctor "aweww" "Diagnóstico do componente Aweww." t)))
+
 ;; --------------------------------
 ;; UNIVERSAL OPEN & APP LAUNCHERS
 ;; --------------------------------
