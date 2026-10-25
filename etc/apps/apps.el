@@ -58,19 +58,33 @@
 ;; UNIVERSAL OPEN & APP LAUNCHERS
 ;; --------------------------------
 
-(defcustom emacs/external-file-extensions
-  '("pdf" "djvu" "ps" "eps"
-    "doc" "docx" "odt" "rtf"
-    "xls" "xlsx" "ods" "csv"
-    "ppt" "pptx" "odp"
-    "mp4" "mkv" "avi" "mov" "webm" "wmv" "flv"
-    "mp3" "wav" "flac" "ogg" "m4a" "aac"
-    "png" "jpg" "jpeg" "gif" "webp" "bmp" "ico" "tiff" "svg"
-    "zip" "tar" "gz" "bz2" "xz" "7z" "rar" "zst"
-    "iso" "img" "appimage" "deb" "rpm" "apk")
-  "Lista de extensões de arquivo que devem ser abertas em aplicativos externos especializados."
-  :type '(repeat string)
-  :group 'convenience)
+(defun emacs/file-binary-p (file)
+  "Retorna non-nil se FILE for um arquivo binário existente no disco.
+Inspeciona os primeiros 1024 bytes procurando por byte nulo (\\0),
+padrão canônico de detecção POSIX/UNIX (equivalente ao Git e comando file)."
+  (and (file-exists-p file)
+       (not (file-directory-p file))
+       (with-temp-buffer
+         (set-buffer-multibyte nil)
+         (condition-case nil
+             (progn
+               (insert-file-contents-literally file nil 0 1024)
+               (goto-char (point-min))
+               (search-forward "\0" nil t))
+           (error nil)))))
+
+(defun emacs/emacs-viewable-p (file)
+  "Retorna non-nil se FILE puder ser visualizado ou renderizado nativamente no Emacs.
+PDFs e documentos DjVu utilizam pdf-tools/doc-view, e imagens utilizam image-mode
+quando sob display gráfico."
+  (let ((ext (downcase (or (file-name-extension file) ""))))
+    (cond
+     ((member ext '("pdf" "djvu")) t)
+     ((and (display-graphic-p)
+           (fboundp 'image-type-from-file-name)
+           (image-type-from-file-name file))
+      t)
+     (t nil))))
 
 (defun emacs/open-external (path)
   "Abre PATH no aplicativo externo especializado ou padrão do sistema operacional."
@@ -93,25 +107,31 @@
 
 (defun emacs/universal-open (target)
   "Abre TARGET de forma inteligente (Smart Open / Open DWIM).
-URLs abrem no navegador, diretórios no Dired, arquivos de código e texto em buffers
-do Emacs, e mídias/documentos Office/PDFs em softwares especializados externos."
+URLs abrem no navegador, diretórios no Dired, arquivos de texto, código,
+PDFs e imagens em buffers nativos do Emacs. Arquivos binários sem visualizador
+integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
   (interactive "fAbrir arquivo, diretório ou URL: ")
   (cond
-   ;; URL
+   ;; 1. URLs
    ((string-match-p "\\`\\(https?\\|ftp\\|mailto\\|file\\)://" target)
     (browse-url target)
     (message "Abrindo URL no navegador: %s" target))
-   ;; Diretório
+   ;; 2. Diretórios
    ((file-directory-p target)
     (dired target))
-   ;; Arquivo
+   ;; 3. Arquivos
    (t
     (let* ((clean (string-trim target))
-           (expanded (expand-file-name clean))
-           (ext (downcase (or (file-name-extension clean) ""))))
+           (expanded (expand-file-name clean)))
       (cond
-       ((member ext emacs/external-file-extensions)
+       ;; Se não existe no disco, é um arquivo novo para edição no Emacs
+       ((not (file-exists-p expanded))
+        (find-file expanded))
+       ;; Se for binário e o Emacs NÃO tiver visualizador nativo: app externo do SO
+       ((and (emacs/file-binary-p expanded)
+             (not (emacs/emacs-viewable-p expanded)))
         (emacs/open-external expanded))
+       ;; Caso padrão (texto, código, markdown, org, configs, PDFs, imagens): buffer do Emacs
        (t
         (find-file expanded)))))))
 

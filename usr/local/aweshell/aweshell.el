@@ -996,8 +996,8 @@ suppressing minibuffer write messages."
 
 (defun aweshell/open (&rest args)
   "Smart open files, URLs or directories with ARGS.
-Code and text files open in Emacs buffers, whereas office documents, PDFs,
-and media dispatch to the system default specialized applications."
+Code, text files, and PDFs open in Emacs buffers, whereas specialized binary
+files (office documents, media) dispatch to system default applications."
   (if (null args)
       (message "Uso: open <arquivo|diretorio|url>")
     (let ((targets (if (fboundp 'flatten-tree)

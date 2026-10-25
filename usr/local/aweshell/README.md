@@ -65,21 +65,21 @@ O **Aweshell** atua como a camada de projeção e interoperabilidade do [Univers
 
 ### Dicionário de Paridade de Aliases
 
-| Categoria         | Alias Aweshell          | Comando Expandido                       | Papel no Ecossistema                                         |
-| :---------------- | :---------------------- | :-------------------------------------- | :----------------------------------------------------------- |
-| **IA CLI**        | `agyc` / `agy-continue` | `agy -c`                                | Retoma a última sessão do Antigravity CLI                    |
-| **IA CLI**        | `agya` / `agyd`         | `agy --dangerously-skip-permissions`    | Executa o agy CLI aprovando ferramentas automaticamente      |
-| **IA CLI**        | `agyca` / `agycd`       | `agy -c --dangerously-skip-permissions` | Retoma sessão com auto-aprovação total                       |
-| **Sincronização** | `upall`                 | `update-all`                            | Atualiza todo o Quarteto (Shell, Profile, Vault, Editores)   |
-| **Sincronização** | `upsh`                  | `update-shell`                          | Atualiza repositório do Shell e recarrega                    |
-| **Sincronização** | `uped`                  | `update-editors`                        | Atualiza suíte de editores e Elisp                           |
-| **Sincronização** | `uprc`                  | `update-profile`                        | Atualiza dotfiles e skills                                   |
-| **Sincronização** | `upmodes`               | `update-emacs-modes`                    | Sincroniza submódulos de modos locais do Emacs               |
-| **Emacs Buffer**  | `e <alvo>`              | `find-file`                             | Abre arquivo no buffer corrente do Emacs                     |
-| **Emacs Buffer**  | `ee <alvo>`             | `find-file-other-window`                | Abre arquivo dividindo a janela                              |
-| **Emacs Buffer**  | `d` / `dired`           | `dired`                                 | Abre navegação de diretórios Dired                           |
-| **Smart Open**    | `open <alvo>` / `o`     | `emacs/universal-open`                  | Abre texto/código em buffer; PDF/Office/mídia em app externo |
-| **Git**           | `gs`, `ga`, `gc`, `gp`  | `git status`, `add`, etc.               | Ciclo de vida Git idêntico ao terminal                       |
+| Categoria         | Alias Aweshell          | Comando Expandido                       | Papel no Ecossistema                                                           |
+| :---------------- | :---------------------- | :-------------------------------------- | :----------------------------------------------------------------------------- |
+| **IA CLI**        | `agyc` / `agy-continue` | `agy -c`                                | Retoma a última sessão do Antigravity CLI                                      |
+| **IA CLI**        | `agya` / `agyd`         | `agy --dangerously-skip-permissions`    | Executa o agy CLI aprovando ferramentas automaticamente                        |
+| **IA CLI**        | `agyca` / `agycd`       | `agy -c --dangerously-skip-permissions` | Retoma sessão com auto-aprovação total                                         |
+| **Sincronização** | `upall`                 | `update-all`                            | Atualiza todo o Quarteto (Shell, Profile, Vault, Editores)                     |
+| **Sincronização** | `upsh`                  | `update-shell`                          | Atualiza repositório do Shell e recarrega                                      |
+| **Sincronização** | `uped`                  | `update-editors`                        | Atualiza suíte de editores e Elisp                                             |
+| **Sincronização** | `uprc`                  | `update-profile`                        | Atualiza dotfiles e skills                                                     |
+| **Sincronização** | `upmodes`               | `update-emacs-modes`                    | Sincroniza submódulos de modos locais do Emacs                                 |
+| **Emacs Buffer**  | `e <alvo>`              | `find-file`                             | Abre arquivo no buffer corrente do Emacs                                       |
+| **Emacs Buffer**  | `ee <alvo>`             | `find-file-other-window`                | Abre arquivo dividindo a janela                                                |
+| **Emacs Buffer**  | `d` / `dired`           | `dired`                                 | Abre navegação de diretórios Dired                                             |
+| **Smart Open**    | `open <alvo>` / `o`     | `emacs/universal-open`                  | Abre texto/código/PDF em buffer; binários externos (Office/mídia) em app do SO |
+| **Git**           | `gs`, `ga`, `gc`, `gp`  | `git status`, `add`, etc.               | Ciclo de vida Git idêntico ao terminal                                         |
 
 ---
 
@@ -128,14 +128,14 @@ Para definir seu tema favorito:
 
 ### Lançadores Globais de Aplicativos (`C-c o`)
 
-| Atalho                        | Comando                   | Ação                                                              |
-| :---------------------------- | :------------------------ | :---------------------------------------------------------------- |
-| **`C-c o o`** / **`C-c o f`** | `emacs/universal-open`    | Smart Open: código em buffer, PDFs/Office/mídias em apps externos |
-| **`C-c o b`**                 | `emacs/open-browser`      | Abre o navegador padrão do sistema                                |
-| **`C-c o w`**                 | `emacs/open-office`       | Abre a suíte office (LibreOffice, OnlyOffice, Collabora)          |
-| **`C-c o d`**                 | `emacs/open-file-manager` | Abre a pasta atual no gerenciador de arquivos gráfico do sistema  |
-| **`C-c o t`**                 | `emacs/open-terminal`     | Abre terminal externo dedicado (`foot` ou `xterm`) no diretório   |
-| **`C-c o a`**                 | `aweshell/new`            | Dispara uma nova sessão numerada do Aweshell                      |
+| Atalho                        | Comando                   | Ação                                                                             |
+| :---------------------------- | :------------------------ | :------------------------------------------------------------------------------- |
+| **`C-c o o`** / **`C-c o f`** | `emacs/universal-open`    | Smart Open: texto/código/PDF em buffer, binários (Office/mídia) em apps externos |
+| **`C-c o b`**                 | `emacs/open-browser`      | Abre o navegador padrão do sistema                                               |
+| **`C-c o w`**                 | `emacs/open-office`       | Abre a suíte office (LibreOffice, OnlyOffice, Collabora)                         |
+| **`C-c o d`**                 | `emacs/open-file-manager` | Abre a pasta atual no gerenciador de arquivos gráfico do sistema                 |
+| **`C-c o t`**                 | `emacs/open-terminal`     | Abre terminal externo dedicado (`foot` ou `xterm`) no diretório                  |
+| **`C-c o a`**                 | `aweshell/new`            | Dispara uma nova sessão numerada do Aweshell                                     |
 
 ---
 
