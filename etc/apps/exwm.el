@@ -3,14 +3,27 @@
 ;; Module: Emacs X11 Window Manager (EXWM) Integration
 ;; ----------------------------------------------------------------
 
-(when (and (string= (getenv "EMACS_OS_MODE") "x11")
-           (display-graphic-p))
-  (use-package xelb
-    :ensure t)
+(when (string= (getenv "EMACS_OS_MODE") "x11")
+  ;; Garante xelb e exwm imediatamente no load-path
+  (let ((builds-dir (expand-file-name "var/lib/elpaca/builds/"
+                                      (or (bound-and-true-p user-emacs-directory)
+                                          (expand-file-name "~/.emacs.d/")))))
+    (dolist (pkg '("xelb" "exwm"))
+      (let ((pkg-dir (expand-file-name pkg builds-dir)))
+        (when (file-directory-p pkg-dir)
+          (add-to-list 'load-path pkg-dir)))))
 
-  (use-package exwm
-    :ensure t
-    :config
+  (require 'xelb nil t)
+  (require 'exwm nil t)
+
+  (when (featurep 'exwm)
+    ;; Assume o display sem prompt interativo
+    (setq exwm-replace t)
+
+    ;; Mandatório para gerenciamento correto de geometria no EXWM
+    (setq frame-resize-pixelwise t
+          window-resize-pixelwise t)
+
     (setq exwm-workspace-number 4)
 
     (add-hook 'exwm-update-class-hook
@@ -56,9 +69,9 @@
             ?\M-:
             ?\C-\M-j))
 
-    (define-key exwm-mode-map [?\C-q] #'exwm-input-send-next-key)
+    (when (boundp 'exwm-mode-map)
+      (define-key exwm-mode-map [?\C-q] #'exwm-input-send-next-key))
 
-    (require 'exwm)
     (if (fboundp 'exwm-wm-mode)
         (exwm-wm-mode 1)
       (when (fboundp 'exwm-enable)

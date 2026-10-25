@@ -279,7 +279,8 @@ Under Wayland (PGTK), positioning is managed exclusively by the compositor."
 
 (defun frame/new-setup (frame)
   "Configure newly created graphical FRAME."
-  (when (display-graphic-p frame)
+  (when (and (display-graphic-p frame)
+             (not (string= (getenv "EMACS_OS_MODE") "x11")))
     (select-frame frame)
     (set-frame-size frame 81 27)
     (frame/center-screen frame)))
@@ -290,7 +291,8 @@ Under Wayland (PGTK), positioning is managed exclusively by the compositor."
 (add-hook 'after-make-frame-functions #'frame/new-setup)
 (add-hook 'window-setup-hook
           (lambda ()
-            (when (display-graphic-p)
+            (when (and (display-graphic-p)
+                       (not (string= (getenv "EMACS_OS_MODE") "x11")))
               (set-frame-size (selected-frame) 81 27)
               (frame/center-screen (selected-frame)))))
 
