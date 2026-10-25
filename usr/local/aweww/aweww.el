@@ -239,7 +239,7 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
   "Return candidate browser binaries tailored for current operating system."
   (pcase system-type
     ('gnu/linux aweww-linux-browsers)
-    ('berkeley-unix aweww-bsd-browsers)
+    ((or 'berkeley-unix 'openbsd 'netbsd) aweww-bsd-browsers)
     ('darwin aweww-darwin-browsers)
     ((or 'windows-nt 'cygwin 'ms-dos) aweww-windows-browsers)
     (_ aweww-linux-browsers)))
@@ -306,42 +306,66 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
       (message "[aweww] Estratégia: %s (Nenhum navegador encontrado no PATH)" strategy))))
 
 ;; ----------------------------------------------------------------------------
-;;  Dynamic User-Agent Resolution
+;;  Dynamic User-Agent Resolution (Browser Delegation & OS Antifragility)
 ;; ----------------------------------------------------------------------------
 
 (defvar aweww--cached-user-agent nil
-  "Cached dynamic User-Agent string to avoid re-invoking browser --version repeatedly.")
+  "Cached dynamic User-Agent string to avoid re-invoking browser repeatedly.")
 
 (defun aweww--platform-string ()
   "Return canonical platform architecture string for User-Agent."
   (pcase system-type
     ('gnu/linux "X11; Linux x86_64")
-    ('berkeley-unix "X11; FreeBSD amd64")
+    ('openbsd "X11; OpenBSD amd64")
+    ('netbsd "X11; NetBSD amd64")
+    ('berkeley-unix
+     (if (string-match-p "openbsd" (downcase (or (getenv "OSTYPE")
+                                                 (shell-command-to-string "uname -s 2>/dev/null")
+                                                 "")))
+         "X11; OpenBSD amd64"
+       "X11; FreeBSD amd64"))
     ('darwin "Macintosh; Intel Mac OS X 10_15_7")
     ((or 'windows-nt 'cygwin 'ms-dos) "Windows NT 10.0; Win64; x64")
     (_ "X11; Linux x86_64")))
 
+(defun aweww--query-browser-user-agent (browser-path)
+  "Query BROWSER-PATH directly for its native `navigator.userAgent' and strip `Headless'."
+  (when (and browser-path
+             (file-executable-p browser-path)
+             (aweww--browser-supports-dump-dom-p browser-path))
+    (condition-case nil
+        (let* ((data-url "data:text/html,<script>document.write(navigator.userAgent)</script>")
+               (cmd (format "%s --headless --disable-gpu --dump-dom %s 2>/dev/null"
+                            (shell-quote-argument browser-path)
+                            (shell-quote-argument data-url)))
+               (raw (string-trim (shell-command-to-string cmd))))
+          (when (string-match "<body>\\(Mozilla/[^<]+\\)</body>" raw)
+            (let ((native-ua (match-string 1 raw)))
+              (replace-regexp-in-string "HeadlessChrome" "Chrome" native-ua))))
+      (error nil))))
+
 (defun aweww--resolve-user-agent (&optional browser-path)
-  "Resolve User-Agent string, querying BROWSER-PATH version dynamically if set to `auto'."
+  "Resolve User-Agent string, delegating directly to BROWSER-PATH if set to `auto'."
   (if (and (stringp aweww-user-agent) (not (string= aweww-user-agent "auto")))
       aweww-user-agent
     (or aweww--cached-user-agent
         (setq aweww--cached-user-agent
               (let* ((bin (or browser-path (aweww--find-browser)))
-                     (platform (aweww--platform-string))
-                     (raw-ver (when (and bin (file-executable-p bin))
-                                (condition-case nil
-                                    (string-trim
-                                     (shell-command-to-string
-                                      (concat (shell-quote-argument bin) " --version 2>/dev/null")))
-                                  (error nil))))
-                     (ver (if (and raw-ver (string-match "\\([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+\\)" raw-ver))
-                              (match-string 1 raw-ver)
-                            (if (and raw-ver (string-match "\\([0-9]+\\.[0-9]+\\.[0-9]+\\)" raw-ver))
-                                (match-string 1 raw-ver)
-                              "130.0.0.0"))))
-                (format "Mozilla/5.0 (%s) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s Safari/537.36"
-                        platform ver))))))
+                     (queried-ua (aweww--query-browser-user-agent bin)))
+                (or queried-ua
+                    ;; Antifragile fallback to OS/platform generator if query failed
+                    (let* ((platform (aweww--platform-string))
+                           (raw-ver (when (and bin (file-executable-p bin))
+                                      (condition-case nil
+                                          (string-trim
+                                           (shell-command-to-string
+                                            (concat (shell-quote-argument bin) " --version 2>/dev/null")))
+                                        (error nil))))
+                           (ver (if (and raw-ver (string-match "\\([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+\\)" raw-ver))
+                                    (match-string 1 raw-ver)
+                                  "156.0.0.0")))
+                      (format "Mozilla/5.0 (%s) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s Safari/537.36"
+                              platform ver))))))))
 
 ;; ============================================================================
 ;;  HYDRATION & FETCH ENGINES (DUAL-ENGINE ARCHITECTURE)
