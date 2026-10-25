@@ -46,6 +46,10 @@
                 (when (fboundp 'doom-modeline-set-modeline)
                   (doom-modeline-set-modeline 'special))))
 
-    (exwm-enable)))
+    (require 'exwm)
+    (if (fboundp 'exwm-wm-mode)
+        (exwm-wm-mode 1)
+      (when (fboundp 'exwm-enable)
+        (exwm-enable))))
 
 (provide 'init-exwm)
