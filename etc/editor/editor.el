@@ -231,11 +231,13 @@
   (add-hook 'suspend-hook
             (lambda ()
               (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" 1.0)
-              (unless (display-graphic-p) (send-string-to-terminal "\e[1 q\e]112\7"))))
+              (unless (or (daemonp) (display-graphic-p))
+                (ignore-errors (send-string-to-terminal "\e[1 q\e]112\7")))))
   (add-hook 'kill-emacs-hook
             (lambda ()
               (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" 1.0)
-              (unless (display-graphic-p) (send-string-to-terminal "\e[1 q\e]112\7")))))
+              (unless (or (daemonp) (display-graphic-p))
+                (ignore-errors (send-string-to-terminal "\e[1 q\e]112\7"))))))
 
 (use-package evil-tutor
   :defer t

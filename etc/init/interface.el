@@ -194,8 +194,9 @@ renders the graphical logo on GUI frames created by emacsclient."
         (setq mouse-wheel-tilt-scroll nil)
         (add-hook 'emacs-startup-hook
                   (lambda ()
-                    (xterm-mouse-mode 1)
-                    (send-string-to-terminal "\e[?1003l"))))
+                    (unless (or (daemonp) (display-graphic-p))
+                      (xterm-mouse-mode 1)
+                      (ignore-errors (send-string-to-terminal "\e[?1003l")))))))
       (when (and (fboundp 'gpm-mouse-start) (string-equal (or (getenv "TERM") "") "linux"))
         (ignore-errors (gpm-mouse-mode 1)))
       (interface/apply-tty-faces))
