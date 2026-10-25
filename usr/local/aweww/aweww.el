@@ -38,32 +38,42 @@
 
 (defcustom aweww-linux-browsers
   '("chromium-browser" "chromium" "google-chrome-stable" "google-chrome"
-    "brave-browser" "brave" "microsoft-edge-stable" "microsoft-edge" "firefox")
+    "brave-browser" "brave" "microsoft-edge-stable" "microsoft-edge"
+    "vivaldi" "vivaldi-stable" "opera" "ungoogled-chromium"
+    "firefox" "firefox-esr" "librewolf")
   "Canonical candidate list of headless browsers for GNU/Linux."
   :type '(repeat string)
   :group 'aweww)
 
 (defcustom aweww-bsd-browsers
-  '("chromium" "chrome" "brave" "firefox")
+  '("chrome" "chromium" "brave" "iridium" "firefox" "firefox-esr" "librewolf")
   "Canonical candidate list of headless browsers for FreeBSD, OpenBSD and NetBSD."
   :type '(repeat string)
   :group 'aweww)
 
 (defcustom aweww-darwin-browsers
-  '("chromium" "google-chrome"
+  '("chromium" "google-chrome" "brave-browser" "brave" "microsoft-edge"
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-    "brave"
+    "/Applications/Chromium.app/Contents/MacOS/Chromium"
     "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
-    "microsoft-edge"
     "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge"
     "firefox"
-    "/Applications/Firefox.app/Contents/MacOS/firefox")
+    "/Applications/Firefox.app/Contents/MacOS/firefox"
+    "/Applications/LibreWolf.app/Contents/MacOS/librewolf")
   "Canonical candidate list of headless browsers for macOS."
   :type '(repeat string)
   :group 'aweww)
 
 (defcustom aweww-windows-browsers
-  '("chrome.exe" "msedge.exe" "brave.exe" "chromium.exe" "firefox.exe")
+  '("chrome.exe" "msedge.exe" "brave.exe" "chromium.exe"
+    "C:/Program Files/Google/Chrome/Application/chrome.exe"
+    "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"
+    "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+    "C:/Program Files/Microsoft/Edge/Application/msedge.exe"
+    "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
+    "firefox.exe"
+    "C:/Program Files/Mozilla Firefox/firefox.exe"
+    "C:/Program Files (x86)/Mozilla Firefox/firefox.exe")
   "Canonical candidate list of headless browsers for Windows."
   :type '(repeat string)
   :group 'aweww)
@@ -85,10 +95,12 @@ Options:
   :type '(repeat string)
   :group 'aweww)
 
-(defcustom aweww-user-agent
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
-  "Desktop User-Agent string used by headless browser to bypass bot noscript shields."
-  :type 'string
+(defcustom aweww-user-agent 'auto
+  "User-Agent string used by headless browser to bypass bot noscript shields.
+When set to `auto' (default), dynamically queries the active browser's real version
+and formats an authentic desktop User-Agent string tailored for the OS architecture."
+  :type '(choice (const :tag "Automático (Detecta Versão Real do Browser e SO)" auto)
+                 (string :tag "Personalizado"))
   :group 'aweww)
 
 (defcustom aweww-virtual-time-budget 2500
@@ -277,12 +289,51 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
                                   '("auto" "chromium-only" "custom-list")
                                   nil t nil nil "auto"))))
   (setq aweww-browser-strategy strategy)
+  (setq aweww--cached-user-agent nil)
   (let ((resolved (aweww--find-browser)))
     (if resolved
         (message "[aweww] Estratégia: %s (Binário: %s | Dump-DOM: %s)"
                  strategy resolved
                  (if (aweww--browser-supports-dump-dom-p resolved) "Sim" "Não (Firefox)"))
       (message "[aweww] Estratégia: %s (Nenhum navegador encontrado no PATH)" strategy))))
+
+;; ----------------------------------------------------------------------------
+;;  Dynamic User-Agent Resolution
+;; ----------------------------------------------------------------------------
+
+(defvar aweww--cached-user-agent nil
+  "Cached dynamic User-Agent string to avoid re-invoking browser --version repeatedly.")
+
+(defun aweww--platform-string ()
+  "Return canonical platform architecture string for User-Agent."
+  (pcase system-type
+    ('gnu/linux "X11; Linux x86_64")
+    ('berkeley-unix "X11; FreeBSD amd64")
+    ('darwin "Macintosh; Intel Mac OS X 10_15_7")
+    ((or 'windows-nt 'cygwin 'ms-dos) "Windows NT 10.0; Win64; x64")
+    (_ "X11; Linux x86_64")))
+
+(defun aweww--resolve-user-agent (&optional browser-path)
+  "Resolve User-Agent string, querying BROWSER-PATH version dynamically if set to `auto'."
+  (if (and (stringp aweww-user-agent) (not (string= aweww-user-agent "auto")))
+      aweww-user-agent
+    (or aweww--cached-user-agent
+        (setq aweww--cached-user-agent
+              (let* ((bin (or browser-path (aweww--find-browser)))
+                     (platform (aweww--platform-string))
+                     (raw-ver (when (and bin (file-executable-p bin))
+                                (condition-case nil
+                                    (string-trim
+                                     (shell-command-to-string
+                                      (concat (shell-quote-argument bin) " --version 2>/dev/null")))
+                                  (error nil))))
+                     (ver (if (and raw-ver (string-match "\\([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+\\)" raw-ver))
+                              (match-string 1 raw-ver)
+                            (if (and raw-ver (string-match "\\([0-9]+\\.[0-9]+\\.[0-9]+\\)" raw-ver))
+                                (match-string 1 raw-ver)
+                              "130.0.0.0"))))
+                (format "Mozilla/5.0 (%s) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/%s Safari/537.36"
+                        platform ver))))))
 
 ;; ============================================================================
 ;;  HYDRATION & FETCH ENGINES (DUAL-ENGINE ARCHITECTURE)
@@ -307,7 +358,7 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
                   "--disable-gpu")
                 (when (zerop (user-uid))
                   '("--no-sandbox"))
-                (list (format "--user-agent=%s" aweww-user-agent)
+                (list (format "--user-agent=%s" (aweww--resolve-user-agent browser))
                       (format "--virtual-time-budget=%d" aweww-virtual-time-budget)
                       (format "--user-data-dir=%s" profile)
                       "--dump-dom"
@@ -487,16 +538,20 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
       (message "[aweww] Modo leitura ativado (Pressione [R] para voltar)."))))
 
 (defun aweww-hydrate-current-buffer ()
-  "Re-render current buffer with full JS DOM hydration from headless browser."
+  "Re-render current buffer with full JS DOM hydration from headless browser.
+If no headless browser supporting --dump-dom is available, dispatch to external browser."
   (interactive)
   (when (derived-mode-p 'aweww-mode 'eww-mode)
     (let ((current-url (or aweww-current-url (plist-get eww-data :url))))
       (if (not current-url)
           (message "[aweww] Nenhuma URL ativa no buffer atual.")
-        (aweww-fetch
-         current-url
-         (lambda (html engine)
-           (aweww-render-html html current-url (current-buffer) engine)))))))
+        (if (aweww--find-headless-browser)
+            (aweww-fetch
+             current-url
+             (lambda (html engine)
+               (aweww-render-html html current-url (current-buffer) engine)))
+          (message "[aweww] Motor headless (--dump-dom) indisponível; despachando para navegador externo (ex: Firefox)...")
+          (aweww-open-in-external-browser current-url))))))
 
 ;; ============================================================================
 ;;  LINK NAVIGATION & URL NORMALIZATION
@@ -827,6 +882,8 @@ Replaces three or more consecutive newlines with exactly two."
                           (if (and active-browser (string-match-p "firefox" active-browser))
                               "⚠️  Não (Firefox não possui flag CLI --dump-dom; operando em modo fallback nativo)"
                             "❌ Não disponível"))))
+        (insert (format "• User-Agent Dinâmico : %s\n"
+                        (aweww--resolve-user-agent active-browser)))
         (insert (format "• Suporte libxml2     : %s\n"
                         (if libxml-ok "✅ Presente no Emacs" "❌ Ausente (compilado sem libxml2)")))
         (insert (format "• Suporte shrface     : %s\n"
