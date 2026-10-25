@@ -929,6 +929,8 @@ suppressing minibuffer write messages."
                    ("ee" "find-file-other-window $1")
                    ("d" "dired $1")
                    ("dired" "dired $1")
+                   ("open" "open $@*")
+                   ("o" "open $@*")
                    ("gcc" "gcc -fdiagnostics-color=always $@*")
                    ("g++" "g++ -fdiagnostics-color=always $@*")
                    ("clang" ,(if (eq system-type 'windows-nt)
@@ -991,6 +993,23 @@ suppressing minibuffer write messages."
       (mapc #'find-file (mapcar #'expand-file-name file-list)))))
 
 (defalias 'eshell/e 'aweshell/emacs)
+
+(defun aweshell/open (&rest args)
+  "Smart open files, URLs or directories with ARGS.
+Code and text files open in Emacs buffers, whereas office documents, PDFs,
+and media dispatch to the system default specialized applications."
+  (if (null args)
+      (message "Uso: open <arquivo|diretorio|url>")
+    (let ((targets (if (fboundp 'flatten-tree)
+                       (flatten-tree args)
+                     (with-no-warnings (eshell-flatten-list args)))))
+      (dolist (target targets)
+        (if (fboundp 'emacs/universal-open)
+            (emacs/universal-open (format "%s" target))
+          (find-file (expand-file-name (format "%s" target))))))))
+
+(defalias 'eshell/open 'aweshell/open)
+(defalias 'eshell/o 'aweshell/open)
 
 (defun aweshell/unpack (file &rest args)
   "Unpack FILE with ARGS."

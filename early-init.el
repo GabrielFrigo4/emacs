@@ -55,8 +55,11 @@
 
 (unless (display-graphic-p)
   (push '(tool-bar-lines . 0) default-frame-alist)
+  (push '(tool-bar-lines . 0) initial-frame-alist)
   (push '(vertical-scroll-bars . nil) default-frame-alist)
+  (push '(vertical-scroll-bars . nil) initial-frame-alist)
   (push '(menu-bar-lines . 0) default-frame-alist)
+  (push '(menu-bar-lines . 0) initial-frame-alist)
   (setq inhibit-message t)
   (add-hook 'emacs-startup-hook
             (lambda ()

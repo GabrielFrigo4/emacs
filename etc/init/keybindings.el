@@ -117,6 +117,17 @@
 (global-set-key (kbd "C-c C-s")  'shell-command)
 (global-set-key (kbd "C-c C-a")  'aweshell/toggle)
 
+;; ================================
+;; APPLICATION & OPEN LAUNCHERS (C-c o)
+;; ================================
+(global-set-key (kbd "C-c o o") 'emacs/universal-open)
+(global-set-key (kbd "C-c o f") 'emacs/universal-open)
+(global-set-key (kbd "C-c o b") 'emacs/open-browser)
+(global-set-key (kbd "C-c o w") 'emacs/open-office)
+(global-set-key (kbd "C-c o d") 'emacs/open-file-manager)
+(global-set-key (kbd "C-c o t") 'emacs/open-terminal)
+(global-set-key (kbd "C-c o a") 'aweshell/new)
+
 (global-unset-key (kbd "M-<down-mouse-1>"))
 (global-set-key (kbd "M-<mouse-1>")    'mc/add-cursor-on-click)
 (global-set-key (kbd "C-S-<mouse-1>")  'mc/add-cursor-on-click)

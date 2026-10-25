@@ -187,28 +187,59 @@ renders the graphical logo on GUI frames created by emacsclient."
     (set-face-attribute 'window-divider-last-pixel nil :inherit 'window-divider))
   (window-divider-mode 1))
 
-(if (not (display-graphic-p))
-    (progn
-      (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
-      (when (fboundp 'xterm-mouse-mode)
-        (setq mouse-wheel-tilt-scroll nil)
-        (add-hook 'emacs-startup-hook
-                  (lambda ()
-                    (unless (or (daemonp) (display-graphic-p))
-                      (xterm-mouse-mode 1)
-                      (ignore-errors (send-string-to-terminal "\e[?1003l")))))))
-      (when (and (fboundp 'gpm-mouse-start) (string-equal (or (getenv "TERM") "") "linux"))
-        (ignore-errors (gpm-mouse-mode 1)))
-      (interface/apply-tty-faces))
-  (when (fboundp 'menu-bar-mode) (menu-bar-mode 1)))
+(defcustom interface/enable-tty-menu-bar nil
+  "Whether to display the menu-bar in text terminals (TTY).
+Defaults to nil on both Linux and FreeBSD. Can be customized to t
+on FreeBSD to test mouse interaction with moused/syscons/vt."
+  :type 'boolean
+  :group 'interface)
+
+(defun interface/menu-bar-lines-for-frame (&optional frame)
+  "Return desired menu-bar-lines for FRAME based on display type and OS."
+  (let* ((target (or frame (selected-frame)))
+         (is-graphic (display-graphic-p target))
+         (raw-tty (and (fboundp 'display-raw-tty-p) (display-raw-tty-p target)))
+         (is-linux (eq system-type 'gnu/linux))
+         (term (or (and (fboundp 'tty-type) (tty-type target))
+                   (getenv "TERM") "")))
+    (cond
+     (is-graphic 1)
+     ;; Raw Linux VT (console) nunca deve exibir menu-bar
+     ((or (and is-linux raw-tty) (string-equal term "linux")) 0)
+     ;; Outros TTYs (PTYs ou FreeBSD vt/syscons) respeitam interface/enable-tty-menu-bar
+     (interface/enable-tty-menu-bar 1)
+     (t 0))))
+
+(defun interface/apply-menu-bar (&optional frame)
+  "Apply menu-bar visibility to FRAME."
+  (let* ((target (or frame (selected-frame)))
+         (lines (interface/menu-bar-lines-for-frame target)))
+    (set-frame-parameter target 'menu-bar-lines lines)
+    (if (display-graphic-p target)
+        (when (fboundp 'menu-bar-mode) (menu-bar-mode 1))
+      (when (= lines 0)
+        (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))))))
+
+(interface/apply-menu-bar)
+
+(unless (display-graphic-p)
+  (when (fboundp 'xterm-mouse-mode)
+    (setq mouse-wheel-tilt-scroll nil)
+    (add-hook 'emacs-startup-hook
+              (lambda ()
+                (unless (or (daemonp) (display-graphic-p))
+                  (xterm-mouse-mode 1)
+                  (ignore-errors (send-string-to-terminal "\e[?1003l"))))))
+  (when (and (fboundp 'gpm-mouse-start) (string-equal (or (getenv "TERM") "") "linux"))
+    (ignore-errors (gpm-mouse-mode 1)))
+  (interface/apply-tty-faces))
 
 (add-hook 'after-make-frame-functions
           (lambda (frame)
             (with-selected-frame frame
+              (interface/apply-menu-bar frame)
               (if (display-graphic-p frame)
-                  (when (fboundp 'menu-bar-mode)
-                    (set-frame-parameter frame 'menu-bar-lines 1))
-                (set-frame-parameter frame 'menu-bar-lines 0)
+                  nil
                 (when (fboundp 'xterm-mouse-mode)
                   (xterm-mouse-mode 1)
                   (ignore-errors (send-string-to-terminal "\e[?1003l" frame)))
