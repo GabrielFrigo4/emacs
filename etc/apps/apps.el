@@ -67,31 +67,72 @@
 ;; UNIVERSAL OPEN & APP LAUNCHERS
 ;; --------------------------------
 
+(defun emacs/file-mime-type (file)
+  "Retorna a string MIME do arquivo via comando `file` do SO (libmagic) ou nil.
+Compatível com Linux, FreeBSD, macOS e MSYS2."
+  (when (and (file-exists-p file)
+             (not (file-directory-p file))
+             (executable-find "file"))
+    (with-temp-buffer
+      (when (zerop (call-process "file" nil t nil "-b" "--mime-type" (expand-file-name file)))
+        (let ((mime (string-trim (buffer-string))))
+          (unless (string-empty-p mime) mime))))))
+
 (defun emacs/file-binary-p (file)
   "Retorna non-nil se FILE for um arquivo binário existente no disco.
-Inspeciona os primeiros 1024 bytes procurando por byte nulo (\\0),
-padrão canônico de detecção POSIX/UNIX (equivalente ao Git e comando file)."
+Utiliza como autoridade primária o utilitário UNIX `file` (libmagic) do SO
+para obter o MIME type real. Arquivos text/* e formatos textuais de dados/código
+são classificados como texto.
+Como segunda linha de defesa antifrágil (caso `file` não esteja no PATH),
+inspeciona os primeiros 1024 bytes procurando por byte nulo (\\0)."
   (and (file-exists-p file)
        (not (file-directory-p file))
-       (with-temp-buffer
-         (set-buffer-multibyte nil)
-         (condition-case nil
-             (progn
-               (insert-file-contents-literally file nil 0 1024)
-               (goto-char (point-min))
-               (search-forward "\0" nil t))
-           (error nil)))))
+       (let ((mime (emacs/file-mime-type file)))
+         (if mime
+             (cond
+              ;; Tipos MIME puramente textuais
+              ((string-prefix-p "text/" mime) nil)
+              ;; Dados estruturados e linguagens tratadas com application/*
+              ((member mime '("application/json"
+                              "application/xml"
+                              "application/javascript"
+                              "application/x-yaml"
+                              "application/x-shellscript"
+                              "application/toml"
+                              "application/sql"
+                              "application/graphql"
+                              "application/x-perl"
+                              "application/x-python"
+                              "application/x-ruby"
+                              "application/x-subrip"
+                              "inode/x-empty"))
+               nil)
+              ;; Qualquer outro MIME application/*, video/*, audio/* é binário
+              (t t))
+           ;; Fallback defensivo em Elisp autônomo (sem o comando file no PATH)
+           (with-temp-buffer
+             (set-buffer-multibyte nil)
+             (condition-case nil
+                 (progn
+                   (insert-file-contents-literally file nil 0 1024)
+                   (goto-char (point-min))
+                   (search-forward "\0" nil t))
+               (error nil)))))))
 
 (defun emacs/emacs-viewable-p (file)
   "Retorna non-nil se FILE puder ser visualizado ou renderizado nativamente no Emacs.
 PDFs e documentos DjVu utilizam pdf-tools/doc-view, e imagens utilizam image-mode
 quando sob display gráfico."
-  (let ((ext (downcase (or (file-name-extension file) ""))))
+  (let ((mime (emacs/file-mime-type file))
+        (ext (downcase (or (file-name-extension file) ""))))
     (cond
-     ((member ext '("pdf" "djvu")) t)
+     ((or (and mime (member mime '("application/pdf" "application/postscript" "image/vnd.djvu")))
+          (member ext '("pdf" "djvu" "ps" "eps")))
+      t)
      ((and (display-graphic-p)
-           (fboundp 'image-type-from-file-name)
-           (image-type-from-file-name file))
+           (or (and mime (string-prefix-p "image/" mime))
+               (and (fboundp 'image-type-from-file-name)
+                    (image-type-from-file-name file))))
       t)
      (t nil))))
 
