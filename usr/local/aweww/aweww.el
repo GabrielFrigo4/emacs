@@ -68,6 +68,10 @@
   '("chrome.exe" "msedge.exe" "brave.exe" "chromium.exe"
     "C:/Program Files/Google/Chrome/Application/chrome.exe"
     "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe"
+    "C:/Program Files/Chromium/Application/chrome.exe"
+    "C:/Program Files (x86)/Chromium/Application/chrome.exe"
+    "C:/Program Files/Chromium/Application/chromium.exe"
+    "C:/Program Files (x86)/Chromium/Application/chromium.exe"
     "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
     "C:/Program Files/Microsoft/Edge/Application/msedge.exe"
     "C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe"
@@ -254,10 +258,14 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
      (aweww--system-browser-list))))
 
 (defun aweww--find-browser ()
-  "Locate the first available browser executable in PATH."
+  "Locate the first available browser executable in PATH or absolute paths."
   (catch 'found
     (dolist (bin (aweww--resolve-browser-list))
-      (let ((path (executable-find bin)))
+      (let ((path (cond
+                   ((and (file-name-absolute-p bin) (file-executable-p bin))
+                    bin)
+                   ((executable-find bin))
+                   (t nil))))
         (when path
           (throw 'found path))))
     nil))
