@@ -151,20 +151,20 @@
     "Synchronize terminal cursor shape and dynamic theme tone with current Evil state."
     (cond
      ((minibufferp)
-      (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" 0.90))
+      (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" 0.84))
      ((evil-emacs-state-p)
       (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0))
      ((not (bound-and-true-p evil-local-mode))
       (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0))
      ((evil-insert-state-p)
-      (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" 0.95))
+      (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" 0.92))
      ((or (evil-replace-state-p)
           (evil-operator-state-p)
           (eq (bound-and-true-p evil-force-cursor) 'replace)
           (eq (bound-and-true-p evil-force-cursor) 'hollow))
-      (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" 0.85))
+      (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" 0.76))
      ((evil-visual-state-p)
-      (emacs/set-terminal-cursor "\e[?5c" "\e[1 q" 0.80))
+      (emacs/set-terminal-cursor "\e[?5c" "\e[1 q" 0.68))
      (t
       (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0))))
 
@@ -188,7 +188,7 @@
               (lambda (orig-fun &rest args)
                 (let ((old-cursor cursor-type))
                   (setq-local cursor-type '(hbar . 4))
-                  (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" 0.85)
+                  (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" 0.76)
                   (unwind-protect
                       (apply orig-fun args)
                     (setq-local cursor-type old-cursor)
