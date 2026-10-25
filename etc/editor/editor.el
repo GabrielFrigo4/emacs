@@ -110,14 +110,23 @@
              (nb (min 255 (max 0 (round (+ (* cb alpha) (* bb (- 1.0 alpha))))))))
         (format "#%02x%02x%02x" nr ng nb))))
 
+  (defvar emacs/base-cursor-color nil
+    "Base unblended cursor color from the active theme.")
+
   (defun emacs/theme-cursor-color ()
-    "Resolve active theme cursor color or default foreground."
-    (let ((bg (ignore-errors (face-attribute 'cursor :background nil t)))
-          (fg (ignore-errors (face-attribute 'default :foreground nil t))))
-      (cond
-       ((and (stringp bg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" bg)) bg)
-       ((and (stringp fg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" fg)) fg)
-       (t "#ffffff"))))
+    "Resolve active theme base cursor color or default foreground."
+    (or emacs/base-cursor-color
+        (let ((bg (ignore-errors (face-attribute 'cursor :background nil t)))
+              (fg (ignore-errors (face-attribute 'default :foreground nil t))))
+          (setq emacs/base-cursor-color
+                (cond
+                 ((and (stringp bg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" bg)
+                       (not (string-equal bg "unspecified"))) bg)
+                 ((and (stringp fg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" fg)) fg)
+                 (t (if (eq (frame-parameter nil 'background-mode) 'light) "#000000" "#ffffff")))))))
+
+  (advice-add 'load-theme :after (lambda (&rest _) (setq emacs/base-cursor-color nil)))
+  (advice-add 'enable-theme :after (lambda (&rest _) (setq emacs/base-cursor-color nil)))
 
   (defun emacs/set-terminal-cursor (linux-code pty-shape factor)
     "Send dynamic cursor escape sequences in PTY and FreeBSD TTY scaled by FACTOR, and static hardware shape in Linux TTY."
@@ -142,20 +151,20 @@
     "Synchronize terminal cursor shape and dynamic theme tone with current Evil state."
     (cond
      ((minibufferp)
-      (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" 0.85))
+      (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" 0.90))
      ((evil-emacs-state-p)
       (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0))
      ((not (bound-and-true-p evil-local-mode))
       (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0))
      ((evil-insert-state-p)
-      (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" 0.85))
+      (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" 0.95))
      ((or (evil-replace-state-p)
           (evil-operator-state-p)
           (eq (bound-and-true-p evil-force-cursor) 'replace)
           (eq (bound-and-true-p evil-force-cursor) 'hollow))
-      (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" 0.70))
+      (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" 0.85))
      ((evil-visual-state-p)
-      (emacs/set-terminal-cursor "\e[?5c" "\e[1 q" 0.55))
+      (emacs/set-terminal-cursor "\e[?5c" "\e[1 q" 0.80))
      (t
       (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0))))
 
@@ -179,10 +188,11 @@
               (lambda (orig-fun &rest args)
                 (let ((old-cursor cursor-type))
                   (setq-local cursor-type '(hbar . 4))
-                  (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" 0.70)
+                  (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" 0.85)
                   (unwind-protect
                       (apply orig-fun args)
                     (setq-local cursor-type old-cursor)
+                    (emacs/sync-evil-terminal-cursor)))))
                     (emacs/sync-evil-terminal-cursor)))))
   (add-hook 'minibuffer-setup-hook          #'emacs/sync-evil-terminal-cursor)
   (add-hook 'minibuffer-exit-hook           #'emacs/sync-evil-terminal-cursor)
