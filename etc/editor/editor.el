@@ -159,6 +159,12 @@
   (add-hook 'minibuffer-setup-hook          #'emacs/sync-minibuffer-cursor)
   (advice-add 'evil-refresh-cursor :after   #'emacs/sync-minibuffer-cursor)
   (advice-add 'evil-refresh-cursor :after   #'emacs/sync-evil-terminal-cursor)
+  (advice-add 'evil-replace :around
+              (lambda (orig-fun &rest args)
+                (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" 0.70)
+                (unwind-protect
+                    (apply orig-fun args)
+                  (emacs/sync-evil-terminal-cursor))))
   (add-hook 'minibuffer-setup-hook          #'emacs/sync-evil-terminal-cursor)
   (add-hook 'minibuffer-exit-hook           #'emacs/sync-evil-terminal-cursor)
   (add-hook 'buffer-list-update-hook        #'emacs/sync-evil-terminal-cursor)
