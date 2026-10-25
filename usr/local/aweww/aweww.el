@@ -286,9 +286,37 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
 (defun aweww--ensure-profile-dir ()
   "Ensure ephemeral isolated browser profile directory exists with safe permissions."
   (unless (file-directory-p aweww-profile-dir)
-    (make-directory aweww-profile-dir t)
-    (set-file-modes aweww-profile-dir #o0700))
+    (make-directory aweww-profile-dir t))
+  (set-file-modes aweww-profile-dir #o0700)
+  (dolist (lock '("SingletonLock" "SingletonCookie" "SingletonSocket"))
+    (let ((lock-file (expand-file-name lock aweww-profile-dir)))
+      (when (file-exists-p lock-file)
+        (condition-case nil (delete-file lock-file) (error nil)))))
   aweww-profile-dir)
+
+(defun aweww--create-ephemeral-profile ()
+  "Create an ephemeral, unique profile directory for an isolated browser process.
+Returns the directory path and sets permissions to 0700."
+  (let* ((base (aweww--ensure-profile-dir))
+         (temp-dir (make-temp-file (expand-file-name "proc-" base) t)))
+    (set-file-modes temp-dir #o0700)
+    temp-dir))
+
+(defun aweww--delete-ephemeral-profile (dir)
+  "Safely remove ephemeral profile DIR and any lock files."
+  (when (and dir (file-directory-p dir))
+    (condition-case nil
+        (delete-directory dir t)
+      (error nil))))
+
+(defun aweww--cleanup-all-profiles ()
+  "Expunge all ephemeral browser profiles in `aweww-profile-dir'."
+  (when (file-directory-p aweww-profile-dir)
+    (condition-case nil
+        (delete-directory aweww-profile-dir t)
+      (error nil))))
+
+(add-hook 'kill-emacs-hook #'aweww--cleanup-all-profiles)
 
 (defun aweww-switch-browser (strategy)
   "Switch the active headless browser STRATEGY interactively."
@@ -334,11 +362,15 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
              (file-executable-p browser-path)
              (aweww--browser-supports-dump-dom-p browser-path))
     (condition-case nil
-        (let* ((data-url "data:text/html,<script>document.write(navigator.userAgent)</script>")
-               (cmd (format "%s --headless --disable-gpu --dump-dom %s 2>/dev/null"
+        (let* ((profile (aweww--create-ephemeral-profile))
+               (data-url "data:text/html,<script>document.write(navigator.userAgent)</script>")
+               (cmd (format "%s --headless --disable-gpu --disable-blink-features=AutomationControlled --user-data-dir=%s --dump-dom %s 2>/dev/null"
                             (shell-quote-argument browser-path)
+                            (shell-quote-argument profile)
                             (shell-quote-argument data-url)))
-               (raw (string-trim (shell-command-to-string cmd))))
+               (raw (unwind-protect
+                        (string-trim (shell-command-to-string cmd))
+                      (aweww--delete-ephemeral-profile profile))))
           (when (string-match "<body>\\(Mozilla/[^<]+\\)</body>" raw)
             (let ((native-ua (match-string 1 raw)))
               (replace-regexp-in-string "HeadlessChrome" "Chrome" native-ua))))
@@ -384,10 +416,11 @@ Called lazily to ensure shrface and shr-tag-pre-highlight are loaded."
   "Fetch hydrated DOM for URL using headless browser asynchronously.
 Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
   (let* ((browser (aweww--find-headless-browser))
-         (profile (aweww--ensure-profile-dir))
+         (profile (aweww--create-ephemeral-profile))
          (args (append
                 '("--headless"
-                  "--disable-gpu")
+                  "--disable-gpu"
+                  "--disable-blink-features=AutomationControlled")
                 (when (zerop (user-uid))
                   '("--no-sandbox"))
                 (list (format "--user-agent=%s" (aweww--resolve-user-agent browser))
@@ -407,6 +440,7 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
                  :sentinel
                  (lambda (proc event)
                    (when (memq (process-status proc) '(exit signal))
+                     (aweww--delete-ephemeral-profile profile)
                      (let ((status (process-exit-status proc)))
                        (if (and (= status 0)
                                 (buffer-live-p stdout-buf)
@@ -491,7 +525,8 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
     (if (not dom)
         (message "[aweww] Erro ao analisar árvore DOM de %s." url)
       (with-current-buffer buf
-        (let ((inhibit-read-only t))
+        (let ((inhibit-read-only t)
+              (inhibit-modification-hooks t))
           (erase-buffer)
           (setq-local shr-width (aweww/calculate-shr-width))
           (aweww/build-rendering-functions)
@@ -960,7 +995,8 @@ With prefix argument FORCE-NATIVE (C-u), bypass headless browser and use native 
         (aweww-play-media normalized-url)
       (let ((target-buf (aweww--get-buffer normalized-url)))
         (with-current-buffer target-buf
-          (let ((inhibit-read-only t))
+          (let ((inhibit-read-only t)
+              (inhibit-modification-hooks t))
             (erase-buffer)
             (insert (format "⏳ [Aweww] Carregando: %s...\n" normalized-url))))
         (aweww-fetch
