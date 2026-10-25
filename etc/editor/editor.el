@@ -85,40 +85,63 @@
 
   (emacs/ensure-sanitized-linux-terminfo)
 
-  (defun emacs/set-terminal-cursor (linux-code pty-code &optional bsd-code)
-    "Send dynamic (`blink') cursor escape sequence in PTY, static (`noblink') in Linux TTY, and monochrome tone in FreeBSD TTY."
-    (unless (display-graphic-p (selected-frame))
-      (let* ((term (or (and (fboundp 'tty-type) (tty-type (selected-frame)))
-                       (getenv "TERM")))
-             (raw-tty (and (fboundp 'display-raw-tty-p)
-                           (display-raw-tty-p (selected-frame)))))
-        (ignore-errors
-          (cond
-           ((and term (string-equal term "linux"))
-            (send-string-to-terminal linux-code))
-           ((and raw-tty bsd-code)
-            (send-string-to-terminal bsd-code))
-           ((not raw-tty)
-            (send-string-to-terminal pty-code)))))))
+  (defun emacs/scale-color-tone (color factor)
+    "Scale hex COLOR (#rrggbb) luminance by FACTOR (float 0.0 to 1.0)."
+    (if (and (stringp color) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" color))
+        (let* ((r (string-to-number (substring color 1 3) 16))
+               (g (string-to-number (substring color 3 5) 16))
+               (b (string-to-number (substring color 5 7) 16))
+               (nr (min 255 (max 0 (round (* r factor)))))
+               (ng (min 255 (max 0 (round (* g factor)))))
+               (nb (min 255 (max 0 (round (* b factor))))))
+          (format "#%02x%02x%02x" nr ng nb))
+      color))
+
+  (defun emacs/theme-cursor-color ()
+    "Resolve active theme cursor color or default foreground."
+    (let ((bg (ignore-errors (face-attribute 'cursor :background nil t)))
+          (fg (ignore-errors (face-attribute 'default :foreground nil t))))
+      (cond
+       ((and (stringp bg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" bg)) bg)
+       ((and (stringp fg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" fg)) fg)
+       (t "#ffffff"))))
+
+  (defun emacs/set-terminal-cursor (linux-code pty-shape factor)
+    "Send dynamic cursor escape sequences in PTY and FreeBSD TTY scaled by FACTOR, and static hardware shape in Linux TTY."
+    (let* ((tone (emacs/scale-color-tone (emacs/theme-cursor-color) factor))
+           (osc (format "\e]12;%s\7" tone)))
+      (if (display-graphic-p (selected-frame))
+          (ignore-errors (set-cursor-color tone))
+        (let* ((term (or (and (fboundp 'tty-type) (tty-type (selected-frame)))
+                         (getenv "TERM")))
+               (raw-tty (and (fboundp 'display-raw-tty-p)
+                             (display-raw-tty-p (selected-frame)))))
+          (ignore-errors
+            (cond
+             ((and term (string-equal term "linux"))
+              (send-string-to-terminal linux-code))
+             ((and raw-tty osc)
+              (send-string-to-terminal osc))
+             ((not raw-tty)
+              (send-string-to-terminal (concat pty-shape osc)))))))))
 
   (defun emacs/sync-evil-terminal-cursor (&rest _)
-    "Synchronize terminal cursor shape with current Evil state."
-    (unless (display-graphic-p (selected-frame))
-      (cond
-       ((minibufferp)
-        (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" "\e]12;#e5e5e5\7"))
-       ((evil-emacs-state-p)
-        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" "\e]12;#ffffff\7"))
-       ((not (bound-and-true-p evil-local-mode))
-        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" "\e]12;#ffffff\7"))
-       ((evil-insert-state-p)
-        (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" "\e]12;#d4d4d4\7"))
-       ((or (evil-replace-state-p) (evil-operator-state-p))
-        (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" "\e]12;#a8a8a8\7"))
-       ((evil-visual-state-p)
-        (emacs/set-terminal-cursor "\e[?5c" "\e[1 q" "\e]12;#858585\7"))
-       (t
-        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" "\e]12;#ffffff\7")))))
+    "Synchronize terminal cursor shape and dynamic theme tone with current Evil state."
+    (cond
+     ((minibufferp)
+      (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" 0.85))
+     ((evil-emacs-state-p)
+      (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0))
+     ((not (bound-and-true-p evil-local-mode))
+      (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0))
+     ((evil-insert-state-p)
+      (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" 0.85))
+     ((or (evil-replace-state-p) (evil-operator-state-p))
+      (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" 0.70))
+     ((evil-visual-state-p)
+      (emacs/set-terminal-cursor "\e[?5c" "\e[1 q" 0.55))
+     (t
+      (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0))))
 
   (add-hook 'evil-emacs-state-entry-hook    #'emacs/sync-evil-terminal-cursor)
   (add-hook 'evil-insert-state-entry-hook   #'emacs/sync-evil-terminal-cursor)
@@ -132,7 +155,7 @@
     (when (and (bound-and-true-p evil-mode) (minibufferp))
       (setq-local cursor-type (if (boundp 'evil-insert-state-cursor)
                                   evil-insert-state-cursor
-                                '(bar . 2)))))
+                                 '(bar . 2)))))
   (add-hook 'minibuffer-setup-hook          #'emacs/sync-minibuffer-cursor)
   (advice-add 'evil-refresh-cursor :after   #'emacs/sync-minibuffer-cursor)
   (advice-add 'evil-refresh-cursor :after   #'emacs/sync-evil-terminal-cursor)
@@ -142,9 +165,13 @@
   (add-hook 'window-configuration-change-hook #'emacs/sync-evil-terminal-cursor)
   (add-hook 'tty-setup-hook                 #'emacs/sync-evil-terminal-cursor)
   (add-hook 'suspend-hook
-            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" "\e]112\7")))
+            (lambda ()
+              (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" 1.0)
+              (unless (display-graphic-p) (send-string-to-terminal "\e]112\7"))))
   (add-hook 'kill-emacs-hook
-            (lambda () (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" "\e]112\7"))))
+            (lambda ()
+              (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" 1.0)
+              (unless (display-graphic-p) (send-string-to-terminal "\e]112\7")))))
 
 (use-package evil-tutor
   :defer t

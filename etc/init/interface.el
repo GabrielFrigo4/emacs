@@ -175,12 +175,14 @@ renders the graphical logo on GUI frames created by emacsclient."
 (if (not (display-graphic-p))
     (progn
       (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
-      (when (fboundp 'xterm-mouse-mode)
-        (setq mouse-wheel-tilt-scroll nil)
-        (add-hook 'emacs-startup-hook
-                  (lambda ()
-                    (xterm-mouse-mode 1)
-                    (send-string-to-terminal "\e[?1003l"))))
+      (if (string-equal (or (getenv "TERM") "") "linux")
+          (when (fboundp 'gpm-mouse-mode) (ignore-errors (gpm-mouse-mode 1)))
+        (when (fboundp 'xterm-mouse-mode)
+          (setq mouse-wheel-tilt-scroll nil)
+          (add-hook 'emacs-startup-hook
+                    (lambda ()
+                      (xterm-mouse-mode 1)
+                      (send-string-to-terminal "\e[?1003l")))))
       (interface/apply-tty-faces))
   (when (fboundp 'menu-bar-mode) (menu-bar-mode 1)))
 
@@ -191,9 +193,13 @@ renders the graphical logo on GUI frames created by emacsclient."
                   (when (fboundp 'menu-bar-mode)
                     (set-frame-parameter frame 'menu-bar-lines 1))
                 (set-frame-parameter frame 'menu-bar-lines 0)
-                (when (fboundp 'xterm-mouse-mode)
-                  (xterm-mouse-mode 1)
-                  (ignore-errors (send-string-to-terminal "\e[?1003l" frame)))
+                (let ((term (or (and (fboundp 'tty-type) (tty-type frame))
+                                (getenv "TERM") "")))
+                  (if (string-equal term "linux")
+                      (when (fboundp 'gpm-mouse-mode) (ignore-errors (gpm-mouse-mode 1)))
+                    (when (fboundp 'xterm-mouse-mode)
+                      (xterm-mouse-mode 1)
+                      (ignore-errors (send-string-to-terminal "\e[?1003l" frame)))))
                 (interface/apply-tty-faces frame)))))
 
 ;; --------------------------------
