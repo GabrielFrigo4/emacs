@@ -193,7 +193,6 @@
                       (apply orig-fun args)
                     (setq-local cursor-type old-cursor)
                     (emacs/sync-evil-terminal-cursor)))))
-                    (emacs/sync-evil-terminal-cursor)))))
   (add-hook 'minibuffer-setup-hook          #'emacs/sync-evil-terminal-cursor)
   (add-hook 'minibuffer-exit-hook           #'emacs/sync-evil-terminal-cursor)
   (add-hook 'buffer-list-update-hook        #'emacs/sync-evil-terminal-cursor)
