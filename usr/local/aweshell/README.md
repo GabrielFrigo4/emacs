@@ -43,15 +43,17 @@ flowchart TD
 
 ## ✨ Funcionalidades em Destaque
 
-| Recurso                         | Descrição                                                                                       |
-| :------------------------------ | :---------------------------------------------------------------------------------------------- |
-| **Sessões Múltiplas**           | Crie, alterne e feche múltiplas sessões com histórico isolado ou compartilhado.                 |
-| **Painel Retrátil (IDE)**       | Janela inferior dedicada que abre e fecha instantaneamente via `C-c C-a` ou `aweshell/toggle`.  |
-| **Auto-Sugestões Inteligentes** | Previsão cinza inline baseada no histórico de comandos estilo Fish Shell (`M-h` para aceitar).  |
-| **Validação Sintática**         | Feedback visual em tempo real colorindo comandos existentes vs comandos inválidos.              |
-| **Did You Mean?**               | Sugestões automáticas baseadas em distância Levenshtein para comandos digitados incorretamente. |
-| **Temas Integrados**            | Paridade 1:1 com os temas do Universal Shell (`multi`, `pill`, `micro`, `zshrc`).               |
-| **Aliases Universais**          | Sincronização direta com os aliases do Quarteto (`agyc`, `upall`, `upsh`, `ll`, `e`, `dired`).  |
+| Recurso                         | Descrição                                                                                        |
+| :------------------------------ | :----------------------------------------------------------------------------------------------- |
+| **Sessões Múltiplas**           | Crie, alterne e feche múltiplas sessões com histórico isolado ou compartilhado.                  |
+| **Painel Retrátil (IDE)**       | Janela inferior dedicada que abre e fecha instantaneamente via `C-c C-a` ou `aweshell/toggle`.   |
+| **Auto-Sugestões Fish/Zsh**     | Ghost-text cinza inline baseado no histórico (`<right>` aceita tudo, `M-f` palavra por palavra). |
+| **Menu de Opções Categorizado** | Menu de autocompletar via Company com anotações semânticas (`[alias]`, `[git]`, `[bin]`, etc.).  |
+| **Heredocs & Redirecionamento** | Suporte a heredocs interativos (`cat << EOF > out`) e redirecionamento de entrada (`< in`).      |
+| **Validação Sintática**         | Feedback visual em tempo real colorindo comandos existentes vs comandos inválidos.               |
+| **Did You Mean?**               | Sugestões automáticas baseadas em distância Levenshtein para comandos digitados incorretamente.  |
+| **Temas Integrados**            | Paridade 1:1 com os temas do Universal Shell (`multi`, `pill`, `micro`, `zshrc`).                |
+| **Aliases Universais**          | Sincronização direta com os aliases do Quarteto (`agyc`, `upall`, `upsh`, `ll`, `e`, `dired`).   |
 
 ---
 
@@ -109,12 +111,16 @@ Para definir seu tema favorito:
 
 ### Navegação e Edição no Shell
 
-|    Tecla    | Comando                      | Ação                                                |
-| :---------: | :--------------------------- | :-------------------------------------------------- |
-|  **`C-l`**  | `aweshell/clear-buffer`      | Limpa o buffer atual preservando o histórico        |
-| **`C-S-l`** | `aweshell/sudo-toggle`       | Alterna ou insere `sudo` no início do comando atual |
-|  **`M-'`**  | `aweshell/search-history`    | Busca interativa de comandos anteriores             |
-|  **`M-h`**  | `aweshell/insert-suggestion` | Aceita a sugestão de histórico inline atual         |
+|            Tecla            | Comando                        | Ação                                                      |
+| :-------------------------: | :----------------------------- | :-------------------------------------------------------- |
+|          **`C-l`**          | `aweshell/clear-buffer`        | Limpa o buffer atual preservando o histórico              |
+|         **`C-S-l`**         | `aweshell/sudo-toggle`         | Alterna ou insere `sudo` no início do comando atual       |
+|          **`M-'`**          | `aweshell/search-history`      | Busca interativa de comandos anteriores                   |
+|  **`<right>`** / **`C-f`**  | `aweshell/suggest-accept`      | Aceita a sugestão inline completa ou seleciona no Company |
+| **`M-f`** / **`C-<right>`** | `aweshell/suggest-accept-word` | Aceita a próxima palavra da sugestão inline (Fish/Zsh)    |
+|   **`C-e`** / **`<end>`**   | `aweshell/suggest-accept-end`  | Aceita sugestão completa e salta para o fim da linha      |
+|        **`C-c C-c`**        | `aweshell/cancel-heredoc`      | Cancela sessão de heredoc interativo ativa                |
+|          **`M-h`**          | `aweshell/suggest-accept`      | Atalho alternativo para aceitar a sugestão de histórico   |
 
 ### Gestão de Buffers e Janelas
 
