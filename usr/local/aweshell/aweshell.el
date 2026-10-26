@@ -559,6 +559,10 @@ Otherwise return nil."
             (define-key eshell-mode-map (kbd aweshell/clear-buffer-key) 'aweshell/clear-buffer)
             (define-key eshell-mode-map (kbd aweshell/sudo-toggle-key) 'aweshell/sudo-toggle)
             (define-key eshell-mode-map (kbd aweshell/search-history-key) 'aweshell/search-history)
+            (define-key eshell-mode-map (kbd "<up>") #'eshell-previous-matching-input-from-input)
+            (define-key eshell-mode-map [up] #'eshell-previous-matching-input-from-input)
+            (define-key eshell-mode-map (kbd "<down>") #'eshell-next-matching-input-from-input)
+            (define-key eshell-mode-map [down] #'eshell-next-matching-input-from-input)
             (define-key eshell-mode-map (kbd "<tab>") #'aweshell/tab-complete)
             (define-key eshell-mode-map (kbd "TAB") #'aweshell/tab-complete)
             (define-key eshell-mode-map (kbd "C-i") #'aweshell/tab-complete)
@@ -597,7 +601,9 @@ Otherwise return nil."
   "Return non-nil if COMMAND is a valid Eshell alias, Elisp function, builtin, path, or executable."
   (and (stringp command)
        (not (string-empty-p command))
-       (or (member command '(".." "..." "...." "." "/" "~" "exit" "cd" "export" "unset" "sudo" "doas" "time" "env" "clear"))
+       (or (member command '(".." "..." "...." "." "/" "~" "exit" "cd" "export" "unset" "sudo" "doas" "time" "env" "clear" "cls" "clr"))
+           (and (boundp 'eshell-command-aliases-list)
+                (assoc command eshell-command-aliases-list))
            (and (fboundp 'eshell-alias-completions)
                 (or (seq-contains-p (eshell-alias-completions "") command)
                     (seq-contains-p (eshell-alias-completions "eshell/") command)))
@@ -607,6 +613,26 @@ Otherwise return nil."
                 (aweshell/executable-find-cached command))
            (and (string-match-p "[/.]" command)
                 (ignore-errors (file-exists-p command))))))
+
+(defun aweshell/history-command-valid-p (entry)
+  "Return non-nil if the leading command token of history ENTRY is valid."
+  (when (and (stringp entry) (not (string-empty-p entry)))
+    (let ((tokens (split-string (string-trim-left entry) "[ \t\n]+" t))
+          (cmd nil))
+      (while (and tokens (null cmd))
+        (let ((tok (car tokens)))
+          (setq tokens (cdr tokens))
+          (unless (or (string-match-p "\\`[A-Za-z_][A-Za-z0-9_]*=" tok)
+                      (member tok '("sudo" "doas" "env" "time" "command" "nohup")))
+            (setq cmd tok))))
+      (and cmd (aweshell/command-valid-p cmd)))))
+
+(defun aweshell/history-input-filter (str)
+  "Filter predicate for `eshell-input-filter' excluding blank, space-prefixed, or invalid commands."
+  (and (stringp str)
+       (not (string-blank-p str))
+       (not (string-prefix-p " " str))
+       (aweshell/history-command-valid-p str)))
 
 (defun aweshell/on-input-line-p ()
   "Return non-nil if the current line is the active eshell input line."
@@ -1311,39 +1337,65 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
 (defvar-local aweshell--suggest-current nil
   "Current ghost-text string being displayed after point.")
 
+(defun aweshell/propertize-ghost-text (str)
+  "Return STR propertized as ghost-text with cursor anchored before the first character."
+  (if (or (null str) (string-empty-p str))
+      ""
+    (let ((ghost (copy-sequence (propertize str 'face 'aweshell/autosuggest-face))))
+      (put-text-property 0 1 'cursor 1 ghost)
+      ghost)))
+
 (defun aweshell/suggest-clear ()
   "Clear active autosuggestion overlay and cached candidate."
   (when (overlayp aweshell--suggest-overlay)
     (delete-overlay aweshell--suggest-overlay))
   (setq aweshell--suggest-current nil))
 
+(defun aweshell/suggest-pre-command ()
+  "Clear ghost-text overlay before non-acceptance commands so cursor and edits never collide."
+  (unless (memq this-command '(aweshell/suggest-accept
+                               aweshell/suggest-accept-word
+                               aweshell/suggest-accept-end
+                               aweshell/tab-complete))
+    (aweshell/suggest-clear)))
+
 (defun aweshell/suggest-update ()
   "Update inline autosuggestion ghost-text at point."
   (if (and aweshell/auto-suggestion-p
            (derived-mode-p 'eshell-mode)
            (not aweshell--heredoc-state)
+           (not (and (bound-and-true-p company-mode)
+                     (fboundp 'company--active-p)
+                     (company--active-p)))
            (aweshell/on-input-line-p)
+           (= (point) (line-end-position))
            (= (point) (point-max))
            (not (get-text-property (point) 'read-only)))
       (if-let* ((bounds (aweshell/input-bounds))
                 (raw-prefix (buffer-substring-no-properties (car bounds) (point)))
                 (clean-prefix (string-trim-left raw-prefix)))
           (if (and (not (string-empty-p clean-prefix))
-                   (not (string-prefix-p " " raw-prefix)))
+                   (not (string-prefix-p " " raw-prefix))
+                   (not (member clean-prefix '("clear" "cls" "clr" "exit" "logout" "pwd" "reset"))))
               (let* ((hist (aweshell/parse-shell-history))
                      (cand (cl-find-if (lambda (s)
                                          (and (string-prefix-p clean-prefix s)
-                                              (not (string-equal clean-prefix s))))
+                                              (not (string-equal clean-prefix s))
+                                              (aweshell/history-command-valid-p s)))
                                        hist)))
                 (if cand
                     (let* ((raw-suffix (substring cand (length clean-prefix)))
                            (suffix (car (split-string raw-suffix "\n"))))
-                      (unless (overlayp aweshell--suggest-overlay)
-                        (setq aweshell--suggest-overlay (make-overlay (point) (point) nil t t)))
-                      (move-overlay aweshell--suggest-overlay (point) (point))
-                      (overlay-put aweshell--suggest-overlay 'after-string
-                                   (propertize suffix 'face 'aweshell/autosuggest-face))
-                      (setq aweshell--suggest-current suffix))
+                      (if (and suffix (not (string-empty-p suffix)))
+                          (progn
+                            (unless (overlayp aweshell--suggest-overlay)
+                              (setq aweshell--suggest-overlay (make-overlay (point) (point) (current-buffer) t nil))
+                              (overlay-put aweshell--suggest-overlay 'priority 1000))
+                            (move-overlay aweshell--suggest-overlay (point) (point) (current-buffer))
+                            (overlay-put aweshell--suggest-overlay 'after-string
+                                         (aweshell/propertize-ghost-text suffix))
+                            (setq aweshell--suggest-current suffix))
+                        (aweshell/suggest-clear)))
                   (aweshell/suggest-clear)))
             (aweshell/suggest-clear))
         (aweshell/suggest-clear))
@@ -1384,9 +1436,9 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
                 (aweshell/suggest-clear)
               (setq aweshell--suggest-current rem)
               (when (overlayp aweshell--suggest-overlay)
-                (move-overlay aweshell--suggest-overlay (point) (point))
+                (move-overlay aweshell--suggest-overlay (point) (point) (current-buffer))
                 (overlay-put aweshell--suggest-overlay 'after-string
-                             (propertize rem 'face 'aweshell/autosuggest-face))))
+                             (aweshell/propertize-ghost-text rem))))
             (when (fboundp 'aweshell/highlight-input-line)
               (aweshell/highlight-input-line)))
         (aweshell/suggest-accept))
@@ -1430,8 +1482,19 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
        (t ""))
     (error "")))
 
+(defun aweshell/sort-dirs-first (candidates)
+  "Sort CANDIDATES placing directories before files and options (Zsh list-dirs-first style)."
+  (sort (copy-sequence candidates)
+        (lambda (a b)
+          (let ((dir-a (or (string-suffix-p "/" a) (ignore-errors (file-directory-p a))))
+                (dir-b (or (string-suffix-p "/" b) (ignore-errors (file-directory-p b)))))
+            (cond
+             ((and dir-a (not dir-b)) t)
+             ((and dir-b (not dir-a)) nil)
+             (t (string-lessp a b)))))))
+
 (defun aweshell/company-candidates (prefix)
-  "Return candidates for PREFIX with pcomplete and command integration."
+  "Return candidates for PREFIX with pcomplete, valid history filter, and Zsh-like sorting."
   (condition-case nil
       (let* ((bounds (aweshell/input-bounds))
              (input-line (if bounds
@@ -1448,17 +1511,27 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
                                      (all-completions "eshell/" obarray #'fboundp)))
                    (bins (ignore-errors (all-completions prefix (pcomplete-entries))))
                    (hist (cl-remove-if-not
-                          (lambda (h) (string-prefix-p prefix h))
+                          (lambda (h)
+                            (and (string-prefix-p prefix h)
+                                 (aweshell/command-valid-p h)))
                           (mapcar (lambda (cmd) (car (split-string cmd)))
                                   (aweshell/parse-shell-history))))
-                   (all (delete-dups (delq nil (append aliases builtins bins hist)))))
-              (cl-remove-if-not (lambda (c) (string-prefix-p prefix c)) all))
+                   (all (delete-dups (delq nil (append aliases builtins bins hist))))
+                   (exact (cl-remove-if-not (lambda (c) (string-prefix-p prefix c)) all)))
+              (or exact
+                  (cl-remove-if-not (lambda (c) (string-prefix-p prefix c t)) all)))
           (let* ((cmpls (ignore-errors (pcomplete-completions)))
-                 (candidates (cond
-                              ((functionp cmpls) (all-completions prefix cmpls))
-                              ((listp cmpls) (all-completions prefix cmpls))
-                              (t nil))))
-            (delete-dups candidates))))
+                 (exact (cond
+                         ((or (functionp cmpls) (listp cmpls))
+                          (all-completions prefix cmpls))
+                         (t nil)))
+                 (candidates (or exact
+                                 (let ((completion-ignore-case t))
+                                   (cond
+                                    ((or (functionp cmpls) (listp cmpls))
+                                     (all-completions prefix cmpls))
+                                    (t nil))))))
+            (aweshell/sort-dirs-first (delete-dups candidates)))))
     (error nil)))
 
 (defun aweshell/current-word-prefix ()
@@ -1551,6 +1624,9 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
 
 (add-hook 'eshell-mode-hook
           (lambda ()
+            (setq-local eshell-hist-ignoredups t)
+            (setq-local eshell-input-filter #'aweshell/history-input-filter)
+            (add-hook 'pre-command-hook #'aweshell/suggest-pre-command nil t)
             (add-hook 'post-command-hook #'aweshell/suggest-update nil t)
             (add-hook 'kill-buffer-hook #'aweshell/suggest-clear nil t)
             (when (fboundp 'company-mode)

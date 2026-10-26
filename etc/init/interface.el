@@ -31,6 +31,10 @@
   (setq doom-themes-enable-bold t
         doom-themes-enable-italic t)
   (load-theme 'doom-dark+ t)
+  (when (facep 'tool-bar)
+    (set-face-attribute 'tool-bar nil :background "#1e1e1e" :foreground "#d4d4d4" :box nil))
+  (when (facep 'menu)
+    (set-face-attribute 'menu nil :background "#1e1e1e" :foreground "#d4d4d4"))
   (add-hook 'org-mode-hook #'doom-themes-org-config))
 
 (use-package doom-modeline
@@ -47,11 +51,38 @@
   (doom-modeline-minor-modes nil)
   :config
   (add-to-list 'doom-modeline-mode-alist '(ewm-surface-mode . special))
-  (add-to-list 'doom-modeline-mode-alist '(exwm-mode . special)))
+  (add-to-list 'doom-modeline-mode-alist '(exwm-mode . special))
+  (when (member (getenv "EMACS_OS_MODE") '("x11" "wayland"))
+    (setq display-time-24hr-format t
+          display-time-default-load-average nil)
+    (display-time-mode 1)
+    (ignore-errors (display-battery-mode 1))))
 
 ;; --------------------------------
 ;; DASHBOARD FRAME ADAPTER
 ;; --------------------------------
+
+(defun interface/has-file-arg-p ()
+  "Return non-nil if `command-line-args' contains a target file argument."
+  (let ((args (cdr command-line-args))
+        (skip-next nil)
+        (found nil))
+    (while (and args (not found))
+      (let ((arg (car args)))
+        (cond
+         (skip-next
+          (setq skip-next nil))
+         ((member arg '("-L" "--directory" "-l" "--load" "-f" "--funcall"
+                        "--eval" "--execute" "-u" "--user" "-t" "--terminal"
+                        "-d" "--display" "--daemon" "--fg-daemon" "--bg-daemon"
+                        "--chdir" "--title" "--name" "-xrm" "-fn" "--font"
+                        "-bg" "--background-color" "-fg" "--foreground-color"))
+          (setq skip-next t))
+         ((string-prefix-p "-" arg) nil)
+         ((member (file-name-nondirectory arg) '("emacs" "emacs.exe")) nil)
+         (t (setq found t))))
+      (setq args (cdr args)))
+    found))
 
 (defun interface/dashboard-adapt-to-frame (&optional frame)
   "Adapt dashboard banner and icons to FRAME (GUI logo vs. terminal ASCII).
@@ -71,27 +102,51 @@ renders the graphical logo on GUI frames created by emacsclient."
     (interface/dashboard-adapt-to-frame (selected-frame))
     (when (and (fboundp 'dashboard-insert-startupify-lists)
                (or (daemonp)
+                   (not (get-buffer "*dashboard*"))
                    (not (equal previous-banner dashboard-startup-banner))
                    (not (eq previous-icons dashboard-display-icons-p))))
       (dashboard-insert-startupify-lists t)))
   (get-buffer-create "*dashboard*"))
 
+(defun interface/show-dashboard (&optional frame)
+  "Display the *dashboard* buffer on FRAME when sitting on *scratch*."
+  (interactive)
+  (let ((target (or frame (selected-frame))))
+    (when (and (frame-live-p target)
+               (not (interface/has-file-arg-p)))
+      (with-selected-frame target
+        (let ((buf (interface/dashboard-buffer-for-frame)))
+          (when (and (buffer-live-p buf)
+                     (or (called-interactively-p 'any)
+                         (member (buffer-name (window-buffer (selected-window)))
+                                 '("*scratch*" "*Messages*"))))
+            (switch-to-buffer buf)))))))
+
+(defalias 'dashboard-open 'interface/show-dashboard)
+
 (use-package dashboard
   :ensure (:type git :host github :repo "emacsmirror/dashboard" :branch "master")
   :config
-  (let ((has-file-arg (seq-some (lambda (arg)
-                                  (and (not (string-prefix-p "-" arg))
-                                       (not (member (file-name-nondirectory arg)
-                                                    '("emacs" "emacs.exe")))))
-                                (cdr command-line-args))))
-    (unless has-file-arg
-      (dashboard-setup-startup-hook)
-      (setq initial-buffer-choice #'interface/dashboard-buffer-for-frame)))
-  (setq dashboard-center-content t)
-  (setq dashboard-show-shortcuts nil)
-  (setq dashboard-items '((recents  . 5)
+  (unless (interface/has-file-arg-p)
+    (dashboard-setup-startup-hook)
+    (setq initial-buffer-choice #'interface/dashboard-buffer-for-frame))
+  (setq dashboard-center-content t
+        dashboard-show-shortcuts nil
+        dashboard-set-navigator t
+        dashboard-navigator-buttons
+        `(((,"" "Aweshell" "Abrir Aweshell" (lambda (&rest _) (aweshell/toggle)))
+           (,"" "Aweww" "Navegador Web Interno" (lambda (&rest _) (call-interactively #'aweww)))
+           (,"" "Apps" "Lançador de Aplicativos" (lambda (&rest _) (when (fboundp 'emacs/os-app-launcher) (emacs/os-app-launcher))))
+           (,"" "Browser" "Navegador Externo" (lambda (&rest _) (when (fboundp 'emacs/open-browser) (emacs/open-browser))))
+           (,"" "Files" "Gerenciador de Arquivos" (lambda (&rest _) (when (fboundp 'emacs/open-file-manager) (emacs/open-file-manager))))))
+        dashboard-items '((recents  . 5)
                           (projects . 5)))
   (interface/dashboard-adapt-to-frame)
+  (add-hook 'elpaca-after-init-hook
+            (lambda ()
+              (dolist (f (frame-list))
+                (interface/show-dashboard f))))
+  (add-hook 'server-after-make-frame-hook #'interface/show-dashboard)
   (add-hook 'dashboard-mode-hook
             (lambda ()
               (setq-local display-line-numbers nil)
@@ -207,9 +262,7 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
                    (getenv "TERM") "")))
     (cond
      (is-graphic 1)
-     ;; Raw Linux VT (console) nunca deve exibir menu-bar
      ((or (and is-linux raw-tty) (string-equal term "linux")) 0)
-     ;; Outros TTYs (PTYs ou FreeBSD vt/syscons) respeitam interface/enable-tty-menu-bar
      (interface/enable-tty-menu-bar 1)
      (t 0))))
 
@@ -280,7 +333,8 @@ Under Wayland (PGTK), positioning is managed exclusively by the compositor."
 (defun frame/new-setup (frame)
   "Configure newly created graphical FRAME."
   (when (and (display-graphic-p frame)
-             (not (string= (getenv "EMACS_OS_MODE") "x11")))
+             (not (member (getenv "EMACS_OS_MODE") '("x11" "wayland")))
+             (not (frame-parameter frame 'fullscreen)))
     (select-frame frame)
     (set-frame-size frame 81 27)
     (frame/center-screen frame)))
@@ -292,7 +346,8 @@ Under Wayland (PGTK), positioning is managed exclusively by the compositor."
 (add-hook 'window-setup-hook
           (lambda ()
             (when (and (display-graphic-p)
-                       (not (string= (getenv "EMACS_OS_MODE") "x11")))
+                       (not (member (getenv "EMACS_OS_MODE") '("x11" "wayland")))
+                       (not (frame-parameter (selected-frame) 'fullscreen)))
               (set-frame-size (selected-frame) 81 27)
               (frame/center-screen (selected-frame)))))
 

@@ -1,11 +1,10 @@
 ;;; -*- lexical-binding: t -*-
 ;; ----------------------------------------------------------------
-;; Module: Emacs X11 Window Manager (EXWM) Integration
+;; Module: Emacs X11 Window Manager Integration
 ;; ----------------------------------------------------------------
 
 (when (and (string= (getenv "EMACS_OS_MODE") "x11")
            (not noninteractive))
-  ;; Garante xelb e exwm imediatamente no load-path
   (let ((builds-dir (expand-file-name "var/lib/elpaca/builds/"
                                       (or (bound-and-true-p user-emacs-directory)
                                           (expand-file-name "~/.emacs.d/")))))
@@ -23,13 +22,9 @@
   (require 'exwm nil t)
 
   (when (featurep 'exwm)
-    ;; Assume o display sem prompt interativo
     (setq exwm-replace t)
-
-    ;; Mandatório para gerenciamento correto de geometria no EXWM
     (setq frame-resize-pixelwise t
           window-resize-pixelwise t)
-
     (setq exwm-workspace-number 1
           exwm-workspace-show-all-buffers t)
 
@@ -43,14 +38,36 @@
                           (string-prefix-p "sun-awt-X11-" exwm-instance-name))
                   (exwm-workspace-rename-buffer exwm-title))))
 
+    (add-hook 'exwm-init-hook
+              (lambda ()
+                (when (fboundp 'interface/apply-menu-bar)
+                  (interface/apply-menu-bar (selected-frame)))
+                (when (fboundp 'interface/show-dashboard)
+                  (interface/show-dashboard (selected-frame)))))
+
     (setq exwm-input-global-keys
           `(([?\s-r] . exwm-reset)
             ([?\s-w] . exwm-workspace-switch)
             ([?\s-&] . (lambda (command)
                          (interactive (list (read-shell-command "$ ")))
                          (start-process-shell-command command nil command)))
+            ([s-return] . emacs/open-terminal)
+            ([?\s-d] . emacs/os-app-launcher)
+            ([?\s-o] . interface/show-dashboard)
+            ([?\s-e] . aweshell/toggle)
+            ([?\s-b] . emacs/open-browser)
+            ([?\s-f] . exwm-layout-toggle-fullscreen)
             ([?\s-q] . kill-current-buffer)
             ([?\s-Q] . save-buffers-kill-emacs)
+            ([s-left] . windmove-left)
+            ([s-right] . windmove-right)
+            ([s-up] . windmove-up)
+            ([s-down] . windmove-down)
+            ([XF86AudioRaiseVolume] . emacs/os-volume-up)
+            ([XF86AudioLowerVolume] . emacs/os-volume-down)
+            ([XF86AudioMute] . emacs/os-volume-mute)
+            ([XF86MonBrightnessUp] . emacs/os-brightness-up)
+            ([XF86MonBrightnessDown] . emacs/os-brightness-down)
             ,@(mapcar (lambda (i)
                         (cons (vector (intern (format "s-%d" i)))
                               (lambda ()

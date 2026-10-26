@@ -1,6 +1,6 @@
 ;;; -*- lexical-binding: t -*-
 ;; ----------------------------------------------------------------
-;; Module: Emacs Wayland Manager (EWM) Integration
+;; Module: Emacs Wayland Manager Integration
 ;; ----------------------------------------------------------------
 
 (defvar ewm-module-file
@@ -23,15 +23,58 @@
 (when (ewm-available-p)
   (setenv "EWM_MODULE_PATH" ewm-module-file))
 
+(defun ewm--preserve-menu-bar (&optional frame)
+  "Keep the graphical menu-bar enabled on EWM frames."
+  (let ((target (or frame (selected-frame))))
+    (when (and (frame-live-p target) (display-graphic-p target))
+      (set-frame-parameter target 'menu-bar-lines 1)
+      (when (fboundp 'menu-bar-mode)
+        (menu-bar-mode 1))
+      (when (fboundp 'interface/apply-menu-bar)
+        (interface/apply-menu-bar target)))))
+
+(defun ewm--sync-output-frames (&rest _)
+  "Ensure EWM output frames have menu-bar and *dashboard* displayed."
+  (dolist (f (frame-list))
+    (when (and (frame-live-p f) (display-graphic-p f))
+      (ewm--preserve-menu-bar f)
+      (when (fboundp 'interface/show-dashboard)
+        (interface/show-dashboard f)))))
+
+(with-eval-after-load 'ewm-frame
+  (when (fboundp 'ewm--disable-csd)
+    (advice-add 'ewm--disable-csd :after #'ewm--preserve-menu-bar))
+  (when (fboundp 'ewm--handle-outputs-complete)
+    (advice-add 'ewm--handle-outputs-complete :after #'ewm--sync-output-frames)))
+
 (with-eval-after-load 'ewm
+  (when (fboundp 'ewm--disable-csd)
+    (advice-add 'ewm--disable-csd :after #'ewm--preserve-menu-bar))
+
   (defun ewm-launch-terminal ()
     "Launch preferred terminal emulator inside EWM session."
     (interactive)
-    (start-process "terminal" nil (or (getenv "TERMINAL") "foot")))
+    (if (fboundp 'emacs/open-terminal)
+        (emacs/open-terminal)
+      (start-process "terminal" nil (or (getenv "TERMINAL") "foot"))))
 
   (when (boundp 'ewm-mode-map)
     (define-key ewm-mode-map (kbd "s-<return>") #'ewm-launch-terminal)
-    (define-key ewm-mode-map (kbd "s-q") #'kill-current-buffer))
+    (define-key ewm-mode-map (kbd "s-q") #'kill-current-buffer)
+    (define-key ewm-mode-map (kbd "s-Q") #'save-buffers-kill-emacs)
+    (define-key ewm-mode-map (kbd "s-d") #'emacs/os-app-launcher)
+    (define-key ewm-mode-map (kbd "s-o") #'interface/show-dashboard)
+    (define-key ewm-mode-map (kbd "s-e") #'aweshell/toggle)
+    (define-key ewm-mode-map (kbd "s-b") #'emacs/open-browser)
+    (define-key ewm-mode-map (kbd "s-<left>") #'windmove-left)
+    (define-key ewm-mode-map (kbd "s-<right>") #'windmove-right)
+    (define-key ewm-mode-map (kbd "s-<up>") #'windmove-up)
+    (define-key ewm-mode-map (kbd "s-<down>") #'windmove-down)
+    (define-key ewm-mode-map (kbd "<XF86AudioRaiseVolume>") #'emacs/os-volume-up)
+    (define-key ewm-mode-map (kbd "<XF86AudioLowerVolume>") #'emacs/os-volume-down)
+    (define-key ewm-mode-map (kbd "<XF86AudioMute>") #'emacs/os-volume-mute)
+    (define-key ewm-mode-map (kbd "<XF86MonBrightnessUp>") #'emacs/os-brightness-up)
+    (define-key ewm-mode-map (kbd "<XF86MonBrightnessDown>") #'emacs/os-brightness-down))
 
   (when (boundp 'doom-modeline-mode-alist)
     (add-to-list 'doom-modeline-mode-alist '(ewm-surface-mode . special)))
@@ -45,26 +88,49 @@
 (with-eval-after-load 'ewm-input
   (setq ewm-input-config
         '((keyboard :repeat-delay 200 :repeat-rate 50
-                    :xkb-layouts "br" :xkb-options ""))))
+                    :xkb-layouts "br" :xkb-options "numpad:mac")
+          (touchpad :natural-scroll t :tap t :dwt t)
+          (mouse :accel-profile "flat"))))
 
 (with-eval-after-load 'ewm-layout
+  (defun ewm--external-menu-bar-height (frame)
+    "Return pixel height of external GTK menu-bar on FRAME, or 0."
+    (if (and (frame-live-p frame)
+             (fboundp 'frame-geometry))
+        (let* ((geom (frame-geometry frame))
+               (ext (cdr (assq 'menu-bar-external geom)))
+               (size (cdr (assq 'menu-bar-size geom))))
+          (if (and ext (consp size) (numberp (cdr size)) (> (cdr size) 0))
+              (cdr size)
+            0))
+      0))
+
   (defun ewm--window-body-pixel-rect-modeline-guard (orig-fn window)
-    "Garante que o corpo da janela enviada ao compositor EWM preserve
-integralmente a mode-line e os divisores de janela (window-divider)."
+    "Offset Wayland surface geometry by external menu-bar height and preserve mode-line."
     (let ((rect (funcall orig-fn window)))
       (if (and rect (window-live-p window))
           (pcase-let ((`(,x ,y ,w ,h) rect))
-            (let* ((tab-h (if (< emacs-major-version 31) (window-tab-line-height window) 0))
+            (let* ((mb-h (ewm--external-menu-bar-height (window-frame window)))
+                   (tab-h (if (< emacs-major-version 31) (window-tab-line-height window) 0))
                    (adj-h (if (> tab-h 0) (max 1 (- h tab-h)) h)))
-              (list x y w adj-h)))
+              (list x (+ y mb-h) w adj-h)))
         rect)))
-  (advice-add 'ewm--window-body-pixel-rect :around #'ewm--window-body-pixel-rect-modeline-guard))
+  (advice-add 'ewm--window-body-pixel-rect :around #'ewm--window-body-pixel-rect-modeline-guard)
+
+  (defun ewm--window-at-logical-menu-bar-guard (orig-fn frame x y)
+    "Adjust pointer Y coordinate by external GTK menu-bar height on FRAME."
+    (let* ((mb-h (ewm--external-menu-bar-height frame))
+           (adj-y (- y mb-h)))
+      (if (< adj-y 0)
+          nil
+        (funcall orig-fn frame x adj-y))))
+  (when (fboundp 'ewm--window-at-logical)
+    (advice-add 'ewm--window-at-logical :around #'ewm--window-at-logical-menu-bar-guard)))
 
 (when (and (string= (getenv "EMACS_OS_MODE") "wayland")
            (ewm-available-p)
            (daemonp))
   (require 'ewm nil t)
-  (when (fboundp 'ewm-start-module)
-    (ewm-start-module)))
+  (add-hook 'elpaca-after-init-hook #'ewm--sync-output-frames))
 
 (provide 'init-ewm)
