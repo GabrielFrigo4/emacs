@@ -145,22 +145,24 @@
 
   (defun emacs/set-terminal-cursor (linux-code pty-shape factor)
     "Send dynamic cursor escape sequences in PTY and FreeBSD TTY scaled by FACTOR, and static hardware shape in Linux TTY."
-    (let* ((tone (emacs/scale-color-tone (emacs/theme-cursor-color) factor))
-           (osc (format "\e]12;%s\7" tone)))
-      (if (display-graphic-p (selected-frame))
-          (ignore-errors (set-cursor-color tone))
-        (let* ((term (or (and (fboundp 'tty-type) (tty-type (selected-frame)))
-                         (getenv "TERM")))
-               (raw-tty (and (fboundp 'display-raw-tty-p)
-                             (display-raw-tty-p (selected-frame)))))
-          (ignore-errors
-            (cond
-             ((and term (string-equal term "linux"))
-              (send-string-to-terminal linux-code))
-             ((and raw-tty osc)
-              (send-string-to-terminal osc))
-             ((not raw-tty)
-              (send-string-to-terminal (concat pty-shape osc)))))))))
+    (unless (or (and (fboundp 'daemonp) (daemonp) (equal (terminal-name (frame-terminal (selected-frame))) "initial_terminal"))
+                (equal (terminal-name (frame-terminal (selected-frame))) "initial_terminal"))
+      (let* ((tone (emacs/scale-color-tone (emacs/theme-cursor-color) factor))
+             (osc (format "\e]12;%s\a" tone)))
+        (if (display-graphic-p (selected-frame))
+            (ignore-errors (set-cursor-color tone))
+          (let* ((term (or (and (fboundp 'tty-type) (tty-type (selected-frame)))
+                           (getenv "TERM")))
+                 (raw-tty (and (fboundp 'display-raw-tty-p)
+                               (display-raw-tty-p (selected-frame)))))
+            (ignore-errors
+              (cond
+               ((and term (string-equal term "linux"))
+                (send-string-to-terminal linux-code))
+               ((and raw-tty osc)
+                (send-string-to-terminal osc))
+               ((not raw-tty)
+                (send-string-to-terminal (concat pty-shape osc))))))))))
 
   (defun emacs/sync-evil-terminal-cursor (&rest _)
     "Synchronize terminal cursor shape and dynamic theme tone with current Evil state."
@@ -227,17 +229,17 @@
               (unless (display-graphic-p frame)
                 (ignore-errors
                   (let ((term (and (fboundp 'frame-terminal) (frame-terminal frame))))
-                    (send-string-to-terminal "\e[1 q\e]112\7" term))))))
+                    (send-string-to-terminal "\e[1 q\e]112\a\e]112\e\\" term))))))
   (add-hook 'suspend-hook
             (lambda ()
               (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" 1.0)
               (unless (or (daemonp) (display-graphic-p))
-                (ignore-errors (send-string-to-terminal "\e[1 q\e]112\7")))))
+                (ignore-errors (send-string-to-terminal "\e[1 q\e]112\a\e]112\e\\")))))
   (add-hook 'kill-emacs-hook
             (lambda ()
               (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" 1.0)
               (unless (or (daemonp) (display-graphic-p))
-                (ignore-errors (send-string-to-terminal "\e[1 q\e]112\7"))))))
+                (ignore-errors (send-string-to-terminal "\e[1 q\e]112\a\e]112\e\\"))))))
 
 (use-package evil-tutor
   :defer t
