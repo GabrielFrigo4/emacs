@@ -30,3 +30,9 @@
 - **Player Multimídia Headless (`mpv` JSON-IPC):** Interceptação de URLs de mídia e YouTube com controle interativo por teclas (`P`, `X`, `+`, `-`, `>`, `<`) e sentinelas defensivas prevenindo processos zumbis.
 - **Ergonomia no Terminal (`-nw`):** Ativação de `xterm-mouse-mode`, respostas curtas (`use-short-answers t`) e blindagem de avisos de compilação em macros obsoletas no Emacs 31+.
 - **Sincronização:** Total alinhamento com os 22 Princípios de Engenharia UNIX do Universal Environment.
+
+---
+
+## 📌 Backlog & Próximos Passos
+
+- [ ] **Auditoria de Autodocumentação Integral Elisp (`C-h f`, `C-h v`, `C-h k`, `which-key`):** Expandir e padronizar as docstrings de todas as funções (`defun`/`defmacro`), variáveis (`defvar`/`defcustom`), faces (`defface`) e atalhos em `etc/`, `lib/` e `usr/local/` conforme a convenção GNU Elisp (primeira linha concisa $\le 80$ colunas, parâmetros em `MAIÚSCULAS` e referências cruzadas `` `simbolo' `` clicáveis no `*Help*`).

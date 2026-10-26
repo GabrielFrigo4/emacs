@@ -43,6 +43,9 @@ O repositório `.emacs.d` provê um ambiente de desenvolvimento extensível, cen
     - **Em GUI e PTY 24-Bit (`-nw` em KDE Konsole, Alacritty, etc.):** Mantém o tema `doom-dark+` com fundo `#1e1e1e`, ícones Nerd Fonts ativos e banner ASCII limpo (`2`) no Dashboard quando em modo terminal (`-nw`).
     - **Em Raw TTY (`display-raw-tty-p`):** Aplica `interface/apply-tty-faces` por frame usando os 8 nomes ANSI canônicos do `tty-color-alist` (`"black"`, `"red"`, `"green"`, `"yellow"`, `"blue"`, `"magenta"`, `"cyan"`, `"white"`) combinados com `:weight 'bold` para acessar as cores brilhantes (8–15) sem falhar em terminfos de 8 cores (`TERM=linux` e `TERM=xterm`).
     - **Aweshell / Eshell:** Validação de executáveis em tempo real com cache em hash-table $O(1)$ (`aweshell/executable-cache`), realce imediato via `after-change-functions` (comandos válidos em verde negrito, inválidos em vermelho, flags em amarelo, separadores/pipes em ciano, strings e números destacados) e prompt `aweshell/theme-multi` adaptativo (ícones Nerd Font em GUI/PTY e Box Drawing/ASCII limpo em Raw TTY).
+14. **Invariante de Autodocumentação Introspectiva (Self-Documenting Emacs Philosophy):**
+    - **Docstrings Não São Comentários Narrativos:** Enquanto comentários inline `;;` narrando código são proibidos (Regra 2), **docstrings Elisp** em `defun`, `defmacro`, `defvar`, `defcustom` e `defface` são cidadãs de primeira classe do runtime introspectivo do Emacs (`C-h f`, `C-h v`, `C-h k`, `M-x apropos`, ElDoc e `which-key`) e são **obrigatórias**.
+    - **Padrão GNU Elisp de Docstrings:** A primeira linha da docstring deve ser um resumo autônomo e conciso ($\le 80$ colunas), referenciando argumentos em `MAIÚSCULAS` (ex: `ARGS`, `FRAME`, `DIR`) e símbolos correlatos entre acento grave e apóstrofo (`` `simbolo' ``) para gerar hiperlinks clicáveis nos buffers `*Help*`.
 
 ---
 

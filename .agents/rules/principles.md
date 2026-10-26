@@ -21,3 +21,6 @@
 5. **Lexical Binding Obrigatório (Linha 1):**
     - Todo arquivo `.el` DEVE começar estritamente com `;;; -*- lexical-binding: t -*-` na Linha 1.
     - Evita warnings do compilador nativo e byte-compiler no Emacs 30/31+, previne vazamento de escopo dinâmico e otimiza compilação `.eln`.
+6. **Filosofia de Autodocumentação Introspectiva (`C-h f` / `C-h v` / `C-h k` / `which-key`):**
+    - Todo símbolo público ou interativo (`defun`, `defmacro`, `defvar`, `defcustom`, `defface`) DEVE possuir docstring clara e autônoma (distinta de comentários `;;` narrativos).
+    - A primeira linha deve caber em $\le 80$ colunas, destacar parâmetros em `MAIÚSCULAS` e referenciar símbolos com `` `simbolo' `` para navegação hipertextual no `*Help*`.
