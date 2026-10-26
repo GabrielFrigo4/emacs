@@ -38,7 +38,12 @@
 (declare-function aweshell/suggest-update "aweshell" ())
 (declare-function aweshell/suggest-clear "aweshell" ())
 (declare-function aweshell/suggest-accept "aweshell" ())
+(declare-function aweshell/tab-complete "aweshell" ())
 (declare-function aweshell/company-backend "aweshell" (command &optional arg &rest ignored))
+(declare-function company-select-next "company" ())
+(declare-function company-select-previous "company" ())
+(declare-function company-complete-common-or-cycle "company" ())
+(declare-function company-manual-begin "company" ())
 
 (defsubst aweshell--bol ()
   "Move to beginning of line safely across GNU Emacs versions."
@@ -554,6 +559,9 @@ Otherwise return nil."
             (define-key eshell-mode-map (kbd aweshell/clear-buffer-key) 'aweshell/clear-buffer)
             (define-key eshell-mode-map (kbd aweshell/sudo-toggle-key) 'aweshell/sudo-toggle)
             (define-key eshell-mode-map (kbd aweshell/search-history-key) 'aweshell/search-history)
+            (define-key eshell-mode-map (kbd "<tab>") #'aweshell/tab-complete)
+            (define-key eshell-mode-map (kbd "TAB") #'aweshell/tab-complete)
+            (define-key eshell-mode-map (kbd "C-i") #'aweshell/tab-complete)
             (define-key eshell-mode-map (kbd aweshell/complete-selection-key) #'aweshell/suggest-accept)
             (define-key eshell-mode-map (kbd aweshell/suggest-accept-key) #'aweshell/suggest-accept)
             (define-key eshell-mode-map [right] #'aweshell/suggest-accept)
