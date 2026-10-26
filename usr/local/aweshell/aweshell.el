@@ -76,6 +76,16 @@ Defaults to single newline to keep clean spacing before the prompt."
   :type 'string
   :group 'aweshell)
 
+(defcustom aweshell/suggest-accept-key "<right>"
+  "The keystroke for accepting the full autosuggestion."
+  :type 'string
+  :group 'aweshell)
+
+(defcustom aweshell/suggest-accept-word-key "M-f"
+  "The keystroke for accepting the next word of the autosuggestion."
+  :type 'string
+  :group 'aweshell)
+
 (defcustom aweshell/clear-buffer-key "C-l"
   "The keystroke for clear buffer."
   :type 'string
@@ -139,6 +149,11 @@ Defaults to single newline to keep clean spacing before the prompt."
 (defface aweshell/alert-command-face
   '((t (:foreground "#ff9500" :bold t)))
   "Alert command face."
+  :group 'aweshell)
+
+(defface aweshell/autosuggest-face
+  '((t (:inherit shadow :slant italic)))
+  "Face for Aweshell inline ghost-text autosuggestion."
   :group 'aweshell)
 
 (defcustom aweshell/dedicated-window-height 14
@@ -340,6 +355,8 @@ Create new one if no eshell buffer exists."
 (defun aweshell/clear-buffer ()
   "Clear eshell buffer."
   (interactive)
+  (when (fboundp 'aweshell/suggest-clear)
+    (aweshell/suggest-clear))
   (let ((inhibit-read-only t))
     (eshell/clear-scrollback)))
 
@@ -534,7 +551,17 @@ Otherwise return nil."
           (lambda ()
             (define-key eshell-mode-map (kbd aweshell/clear-buffer-key) 'aweshell/clear-buffer)
             (define-key eshell-mode-map (kbd aweshell/sudo-toggle-key) 'aweshell/sudo-toggle)
-            (define-key eshell-mode-map (kbd aweshell/search-history-key) 'aweshell/search-history)))
+            (define-key eshell-mode-map (kbd aweshell/search-history-key) 'aweshell/search-history)
+            (define-key eshell-mode-map (kbd aweshell/complete-selection-key) #'aweshell/suggest-accept)
+            (define-key eshell-mode-map (kbd aweshell/suggest-accept-key) #'aweshell/suggest-accept)
+            (define-key eshell-mode-map [right] #'aweshell/suggest-accept)
+            (define-key eshell-mode-map (kbd "C-f") #'aweshell/suggest-accept)
+            (define-key eshell-mode-map (kbd aweshell/suggest-accept-word-key) #'aweshell/suggest-accept-word)
+            (define-key eshell-mode-map (kbd "C-<right>") #'aweshell/suggest-accept-word)
+            (define-key eshell-mode-map (kbd "C-e") #'aweshell/suggest-accept-end)
+            (define-key eshell-mode-map (kbd "<end>") #'aweshell/suggest-accept-end)
+            (define-key eshell-mode-map [end] #'aweshell/suggest-accept-end)
+            (define-key eshell-mode-map (kbd "C-c C-c") #'aweshell/cancel-heredoc)))
 
 ;; ============================================================================
 ;;  AWESHELL HIGHLIGHT
