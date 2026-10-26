@@ -35,4 +35,8 @@
 
 ## 📌 Backlog & Próximos Passos
 
+- [ ] **Ajuste da Barra de Ferramentas (Tool-Bar / Bar-Tools) no EWM:** Investigar e restaurar a exibição e estilização consistente da `tool-bar` dentro do ambiente EWM (`wewm`), alinhando layout e offsets de renderização.
+- [ ] **Correção de Diálogo de Arquivo no GUI Emacs / Sway e Diretório Inicial:**
+    - Investigar erro disparado no Sway ("there are errors in your config file" em vermelho) ao acionar "open new file" / diálogo gráfico de seleção de arquivo no `wgui`/`xgui emacs`, que bloqueia subsequentes popups de seleção.
+    - Blindar o `default-directory` do Emacs no ciclo pós-inicialização para garantir que inicialize sempre no diretório home (`~`) do usuário, evitando captura esporádica de diretórios transitórios de build do Elpaca (ex: `~/.emacs.d/var/lib/elpaca/builds/ob-mermaid`).
 - [ ] **Auditoria de Autodocumentação Integral Elisp (`C-h f`, `C-h v`, `C-h k`, `which-key`):** Expandir e padronizar as docstrings de todas as funções (`defun`/`defmacro`), variáveis (`defvar`/`defcustom`), faces (`defface`) e atalhos em `etc/`, `lib/` e `usr/local/` conforme a convenção GNU Elisp (primeira linha concisa $\le 80$ colunas, parâmetros em `MAIÚSCULAS` e referências cruzadas `` `simbolo' `` clicáveis no `*Help*`).
