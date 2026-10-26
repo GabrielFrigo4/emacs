@@ -833,6 +833,8 @@ Adapts dynamically to window width and content centering margins to prevent line
           (aweww--beautify-buffer)
           (goto-char (point-min))
           (aweww-mode)
+          (setq-local shr-width (aweww/calculate-shr-width))
+          (setq-local shr-base (shr-parse-base url))
           (eww-size-text-inputs)
           (setq-local aweww-current-url url)
           (setq-local aweww-current-html html)
