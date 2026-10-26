@@ -33,13 +33,14 @@
   :type 'boolean
   :group 'aweww)
 
-(defcustom aweww-content-width 88
+(defcustom aweww-content-width 100
   "Target content width in columns for centered viewing in Aweww."
   :type 'integer
   :group 'aweww)
 
-(defcustom aweww-center-content t
-  "If non-nil, automatically center web content in Aweww windows."
+(defcustom aweww-center-content nil
+  "If non-nil, automatically center web content in Aweww windows using margins.
+Defaults to nil so web content occupies the entire window naturally."
   :type 'boolean
   :group 'aweww)
 
@@ -213,19 +214,20 @@ Options:
 (setq-default shr-inhibit-images nil)
 (setq-default shr-use-fonts nil)
 (setq-default shr-use-colors nil)
-(setq-default shr-width 80)
+(setq-default shr-width nil)
 
 (defun aweww/calculate-shr-width ()
-  "Calculate optimal `shr-width' based on centered content width or window width."
+  "Calculate optimal `shr-width'.
+When `aweww-center-content' is non-nil, return `aweww-content-width'.
+Otherwise return nil to allow SHR to wrap dynamically to full window width."
   (if aweww-center-content
       aweww-content-width
-    (if (frame-live-p (selected-frame))
-        (max 40 (- (window-body-width (selected-window))
-                   aweww/default-width-offset))
-      80)))
+    nil))
 
 (defun aweww--update-window-margins (&optional window)
-  "Center content in WINDOW if `aweww-center-content' is non-nil."
+  "Update window margins according to `aweww-center-content'.
+When `aweww-center-content' is nil, margins are cleared so content
+occupies the full Emacs window width."
   (let ((win (or window (get-buffer-window (current-buffer)))))
     (when (and (window-live-p win)
                (with-current-buffer (window-buffer win)
@@ -233,18 +235,19 @@ Options:
       (if (not aweww-center-content)
           (set-window-margins win nil nil)
         (let* ((total-width (window-total-width win))
-               (target-width (min aweww-content-width (max 40 (- total-width 4))))
+               (target-width (min (or aweww-content-width 100) (max 60 (- total-width 4))))
                (margin (max 0 (/ (- total-width target-width) 2))))
           (set-window-margins win margin margin))))))
 
 (defun aweww-toggle-centering ()
-  "Toggle automatic buffer content centering in current Aweww buffer."
+  "Toggle reading margin centering in current Aweww buffer."
   (interactive)
   (setq-local aweww-center-content (not aweww-center-content))
   (aweww--update-window-margins (selected-window))
   (setq-local shr-width (aweww/calculate-shr-width))
-  (message "[aweww] Centralização de conteúdo: %s"
-           (if aweww-center-content "Ativada" "Desativada")))
+  (aweww-reload)
+  (message "[aweww] Layout de página: %s"
+           (if aweww-center-content "Coluna de leitura estreita" "Largura total da tela")))
 
 (defun aweww/set-shr-width (&rest _args)
   "Adjust `shr-width' dynamically, buffer-locally."
@@ -256,9 +259,7 @@ Options:
   "Render SVG DOM cleanly without inserting ugly `SVG Image' text placeholders."
   (when (and (display-images-p)
              (image-type-available-p 'svg)
-             (not shr-inhibit-images)
-             (dom-attr dom 'width)
-             (dom-attr dom 'height))
+             (not shr-inhibit-images))
     (funcall shr-put-image-function
              (list (shr-dom-to-xml (shr-correct-dom-case dom) 'utf-8)
                    'image/svg+xml)
@@ -634,23 +635,26 @@ Adapts dynamically to window width and content centering margins to prevent line
     ;; 2. Wikipedia / Wikimedia / MediaWiki desktop clutter
     (when (or (string-match-p "\\(?:wikipedia\\|wiktionary\\|wikibooks\\|wikinews\\|wikiquote\\|wikimedia\\|mediawiki\\)\\.org" u)
               (and (dom-by-id dom "firstHeading") (dom-by-id dom "bodyContent")))
-      (let ((wiki-clutter-ids '("vector-header-container" "vector-header"
-                                "vector-main-menu" "vector-main-menu-container"
-                                "vector-main-menu-dropdown" "vector-main-menu-unpinned-container"
-                                "vector-main-menu-pinned-container"
-                                "vector-appearance" "vector-appearance-container"
-                                "vector-appearance-dropdown" "vector-appearance-unpinned-container"
-                                "vector-appearance-pinned-container"
-                                "vector-page-toolbar" "vector-page-toolbar-container"
-                                "left-navigation" "right-navigation"
-                                "p-associated-pages" "p-views" "p-cactions" "p-tb"
-                                "p-coll-print_export" "p-wikibase-otherprojects"
-                                "vector-page-tools" "vector-page-tools-dropdown"
-                                "vector-page-tools-unpinned-container" "vector-page-tools-pinned-container"
-                                "p-lang-btn" "p-lang" "after-portlet-lang"
-                                "p-personal" "vector-user-links-main" "vector-user-links-dropdown"
-                                "vector-toc-pinned-container" "vector-page-titlebar-toc" "vector-sticky-header-toc"
-                                "mw-navigation" "mw-aria-live-region" "siteNotice"))
+      (let* ((logo (car (dom-by-class dom "mw-logo")))
+             (heading (car (dom-by-id dom "firstHeading")))
+             (parent (when heading (dom-parent dom heading)))
+             (wiki-clutter-ids '("vector-header-container" "vector-header"
+                                 "vector-main-menu" "vector-main-menu-container"
+                                 "vector-main-menu-dropdown" "vector-main-menu-unpinned-container"
+                                 "vector-main-menu-pinned-container"
+                                 "vector-appearance" "vector-appearance-container"
+                                 "vector-appearance-dropdown" "vector-appearance-unpinned-container"
+                                 "vector-appearance-pinned-container"
+                                 "vector-page-toolbar" "vector-page-toolbar-container"
+                                 "left-navigation" "right-navigation"
+                                 "p-associated-pages" "p-views" "p-cactions" "p-tb"
+                                 "p-coll-print_export" "p-wikibase-otherprojects"
+                                 "vector-page-tools" "vector-page-tools-dropdown"
+                                 "vector-page-tools-unpinned-container" "vector-page-tools-pinned-container"
+                                 "p-lang-btn" "p-lang" "after-portlet-lang"
+                                 "p-personal" "vector-user-links-main" "vector-user-links-dropdown"
+                                 "vector-toc-pinned-container" "vector-page-titlebar-toc" "vector-sticky-header-toc"
+                                 "mw-navigation" "mw-aria-live-region" "siteNotice"))
             (wiki-clutter-classes '("vector-header-container" "vector-header"
                                     "vector-page-toolbar" "vector-page-toolbar-container"
                                     "vector-dropdown-content" "vector-pinnable-header"
@@ -658,12 +662,20 @@ Adapts dynamically to window width and content centering margins to prevent line
                                     "vector-user-links-main" "vector-main-menu-landmark"
                                     "vector-page-tools-landmark" "vector-appearance-landmark"
                                     "vector-toc-landmark" "noprint")))
+        ;; Preserve logo before header clutter is expunged
+        (when logo
+          (condition-case nil (dom-remove-node dom logo) (error nil)))
         (dolist (id wiki-clutter-ids)
           (dolist (node (dom-by-id dom (concat "^" (regexp-quote id) "$")))
             (condition-case nil (dom-remove-node dom node) (error nil))))
         (dolist (cls wiki-clutter-classes)
           (dolist (node (dom-by-class dom cls))
-            (condition-case nil (dom-remove-node dom node) (error nil))))))
+            (condition-case nil (dom-remove-node dom node) (error nil))))
+        ;; Insert logo at top of article before firstHeading
+        (when (and logo heading parent)
+          (condition-case nil
+              (dom-add-child-before parent logo heading)
+            (error nil)))))
 
     ;; 3. MkDocs Material (e.g. cp-algorithms.com)
     (when (or (string-match-p "cp-algorithms\\.com" u)
@@ -815,8 +827,9 @@ Adapts dynamically to window width and content centering margins to prevent line
               (inhibit-modification-hooks t))
           (erase-buffer)
           (setq-local shr-width (aweww/calculate-shr-width))
+          (setq-local shr-base (shr-parse-base url))
           (aweww/build-rendering-functions)
-          (shr-insert-document dom)
+          (shr-insert-document (eww-document-base url dom))
           (aweww--beautify-buffer)
           (goto-char (point-min))
           (aweww-mode)
