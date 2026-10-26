@@ -1461,6 +1461,72 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
             (delete-dups candidates))))
     (error nil)))
 
+(defun aweshell/current-word-prefix ()
+  "Return the shell token or word prefix before point."
+  (buffer-substring-no-properties
+   (save-excursion
+     (skip-chars-backward "^ \t\n")
+     (point))
+   (point)))
+
+(defun aweshell/tab-complete ()
+  "Complete current input or display selectable options menu on TAB (Zsh style)."
+  (interactive)
+  (cond
+   ;; 1. If Company menu is already open, cycle to the next candidate
+   ((and (bound-and-true-p company-mode)
+         (fboundp 'company--active-p)
+         (company--active-p))
+    (if (fboundp 'company-complete-common-or-cycle)
+        (company-complete-common-or-cycle)
+      (company-select-next)))
+
+   ;; 2. Otherwise calculate candidates for current word
+   (t
+    (let* ((prefix (aweshell/current-word-prefix))
+           (cands (aweshell/company-candidates prefix)))
+      (cond
+       ;; If ghost-text is active and there are no multiple completion choices:
+       ;; Accept the ghost-text suggestion immediately (ergonomia Zsh)
+       ((and (bound-and-true-p aweshell--suggest-current)
+             (= (point) (point-max))
+             (or (null cands) (<= (length cands) 1)))
+        (aweshell/suggest-accept))
+
+       ;; If exactly 1 candidate: complete it directly into buffer
+       ((= (length cands) 1)
+        (let ((cand (car cands)))
+          (when (and (> (length cand) (length prefix))
+                     (string-prefix-p prefix cand))
+            (insert (substring cand (length prefix))))
+          (when (fboundp 'aweshell/suggest-clear)
+            (aweshell/suggest-clear))
+          (when (fboundp 'aweshell/highlight-input-line)
+            (aweshell/highlight-input-line))))
+
+       ;; If multiple candidates: expand common prefix if any, then open company menu
+       ((> (length cands) 1)
+        (when (fboundp 'aweshell/suggest-clear)
+          (aweshell/suggest-clear))
+        (let ((common (try-completion prefix cands)))
+          (when (and (stringp common)
+                     (> (length common) (length prefix)))
+            (insert (substring common (length prefix)))))
+        (when (and (bound-and-true-p company-mode)
+                   (fboundp 'company-manual-begin))
+          (company-manual-begin)))
+
+       ;; Fallback: if ghost-text exists, accept it
+       ((and (bound-and-true-p aweshell--suggest-current)
+             (= (point) (point-max)))
+        (aweshell/suggest-accept))
+
+       ;; Fallback to standard Eshell completion
+       (t
+        (if (fboundp 'completion-at-point)
+            (completion-at-point)
+          (pcomplete))))))))
+
 (defun aweshell/company-backend (command &optional arg &rest _ignored)
   "`company-mode' backend for Aweshell with rich categorized options."
   (interactive (list 'interactive))
@@ -1468,12 +1534,8 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
     (interactive (company-begin-backend 'aweshell/company-backend))
     (prefix (and (derived-mode-p 'eshell-mode)
                  (not (get-text-property (point) 'read-only))
-                 (if (fboundp 'company-grab-symbol)
-                     (let ((p (company-grab-symbol)))
-                       (if (and p (not (string-empty-p p)))
-                           p
-                         ""))
-                   "")))
+                 (let ((p (aweshell/current-word-prefix)))
+                   (if p p ""))))
     (candidates (aweshell/company-candidates arg))
     (annotation (aweshell/candidate-annotation arg))
     (sorted t)))
@@ -1481,7 +1543,11 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
 (with-eval-after-load 'company
   (define-key company-active-map (kbd "<right>") #'company-complete-selection)
   (define-key company-active-map [right]         #'company-complete-selection)
-  (define-key company-active-map (kbd "C-f")     #'company-complete-selection))
+  (define-key company-active-map (kbd "C-f")     #'company-complete-selection)
+  (define-key company-active-map (kbd "<tab>")   #'company-complete-common-or-cycle)
+  (define-key company-active-map (kbd "TAB")     #'company-complete-common-or-cycle)
+  (define-key company-active-map (kbd "<backtab>") #'company-select-previous)
+  (define-key company-active-map (kbd "S-TAB")   #'company-select-previous))
 
 (add-hook 'eshell-mode-hook
           (lambda ()
@@ -1489,7 +1555,8 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
             (add-hook 'kill-buffer-hook #'aweshell/suggest-clear nil t)
             (when (fboundp 'company-mode)
               (company-mode 1)
-              (setq-local company-idle-delay 0.05)
+              ;; Never popup automatically on idle delay: only show on TAB or ghost-text
+              (setq-local company-idle-delay nil)
               (setq-local company-minimum-prefix-length 1)
               (setq-local company-backends '(aweshell/company-backend)))))
 
