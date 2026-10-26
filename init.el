@@ -233,18 +233,39 @@
                           (error-message-string err)))))))))
 
 ;; ================================
-;; EMACS SERVER
+;; EMACS SERVER & SOCKET INTEGRATION
 ;; ================================
 (require 'server)
-(unless (server-running-p)
-  (server-start)
+
+(defun emacs/sync-server-sockets ()
+  "Bidirectionally synchronize Emacs server sockets between standard XDG path and var/server/auth/server."
   (when-unix
-   (let ((sock-file (expand-file-name server-name (or server-socket-dir (expand-file-name (format "emacs%d" (user-uid)) temporary-file-directory))))
-         (link-file (expand-file-name "var/server/auth/server" emacs-dir)))
-     (when (and (file-exists-p sock-file) (not (string= sock-file link-file)))
-       (ignore-errors
-         (delete-file link-file)
-         (make-symbolic-link sock-file link-file t))))))
+   (let* ((auth-dir (expand-file-name "var/server/auth" emacs-dir))
+          (auth-sock (expand-file-name "server" auth-dir))
+          (run-dir (or (when-let ((xdg-run (getenv "XDG_RUNTIME_DIR")))
+                         (expand-file-name "emacs" xdg-run))
+                       (expand-file-name (format "emacs%d" (user-uid)) temporary-file-directory)))
+          (std-sock (expand-file-name "server" run-dir)))
+     (ignore-errors
+       (unless (file-directory-p auth-dir)
+         (make-directory auth-dir t))
+       (unless (file-directory-p run-dir)
+         (make-directory run-dir t)
+         (set-file-modes run-dir #o700))
+       (cond
+        ((and (file-exists-p auth-sock) (not (file-symlink-p auth-sock)))
+         (unless (and (file-symlink-p std-sock) (string= (file-truename std-sock) (file-truename auth-sock)))
+           (delete-file std-sock)
+           (make-symbolic-link auth-sock std-sock t)))
+        ((and (file-exists-p std-sock) (not (file-symlink-p std-sock)))
+         (unless (and (file-symlink-p auth-sock) (string= (file-truename auth-sock) (file-truename std-sock)))
+           (delete-file auth-sock)
+           (make-symbolic-link std-sock auth-sock t))))))))
+
+(unless (server-running-p)
+  (server-start))
+(emacs/sync-server-sockets)
+(add-hook 'server-after-make-frame-hook #'emacs/sync-server-sockets)
 
 ;; ================================
 ;; RESTORE GC DEFAULTS
