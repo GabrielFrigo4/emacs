@@ -3,15 +3,21 @@
 ;; Module: Emacs X11 Window Manager (EXWM) Integration
 ;; ----------------------------------------------------------------
 
-(when (string= (getenv "EMACS_OS_MODE") "x11")
+(when (and (string= (getenv "EMACS_OS_MODE") "x11")
+           (not noninteractive))
   ;; Garante xelb e exwm imediatamente no load-path
   (let ((builds-dir (expand-file-name "var/lib/elpaca/builds/"
                                       (or (bound-and-true-p user-emacs-directory)
                                           (expand-file-name "~/.emacs.d/")))))
     (dolist (pkg '("xelb" "exwm"))
       (let ((pkg-dir (expand-file-name pkg builds-dir)))
-        (when (file-directory-p pkg-dir)
-          (add-to-list 'load-path pkg-dir)))))
+        (if (file-directory-p pkg-dir)
+            (add-to-list 'load-path pkg-dir)
+          (when (fboundp 'elpaca)
+            (elpaca (intern pkg)))))))
+
+  (when (fboundp 'elpaca-wait)
+    (elpaca-wait))
 
   (require 'xelb nil t)
   (require 'exwm nil t)
@@ -44,6 +50,7 @@
                          (interactive (list (read-shell-command "$ ")))
                          (start-process-shell-command command nil command)))
             ([?\s-q] . kill-current-buffer)
+            ([?\s-Q] . save-buffers-kill-emacs)
             ,@(mapcar (lambda (i)
                         (cons (vector (intern (format "s-%d" i)))
                               (lambda ()
