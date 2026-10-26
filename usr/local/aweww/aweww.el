@@ -559,23 +559,33 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
 ;; ============================================================================
 
 (defun aweww--headerline-format ()
-  "Compute dynamic headerline with left-aligned info and right-aligned keybindings."
+  "Compute dynamic headerline with left-aligned info and right-aligned keybindings.
+Adapts dynamically to window width and content centering margins to prevent line wrapping."
   (let* ((url (or aweww-current-url "about:blank"))
          (engine (or aweww-current-engine "Nativo"))
          (domain (condition-case nil
-                     (url-host (url-generic-parse-url url))
+                     (let ((host (url-host (url-generic-parse-url url))))
+                       (if (and host (> (length host) 28))
+                           (concat (substring host 0 25) "...")
+                         (or host url)))
                    (error url)))
          (left (format " AWEWW │ %s │ %s%s"
-                       (or domain url)
+                       domain
                        engine
-                       (if aweww-reader-mode-active " │ Leitura" "")))
+                       (if aweww-reader-mode-active " │ Leitor" "")))
          (mpv (if (and aweww--mpv-process (process-live-p aweww--mpv-process))
-                  " [▶ MPV Ativo: P=Pausa, +/-=Vol] "
+                  " [MPV: P/Vol] "
                 ""))
-         (right "[s] Busca  [y] YouTube  [R] Leitura  [O] Firefox  [q] Sair ")
-         (full-right (concat mpv right))
          (win-w (window-width))
-         (avail (max 2 (- win-w (string-width left) (string-width full-right))))
+         (right (cond
+                 ((> win-w 115)
+                  "[s] Busca  [y] YouTube  [R] Leitor  [O] Web  [q] Sair ")
+                 ((> win-w 85)
+                  "[s] Busca  [R] Leitor  [O] Web  [q] Sair ")
+                 (t
+                  "[s] Busca  [q] Sair ")))
+         (full-right (concat mpv right))
+         (avail (max 1 (- win-w (string-width left) (string-width full-right))))
          (spacing (make-string avail ?\s)))
     (concat
      (propertize left 'face '(:weight bold :inherit header-line))
@@ -603,7 +613,72 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
       ;; Collapse three or more consecutive newlines into at most two
       (goto-char (point-min))
       (while (re-search-forward "\n\n\n+" nil t)
-        (replace-match "\n\n")))))
+        (replace-match "\n\n"))
+      ;; Trim leading blank lines at buffer start safely without touching form inputs
+      (goto-char (point-min))
+      (while (and (looking-at "[ \t]*\n")
+                  (not (text-property-not-all (match-beginning 0) (match-end 0) 'eww-form nil)))
+        (delete-region (match-beginning 0) (match-end 0))))))
+
+(defun aweww--sanitize-dom (dom url)
+  "Sanitize and filter DOM noise (sidebars, skip links, headers) for URL."
+  (let ((u (or url "")))
+    ;; 1. Universal accessibility skip-links & off-screen text
+    (dolist (cls '("mw-jump-link" "skip-to-content" "skip-link" "visually-hidden" "sr-only" "screen-reader-text"))
+      (dolist (node (dom-by-class dom cls))
+        (condition-case nil (dom-remove-node dom node) (error nil))))
+
+    ;; 2. Wikipedia / Wikimedia / MediaWiki desktop clutter
+    (when (or (string-match-p "\\(?:wikipedia\\|wiktionary\\|wikibooks\\|wikinews\\|wikiquote\\|wikimedia\\|mediawiki\\)\\.org" u)
+              (and (dom-by-id dom "firstHeading") (dom-by-id dom "bodyContent")))
+      (let ((wiki-clutter-ids '("vector-header-container" "vector-header"
+                                "vector-main-menu" "vector-main-menu-container"
+                                "vector-main-menu-dropdown" "vector-main-menu-unpinned-container"
+                                "vector-main-menu-pinned-container"
+                                "vector-appearance" "vector-appearance-container"
+                                "vector-appearance-dropdown" "vector-appearance-unpinned-container"
+                                "vector-appearance-pinned-container"
+                                "vector-page-toolbar" "vector-page-toolbar-container"
+                                "left-navigation" "right-navigation"
+                                "p-associated-pages" "p-views" "p-cactions" "p-tb"
+                                "p-coll-print_export" "p-wikibase-otherprojects"
+                                "vector-page-tools" "vector-page-tools-dropdown"
+                                "vector-page-tools-unpinned-container" "vector-page-tools-pinned-container"
+                                "p-lang-btn" "p-lang" "after-portlet-lang"
+                                "p-personal" "vector-user-links-main" "vector-user-links-dropdown"
+                                "vector-toc-pinned-container" "vector-page-titlebar-toc" "vector-sticky-header-toc"
+                                "mw-navigation" "mw-aria-live-region" "siteNotice"))
+            (wiki-clutter-classes '("vector-header-container" "vector-header"
+                                    "vector-page-toolbar" "vector-page-toolbar-container"
+                                    "vector-dropdown-content" "vector-pinnable-header"
+                                    "after-portlet-lang" "vector-sticky-header"
+                                    "vector-user-links-main" "vector-main-menu-landmark"
+                                    "vector-page-tools-landmark" "vector-appearance-landmark"
+                                    "vector-toc-landmark" "noprint")))
+        (dolist (id wiki-clutter-ids)
+          (dolist (node (dom-by-id dom (concat "^" (regexp-quote id) "$")))
+            (condition-case nil (dom-remove-node dom node) (error nil))))
+        (dolist (cls wiki-clutter-classes)
+          (dolist (node (dom-by-class dom cls))
+            (condition-case nil (dom-remove-node dom node) (error nil))))))
+
+    ;; 3. MkDocs Material (e.g. cp-algorithms.com)
+    (when (or (string-match-p "cp-algorithms\\.com" u)
+              (dom-by-class dom "md-sidebar"))
+      (dolist (cls '("md-sidebar" "md-header" "md-skip" "md-search" "md-search-result"))
+        (dolist (node (dom-by-class dom cls))
+          (condition-case nil (dom-remove-node dom node) (error nil)))))
+
+    ;; 4. FreeBSD Man Pages (man.freebsd.org)
+    (when (string-match-p "freebsd\\.org" u)
+      (dolist (cls '("header-container" "logo-menu-bars-container" "menu" "sub-menu"))
+        (dolist (node (dom-by-class dom cls))
+          (condition-case nil (dom-remove-node dom node) (error nil))))))
+  dom)
+
+(defun aweww--youtube-portal-html ()
+  "Generate a clean interactive portal HTML document for YouTube home page."
+  "<!DOCTYPE html><html><head><title>YouTube - Aweww</title></head><body><div class=\"aweww-portal\"><h2>YouTube</h2><p>Pesquise vídeos para reprodução instantânea via MPV:</p><form action=\"https://www.youtube.com/results\" method=\"GET\"><input type=\"text\" name=\"search_query\" size=\"40\" value=\"\"> <input type=\"submit\" value=\"Buscar\"></form><hr><p><em>Atalho rápido: pressione <b>[y]</b> no teclado a qualquer momento para buscar vídeos.</em></p></div></body></html>")
 
 (defun aweww--parse-youtube-results (html)
   "Extract structured video search results from YouTube HTML or embedded JSON."
@@ -681,7 +756,7 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
                                     (unless (string-empty-p views) (concat "<b>Visualizações:</b> " (xml-escape-string views)))
                                     (unless (string-empty-p published) (concat "<b>Publicado:</b> " (xml-escape-string published))))))
              (meta-str (string-join meta-parts " │ ")))
-        (push (format "<li><h3><a href=\"%s\">▶ %s</a></h3><p>%s</p><br></li>"
+        (push (format "<li><h3><a href=\"%s\">%s</a></h3><p>%s</p><br></li>"
                       url
                       (xml-escape-string title)
                       meta-str)
@@ -699,7 +774,7 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
         (aweww-mode)
         (setq-local aweww-current-url url)
         (setq-local aweww-current-engine "MPV-Player")
-        (let* ((card-html (format "<!DOCTYPE html><html><body><h2>▶ Reproduzindo no MPV</h2><p><b>URL do Fluxo:</b> <a href=\"%s\">%s</a></p><hr><p><b>Controles Interativos no Teclado:</b></p><ul><li><b>[P]</b> Alternar Pausa / Reprodução</li><li><b>[+]</b> Aumentar Volume (+5%%)</li><li><b>[-]</b> Diminuir Volume (-5%%)</li><li><b>[&gt;]</b> Avançar 10 segundos</li><li><b>[&lt;]</b> Retroceder 10 segundos</li><li><b>[X]</b> Parar e Encerrar MPV</li><li><b>[O]</b> Abrir no Navegador Externo (Firefox GUI)</li><li><b>[q]</b> Fechar Janela</li></ul></body></html>"
+        (let* ((card-html (format "<!DOCTYPE html><html><body><h2>[MPV] Reproduzindo Fluxo</h2><p><b>URL do Fluxo:</b> <a href=\"%s\">%s</a></p><hr><p><b>Controles Interativos no Teclado:</b></p><ul><li><b>[P]</b> Alternar Pausa / Reprodução</li><li><b>[+]</b> Aumentar Volume (+5%%)</li><li><b>[-]</b> Diminuir Volume (-5%%)</li><li><b>[&gt;]</b> Avançar 10 segundos</li><li><b>[&lt;]</b> Retroceder 10 segundos</li><li><b>[X]</b> Parar e Encerrar MPV</li><li><b>[O]</b> Abrir no Navegador Externo (Firefox GUI)</li><li><b>[q]</b> Fechar Janela</li></ul></body></html>"
                                   url url))
                (dom (with-temp-buffer
                       (insert card-html)
@@ -715,15 +790,20 @@ Invokes CALLBACK with HTML string on success, or ERROR-CALLBACK on failure."
 (defun aweww-render-html (html url &optional target-buffer engine-label)
   "Render HTML string into TARGET-BUFFER (or `*aweww*') for URL."
   (let* ((is-yt-search (string-match-p "youtube\\.com/results" url))
+         (is-yt-home (string-match-p "^https?://\\(?:www\\.\\)?youtube\\.com/?$" url))
          (yt-videos (when is-yt-search (aweww--parse-youtube-results html)))
-         (effective-html (if (and is-yt-search yt-videos)
-                             (let ((query (when (string-match "[?&]search_query=\\([^&]+\\)" url)
-                                            (url-unhex-string (match-string 1 url)))))
-                               (aweww--format-youtube-catalog (or query "Vídeos") yt-videos))
-                           html))
-         (dom (with-temp-buffer
-                (insert effective-html)
-                (libxml-parse-html-region (point-min) (point-max))))
+         (effective-html (cond
+                          ((and is-yt-search yt-videos)
+                           (let ((query (when (string-match "[?&]search_query=\\([^&]+\\)" url)
+                                          (url-unhex-string (match-string 1 url)))))
+                             (aweww--format-youtube-catalog (or query "Vídeos") yt-videos)))
+                          (is-yt-home
+                           (aweww--youtube-portal-html))
+                          (t html)))
+         (raw-dom (with-temp-buffer
+                    (insert effective-html)
+                    (libxml-parse-html-region (point-min) (point-max))))
+         (dom (when raw-dom (aweww--sanitize-dom raw-dom url)))
          (buf (or target-buffer (aweww--get-buffer url))))
     (if (not dom)
         (message "[aweww] Erro ao analisar árvore DOM de %s." url)
@@ -1014,7 +1094,7 @@ With prefix EXTERNAL (or C-u), open link in external browser."
                        (list (format "--input-ipc-server=%s" socket-path) url))))
     (setq aweww--mpv-socket socket-path
           aweww--mpv-current-url url)
-    (message "▶ [aweww/mpv] Reproduzindo mídia: %s" url)
+    (message "[aweww/mpv] Reproduzindo: %s" url)
     (setq aweww--mpv-process
           (make-process
            :name "aweww-mpv"
