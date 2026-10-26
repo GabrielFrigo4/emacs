@@ -373,6 +373,12 @@ Returns the directory path and sets permissions to 0700."
 
 (add-hook 'kill-emacs-hook #'aweww--cleanup-all-profiles)
 
+(defvar aweww--cached-user-agent nil
+  "Cached dynamic User-Agent string to avoid re-invoking browser repeatedly.")
+
+(defvar aweww--mpv-process nil
+  "Active mpv process object.")
+
 (defun aweww-switch-browser (strategy)
   "Switch the active headless browser STRATEGY interactively."
   (interactive
@@ -391,9 +397,6 @@ Returns the directory path and sets permissions to 0700."
 ;; ----------------------------------------------------------------------------
 ;;  Dynamic User-Agent Resolution (Browser Delegation & OS Antifragility)
 ;; ----------------------------------------------------------------------------
-
-(defvar aweww--cached-user-agent nil
-  "Cached dynamic User-Agent string to avoid re-invoking browser repeatedly.")
 
 (defun aweww--platform-string ()
   "Return canonical platform architecture string for User-Agent."
@@ -1239,8 +1242,8 @@ headless --dump-dom cannot convey HTTP request bodies."
     (with-current-buffer buf
       (let ((inhibit-read-only t))
         (erase-buffer)
-        (insert "🌐 Diagnóstico do Componente Aweww (Awesome EWW)\n")
-        (insert "=================================================\n\n")
+        (insert "Diagnóstico do Componente Aweww (Awesome EWW)\n")
+        (insert "=============================================\n\n")
         (insert (format "• Sistema Operacional : %s\n" os-type))
         (insert (format "• Candidatos no SO    : %s\n" (string-join candidates ", ")))
         (insert (format "• Navegador Ativo     : %s\n"
@@ -1249,21 +1252,21 @@ headless --dump-dom cannot convey HTTP request bodies."
                           "Nenhum navegador encontrado")))
         (insert (format "• Suporte a --dump-dom: %s\n"
                         (if supports-dump
-                            "✅ Sim (Chromium/Blink V8 nativo)"
+                            "[OK] Sim (Chromium/Blink V8 nativo)"
                           (if (and active-browser (string-match-p "firefox" active-browser))
-                              "⚠️  Não (Firefox não possui flag CLI --dump-dom; operando em modo fallback nativo)"
-                            "❌ Não disponível"))))
+                              "[AVISO] Não (Firefox não possui flag CLI --dump-dom; operando em modo fallback nativo)"
+                            "[FALHA] Não disponível"))))
         (insert (format "• User-Agent Dinâmico : %s\n"
                         (aweww--resolve-user-agent active-browser)))
         (insert (format "• Suporte libxml2     : %s\n"
-                        (if libxml-ok "✅ Presente no Emacs" "❌ Ausente (compilado sem libxml2)")))
+                        (if libxml-ok "[OK] Presente no Emacs" "[FALHA] Ausente (compilado sem libxml2)")))
         (insert (format "• Suporte shrface     : %s\n"
-                        (if shrface-ok "✅ Ativo (Tipografia Org-mode)" "ℹ️  Disponível sob demanda")))
+                        (if shrface-ok "[OK] Ativo (Tipografia Org-mode)" "[INFO] Disponível sob demanda")))
         (insert (format "• Realce de Sintaxe   : %s\n"
-                        (if highlight-ok "✅ Ativo (shr-tag-pre-highlight)" "ℹ️  Disponível sob demanda")))
+                        (if highlight-ok "[OK] Ativo (shr-tag-pre-highlight)" "[INFO] Disponível sob demanda")))
         (insert (format "• Player MPV          : %s\n"
-                        (if mpv-ok (format "✅ Detectado (%s)" mpv-ok) "⚠️  Não detectado")))
-        (insert "\n💡 Dicas de Uso:\n")
+                        (if mpv-ok (format "[OK] Detectado (%s)" mpv-ok) "[AVISO] Não detectado")))
+        (insert "\nDicas de Uso:\n")
         (insert "  - [s]   Pesquisar diretamente no DuckDuckGo/Google com JS hidratado\n")
         (insert "  - [y]   Pesquisar vídeos no YouTube com catálogo estruturado e MPV\n")
         (insert "  - [M-c] Alternar centralização de leitura (margens inteligentes)\n")
@@ -1296,21 +1299,25 @@ With prefix argument FORCE-NATIVE (C-u), bypass headless browser and use native 
                       (equal (and (boundp 'url-request-method) url-request-method) "POST")))
          (effective-force-native (or force-native is-post))
          (normalized-url (if is-post url (aweww--normalize-url url))))
-    (if (and aweww-intercept-media (aweww-media-url-p normalized-url))
-        (progn
-          (aweww-play-media normalized-url)
-          (aweww--render-media-player-card normalized-url))
+    (cond
+     ((and aweww-intercept-media (aweww-media-url-p normalized-url))
+      (aweww-play-media normalized-url)
+      (aweww--render-media-player-card normalized-url))
+     ((string-match-p "^https?://\\(?:www\\.\\)?youtube\\.com/?$" normalized-url)
+      (let ((target-buf (aweww--get-buffer normalized-url)))
+        (aweww-render-html (aweww--youtube-portal-html) normalized-url target-buf "YouTube-Portal")))
+     (t
       (let ((target-buf (aweww--get-buffer normalized-url)))
         (with-current-buffer target-buf
           (let ((inhibit-read-only t)
                 (inhibit-modification-hooks t))
             (erase-buffer)
-            (insert (format "⏳ [Aweww] Carregando: %s...\n" normalized-url))))
+            (insert (format "[Aweww] Carregando: %s...\n" normalized-url))))
         (aweww-fetch
          normalized-url
          (lambda (html engine)
            (aweww-render-html html normalized-url target-buf engine))
-         effective-force-native)))))
+         effective-force-native))))))
 
 ;;;###autoload
 (defalias 'aweww-search-youtube #'aweww-youtube-search)
