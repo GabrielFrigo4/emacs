@@ -10,11 +10,14 @@
                                           (expand-file-name "~/.emacs.d/")))))
     (dolist (pkg '("xelb" "exwm"))
       (let ((pkg-dir (expand-file-name pkg builds-dir)))
-        (if (file-directory-p pkg-dir)
-            (add-to-list 'load-path pkg-dir)
-          (when (fboundp 'elpaca)
-            (elpaca (intern pkg)))))))
+        (when (file-directory-p pkg-dir)
+          (add-to-list 'load-path pkg-dir)))))
 
+  (unless (featurep 'exwm)
+    (when (fboundp 'elpaca-queue)
+      (elpaca-queue
+       (elpaca xelb)
+       (elpaca exwm))))
   (when (fboundp 'elpaca-wait)
     (elpaca-wait))
 

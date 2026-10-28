@@ -366,6 +366,31 @@ integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
   (apply #'emacs/spawn-desktop-app "vlc" '("vlc") args))
 (defalias 'vlc 'emacs/app-vlc)
 
+(defun emacs/app-kate (&rest args)
+  "Inicia o editor Kate (KDE)."
+  (interactive)
+  (apply #'emacs/spawn-desktop-app "kate" '("kate") (or args (list default-directory))))
+(defalias 'kate 'emacs/app-kate)
+
+(defun emacs/app-wireshark (&rest args)
+  "Inicia o analisador de tráfego de rede Wireshark."
+  (interactive)
+  (apply #'emacs/spawn-desktop-app "wireshark" '("wireshark") args))
+(defalias 'wireshark 'emacs/app-wireshark)
+
+(defun emacs/app-kdeconnect (&rest args)
+  "Inicia o aplicativo KDE Connect."
+  (interactive)
+  (apply #'emacs/spawn-desktop-app "kdeconnect" '("kdeconnect-app" "kdeconnect-indicator" "kdeconnect-settings") args))
+(defalias 'kdeconnect 'emacs/app-kdeconnect)
+(defalias 'kdeconnect-app 'emacs/app-kdeconnect)
+
+(defun emacs/app-thunderbird (&rest args)
+  "Inicia o cliente de e-mail Thunderbird."
+  (interactive)
+  (apply #'emacs/spawn-desktop-app "thunderbird" '("thunderbird") args))
+(defalias 'thunderbird 'emacs/app-thunderbird)
+
 (defun emacs/app-gimp (&rest args)
   "Inicia o editor de imagens GIMP."
   (interactive)
@@ -454,6 +479,11 @@ integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
                 (konsole       . emacs/app-konsole)
                 (mpv           . emacs/app-mpv)
                 (vlc           . emacs/app-vlc)
+                (kate          . emacs/app-kate)
+                (wireshark     . emacs/app-wireshark)
+                (kdeconnect    . emacs/app-kdeconnect)
+                (kdeconnect-app . emacs/app-kdeconnect)
+                (thunderbird   . emacs/app-thunderbird)
                 (gimp          . emacs/app-gimp)
                 (inkscape      . emacs/app-inkscape)
                 (obs           . emacs/app-obs)

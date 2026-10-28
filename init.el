@@ -242,7 +242,7 @@
   (when-unix
    (let* ((auth-dir (expand-file-name "var/server/auth" emacs-dir))
           (auth-sock (expand-file-name "server" auth-dir))
-          (run-dir (or (when-let ((xdg-run (getenv "XDG_RUNTIME_DIR")))
+          (run-dir (or (when-let* ((xdg-run (getenv "XDG_RUNTIME_DIR")))
                          (expand-file-name "emacs" xdg-run))
                        (expand-file-name (format "emacs%d" (user-uid)) temporary-file-directory)))
           (std-sock (expand-file-name "server" run-dir)))
