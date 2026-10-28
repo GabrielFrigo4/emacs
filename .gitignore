@@ -48,3 +48,19 @@
 # ============================================================================
 .DS_Store
 Thumbs.db
+.directory
+Desktop.ini
+
+# ============================================================================
+# Session & History Artefacts
+# ============================================================================
+/history
+/recentf
+/savehist
+/places
+/bookmarks
+/projects
+/transient/
+/custom.el
+*.log
+*.tmp

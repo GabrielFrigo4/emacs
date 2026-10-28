@@ -23,15 +23,27 @@
 (when (ewm-available-p)
   (setenv "EWM_MODULE_PATH" ewm-module-file))
 
+(defcustom ewm-show-tool-bar t
+  "Non-nil means display the graphical tool-bar on EWM output frames.
+Compositor surface offsets are corrected by `ewm--external-bars-height',
+so enabling it does not skew client geometry."
+  :type 'boolean
+  :group 'interface)
+
 (defun ewm--preserve-menu-bar (&optional frame)
-  "Keep the graphical menu-bar enabled on EWM frames."
+  "Keep the graphical menu-bar and tool-bar enabled on EWM FRAME."
   (let ((target (or frame (selected-frame))))
     (when (and (frame-live-p target) (display-graphic-p target))
       (set-frame-parameter target 'menu-bar-lines 1)
       (when (fboundp 'menu-bar-mode)
         (menu-bar-mode 1))
       (when (fboundp 'interface/apply-menu-bar)
-        (interface/apply-menu-bar target)))))
+        (interface/apply-menu-bar target))
+      (when ewm-show-tool-bar
+        (set-frame-parameter target 'tool-bar-position 'top)
+        (set-frame-parameter target 'tool-bar-lines 1)
+        (when (facep 'tool-bar)
+          (set-face-attribute 'tool-bar target :background "#1e1e1e" :foreground "#d4d4d4" :box nil))))))
 
 (defun ewm--sync-output-frames (&rest _)
   "Ensure EWM output frames have menu-bar and *dashboard* displayed."
@@ -87,30 +99,36 @@
 
 (with-eval-after-load 'ewm-input
   (setq ewm-input-config
-        '((keyboard :repeat-delay 200 :repeat-rate 50
-                    :xkb-layouts "br" :xkb-options "numpad:mac")
+        ;; XKB names are omitted on purpose: `set_xkb_config' segfaults in
+        ;; libxkbcommon on FreeBSD; the keymap comes from XKB_DEFAULT_*.
+        '((keyboard :repeat-delay 200 :repeat-rate 50)
           (touchpad :natural-scroll t :tap t :dwt t)
           (mouse :accel-profile "flat"))))
 
 (with-eval-after-load 'ewm-layout
-  (defun ewm--external-menu-bar-height (frame)
-    "Return pixel height of external GTK menu-bar on FRAME, or 0."
+  (defun ewm--external-bars-height (frame)
+    "Return pixel height of external GTK menu-bar plus top tool-bar on FRAME."
     (if (and (frame-live-p frame)
              (fboundp 'frame-geometry))
         (let* ((geom (frame-geometry frame))
-               (ext (cdr (assq 'menu-bar-external geom)))
-               (size (cdr (assq 'menu-bar-size geom))))
-          (if (and ext (consp size) (numberp (cdr size)) (> (cdr size) 0))
-              (cdr size)
-            0))
+               (bar-height
+                (lambda (ext-key size-key)
+                  (let ((ext (cdr (assq ext-key geom)))
+                        (size (cdr (assq size-key geom))))
+                    (if (and ext (consp size) (numberp (cdr size)) (> (cdr size) 0))
+                        (cdr size)
+                      0))))
+               (tool-top (memq (cdr (assq 'tool-bar-position geom)) '(nil top))))
+          (+ (funcall bar-height 'menu-bar-external 'menu-bar-size)
+             (if tool-top (funcall bar-height 'tool-bar-external 'tool-bar-size) 0)))
       0))
 
   (defun ewm--window-body-pixel-rect-modeline-guard (orig-fn window)
-    "Offset Wayland surface geometry by external menu-bar height and preserve mode-line."
+    "Offset WINDOW rect from ORIG-FN by external bar heights, keep mode-line."
     (let ((rect (funcall orig-fn window)))
       (if (and rect (window-live-p window))
           (pcase-let ((`(,x ,y ,w ,h) rect))
-            (let* ((mb-h (ewm--external-menu-bar-height (window-frame window)))
+            (let* ((mb-h (ewm--external-bars-height (window-frame window)))
                    (tab-h (if (< emacs-major-version 31) (window-tab-line-height window) 0))
                    (adj-h (if (> tab-h 0) (max 1 (- h tab-h)) h)))
               (list x (+ y mb-h) w adj-h)))
@@ -118,8 +136,8 @@
   (advice-add 'ewm--window-body-pixel-rect :around #'ewm--window-body-pixel-rect-modeline-guard)
 
   (defun ewm--window-at-logical-menu-bar-guard (orig-fn frame x y)
-    "Adjust pointer Y coordinate by external GTK menu-bar height on FRAME."
-    (let* ((mb-h (ewm--external-menu-bar-height frame))
+    "Call ORIG-FN on FRAME with X and Y, Y shifted by external GTK bar heights."
+    (let* ((mb-h (ewm--external-bars-height frame))
            (adj-y (- y mb-h)))
       (if (< adj-y 0)
           nil
