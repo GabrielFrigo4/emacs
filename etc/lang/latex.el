@@ -111,7 +111,7 @@
   (setq-default pdf-view-use-imagemagick nil)
   (defadvice pdf-cache--prefetch-start (around suppress-timer activate)
     (cancel-function-timers 'pdf-cache--prefetch-start))
-  
+
   (defun pdf-view/toggle-dark-mode ()
     "Toggle dark mode (midnight mode) in pdf-view."
     (interactive)

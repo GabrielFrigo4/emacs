@@ -14,8 +14,8 @@
   )
 
 (use-package imenu-list
-  :ensure (imenu-list :host github 
-                      :repo "bmag/imenu-list" 
+  :ensure (imenu-list :host github
+                      :repo "bmag/imenu-list"
                       :main "imenu-list.el")
   :bind ("C-c m" . imenu-list-smart-toggle)
   :config
