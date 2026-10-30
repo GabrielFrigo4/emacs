@@ -373,7 +373,7 @@ Emacs and correcting errors.  You can delete by words or lines
 as well.  Here is a summary of the delete operations:
 
 	<DEL>        Delete the character just before the cursor
-	C-d   	     Delete the next character after the cursor
+	C-d  	     Delete the next character after the cursor
 
 	M-<DEL>      Kill the word immediately before the cursor
 	M-d	     Kill the next word after the cursor
