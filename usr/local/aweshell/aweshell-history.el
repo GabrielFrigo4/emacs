@@ -20,14 +20,15 @@
 
 (defvar aweshell--combined-history-cache nil
   "Cached combined shell history list.")
-(defvar aweshell--combined-history-tick 0
-  "Tick counter tracking eshell-history-ring changes.")
+(defvar aweshell--combined-history-tick nil
+  "Cache key tracking eshell-history-ring changes.")
 
 (defun aweshell/reload-shell-history ()
   "Invalidate shell history cache to force disk reload."
   (setq aweshell--bash-history-mtime nil
         aweshell--zsh-history-mtime nil
-        aweshell--combined-history-cache nil))
+        aweshell--combined-history-cache nil
+        aweshell--combined-history-tick nil))
 
 (defun aweshell/parse-bash-history ()
   "Parse bash history file safely with mtime caching."
@@ -65,25 +66,31 @@
 
 (defun aweshell/parse-shell-history ()
   "Parse history from eshell/bash/zsh with zero-latency caching."
-  (let* ((eshell-hist (when (bound-and-true-p eshell-history-ring)
-                        (ignore-errors (ring-elements eshell-history-ring))))
-         (current-tick (if eshell-hist (length eshell-hist) 0))
+  (let* ((has-ring (and (boundp 'eshell-history-ring)
+                        (ring-p eshell-history-ring)))
+         (ring-len (if has-ring (ring-length eshell-history-ring) 0))
+         (ring-head (if (and has-ring (not (ring-empty-p eshell-history-ring)))
+                        (ring-ref eshell-history-ring 0)
+                      nil))
+         (current-tick (cons ring-len ring-head))
          (bash-hist (aweshell/parse-bash-history))
          (zsh-hist (aweshell/parse-zsh-history)))
     (if (and aweshell--combined-history-cache
-             (= current-tick aweshell--combined-history-tick))
+             (equal current-tick aweshell--combined-history-tick))
         aweshell--combined-history-cache
-      (setq aweshell--combined-history-tick current-tick
-            aweshell--combined-history-cache
-            (delete-dups
-             (mapcar
-              (lambda (str)
-                (string-trim (substring-no-properties str)))
-              (delq nil
-                    (append
-                     eshell-hist
-                     bash-hist
-                     zsh-hist))))))))
+      (let ((eshell-hist (when has-ring
+                           (ignore-errors (ring-elements eshell-history-ring)))))
+        (setq aweshell--combined-history-tick current-tick
+              aweshell--combined-history-cache
+              (delete-dups
+               (mapcar
+                (lambda (str)
+                  (string-trim (substring-no-properties str)))
+                (delq nil
+                      (append
+                       eshell-hist
+                       zsh-hist
+                       bash-hist)))))))))
 
 (provide 'aweshell-history)
 ;;; aweshell-history.el ends here

@@ -988,6 +988,33 @@ suppressing minibuffer write messages."
                    ("upmodes" "update-emacs-modes $@*")
                    ("resh" "reinstall-shell $@*")
                    ("bsh" "bench-shell $@*")
+                   ("cleancache" "cleancache")
+                   ("ccache" "cleancache")
+                   ("take" "take $@*")
+                   ("take-dir" "take $@*")
+                   ("mkcd" "take $@*")
+                   ("cg" "cg")
+                   ("cd-git-root" "cg")
+                   ("cdb" "cg")
+                   ("upgit" "upgit $@*")
+                   ("plgit" "upgit $@*")
+                   ("psgit" "psgit $@*")
+                   ("vs" "vs $@*")
+                   ("vd" "vd $@*")
+                   ("nb" "nb $@*")
+                   ("vm" "vm $@*")
+                   ("gui" "gui $@*")
+                   ("wgui" "wgui $@*")
+                   ("xgui" "xgui $@*")
+                   ("wm" "wm $@*")
+                   ("wwm" "wwm $@*")
+                   ("xwm" "xwm $@*")
+                   ("ewm" "ewm $@*")
+                   ("exwm" "exwm $@*")
+                   ("userland" "userland $@*")
+                   ("gnu" "gnu")
+                   ("bsd" "bsd")
+                   ("default" "default")
                    ;; Emacs Contextual Navigation
                    ("e" "find-file $1")
                    ("ee" "find-file-other-window $1")
@@ -1023,14 +1050,214 @@ suppressing minibuffer write messages."
 
 (add-hook 'eshell-mode-hook #'aweshell/setup-aliases)
 
+(defun aweshell/invalidate-history-cache (&rest _)
+  "Invalidate combined history cache on new input."
+  (aweshell/reload-shell-history))
+
+(add-hook 'eshell-input-filter-functions #'aweshell/invalidate-history-cache)
+
 (defun aweshell/setup-environment ()
   "Setup environment variables for Aweshell."
   (unless (and (fboundp 'display-raw-tty-p) (display-raw-tty-p))
     (setq-local eshell-term-name "xterm-256color"))
   (setenv "FORCE_COLOR" "1")
-  (setenv "CLICOLOR_FORCE" "1"))
+  (setenv "CLICOLOR_FORCE" "1")
+  (setenv "PAGER" "cat")
+  (setenv "GIT_PAGER" "cat")
+  (setenv "SYSTEMD_PAGER" "cat")
+  (setenv "MANPAGER" "cat"))
 
 (add-hook 'eshell-mode-hook #'aweshell/setup-environment)
+
+(defun aweshell/set-userland (mode)
+  "Switch userland mode to gnu, bsd, or default."
+  (let ((m (or mode "status")))
+    (cond
+     ((member m '("gnu" "GNU"))
+      (setenv "SHELL_USERLAND" "gnu")
+      (dolist (dir '("/usr/local/libexec/gnubin"
+                     "/opt/homebrew/opt/coreutils/libexec/gnubin"
+                     "/usr/local/opt/coreutils/libexec/gnubin"))
+        (when (file-directory-p dir)
+          (setenv "PATH" (concat dir ":" (getenv "PATH")))
+          (add-to-list 'exec-path dir)))
+      (message "Aweshell: Userland alternado para GNU."))
+     ((member m '("bsd" "BSD"))
+      (setenv "SHELL_USERLAND" "bsd")
+      (let* ((paths (split-string (getenv "PATH") ":" t))
+             (clean-paths (seq-remove (lambda (p) (string-suffix-p "/gnubin" p)) paths)))
+        (setenv "PATH" (string-join clean-paths ":"))
+        (setq exec-path (seq-remove (lambda (p) (string-suffix-p "/gnubin" p)) exec-path)))
+      (message "Aweshell: Userland alternado para BSD."))
+     ((member m '("default" "DEFAULT" "native"))
+      (setenv "SHELL_USERLAND" "default")
+      (let* ((paths (split-string (getenv "PATH") ":" t))
+             (clean-paths (seq-remove (lambda (p) (string-suffix-p "/gnubin" p)) paths)))
+        (setenv "PATH" (string-join clean-paths ":"))
+        (setq exec-path (seq-remove (lambda (p) (string-suffix-p "/gnubin" p)) exec-path)))
+      (message "Aweshell: Userland restaurado para o padrão do SO hospedeiro."))
+     ((string= m "status")
+      (message "Aweshell: Userland ativo: %s" (or (getenv "SHELL_USERLAND") "default")))
+     (t
+      (message "Uso: userland [gnu|bsd|default|status]")))))
+
+(defun eshell/userland (&optional mode)
+  "Switch or show userland mode in Aweshell."
+  (aweshell/set-userland (if mode (format "%s" mode) "status")))
+
+(defun eshell/gnu (&rest _)
+  "Switch userland to GNU."
+  (aweshell/set-userland "gnu"))
+
+(defun eshell/bsd (&rest _)
+  "Switch userland to BSD."
+  (aweshell/set-userland "bsd"))
+
+(defun eshell/default (&rest _)
+  "Switch userland to default."
+  (aweshell/set-userland "default"))
+
+(defun eshell/take (&rest args)
+  "Create directory and navigate into it."
+  (if (null args)
+      (message "Uso: take <diretorio>")
+    (let ((dir (format "%s" (car args))))
+      (make-directory dir t)
+      (eshell/cd dir))))
+
+(defalias 'eshell/take-dir 'eshell/take)
+(defalias 'eshell/mkcd 'eshell/take)
+
+(defun eshell/cg (&rest _)
+  "Change directory to git repository root."
+  (let ((root (locate-dominating-file default-directory ".git")))
+    (if root
+        (eshell/cd root)
+      (message "Não está dentro de um repositório git."))))
+
+(defalias 'eshell/cd-git-root 'eshell/cg)
+(defalias 'eshell/cdb 'eshell/cg)
+
+(defun eshell/cleancache (&rest _)
+  "Clean Universal Shell cache."
+  (if (executable-find "clean-cache")
+      (eshell-named-command "clean-cache")
+    (message "Cache limpo.")))
+
+(defalias 'eshell/ccache 'eshell/cleancache)
+(defalias 'eshell/clean-cache 'eshell/cleancache)
+
+(defun eshell/upgit (&rest args)
+  "Update git repositories."
+  (if (executable-find "update-git")
+      (apply #'eshell-named-command "update-git" args)
+    (eshell-named-command "git" (cons "pull" args))))
+
+(defalias 'eshell/plgit 'eshell/upgit)
+(defalias 'eshell/pull-git 'eshell/upgit)
+(defalias 'eshell/update-git 'eshell/upgit)
+
+(defun eshell/psgit (&rest args)
+  "Push git repositories."
+  (if (executable-find "push-git")
+      (apply #'eshell-named-command "push-git" args)
+    (eshell-named-command "git" (cons "push" args))))
+
+(defalias 'eshell/push-git 'eshell/psgit)
+
+(defun eshell/vs (&rest args)
+  "VCS status for Got or Git."
+  (cond
+   ((or (file-directory-p ".got") (file-exists-p ".got/base-commit"))
+    (apply #'eshell-named-command "got" (cons "status" args)))
+   ((or (file-directory-p ".git") (locate-dominating-file default-directory ".git"))
+    (apply #'eshell-named-command "git" (append '("status" "--short") args)))
+   (t
+    (message "Não é um repositório Git ou Work Tree Got."))))
+
+(defalias 'eshell/vcs-status 'eshell/vs)
+
+(defun eshell/vd (&rest args)
+  "VCS diff for Got or Git."
+  (cond
+   ((or (file-directory-p ".got") (file-exists-p ".got/base-commit"))
+    (apply #'eshell-named-command "got" (cons "diff" args)))
+   ((or (file-directory-p ".git") (locate-dominating-file default-directory ".git"))
+    (apply #'eshell-named-command "git" (cons "diff" args)))
+   (t
+    (message "Não é um repositório Git ou Work Tree Got."))))
+
+(defalias 'eshell/vcs-diff 'eshell/vd)
+
+(defun eshell/nb (&rest args)
+  "Dispatch NetBSD hypervisor / VM command."
+  (if (executable-find "netbsd")
+      (apply #'eshell-named-command "netbsd" args)
+    (message "Comando 'netbsd' não disponível no sistema.")))
+
+(defalias 'eshell/netbsd 'eshell/nb)
+
+(defun eshell/vm (&rest args)
+  "Dispatch Linux hypervisor / VM command."
+  (let ((cmd (cl-some #'executable-find '("linux" "lx"))))
+    (if cmd
+        (apply #'eshell-named-command cmd args)
+      (message "Comando 'linux' / 'lx' não disponível no sistema."))))
+
+(defalias 'eshell/linux 'eshell/vm)
+(defalias 'eshell/lx 'eshell/vm)
+
+(defun eshell/gui (&rest args)
+  "Launch GUI session."
+  (if (executable-find "gui")
+      (apply #'eshell-named-command "gui" args)
+    (message "Iniciando interface gráfica...")))
+
+(defun eshell/wgui (&rest args)
+  "Launch Wayland GUI session."
+  (if (executable-find "wgui")
+      (apply #'eshell-named-command "wgui" args)
+    (message "Iniciando sessão Wayland...")))
+
+(defun eshell/xgui (&rest args)
+  "Launch X11 GUI session."
+  (if (executable-find "xgui")
+      (apply #'eshell-named-command "xgui" args)
+    (message "Iniciando sessão X11...")))
+
+(defun eshell/wm (&rest args)
+  "Launch Window Manager session."
+  (if (executable-find "wm")
+      (apply #'eshell-named-command "wm" args)
+    (message "Iniciando Window Manager...")))
+
+(defun eshell/wwm (&rest args)
+  "Launch Wayland Window Manager session."
+  (if (executable-find "wwm")
+      (apply #'eshell-named-command "wwm" args)
+    (message "Iniciando Wayland Window Manager...")))
+
+(defun eshell/xwm (&rest args)
+  "Launch X11 Window Manager session."
+  (if (executable-find "xwm")
+      (apply #'eshell-named-command "xwm" args)
+    (message "Iniciando X11 Window Manager...")))
+
+(defun eshell/ewm (&rest args)
+  "Launch Emacs Window Manager."
+  (if (fboundp 'ewm-start)
+      (ewm-start)
+    (if (executable-find "ewm")
+        (apply #'eshell-named-command "ewm" args)
+      (message "EWM não está carregado neste Emacs."))))
+
+(defun eshell/exwm (&rest args)
+  "Launch EXWM."
+  (if (fboundp 'exwm-enable)
+      (exwm-enable)
+    (if (executable-find "exwm")
+        (apply #'eshell-named-command "exwm" args)
+      (message "EXWM não está carregado neste Emacs."))))
 
 ;; ============================================================================
 ;;  BUFFER LOCAL REGION FACE
@@ -1383,11 +1610,33 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
                    (not (string-prefix-p " " raw-prefix))
                    (not (member clean-prefix '("clear" "cls" "clr" "exit" "logout" "pwd" "reset"))))
               (let* ((hist (aweshell/parse-shell-history))
-                     (cand (cl-find-if (lambda (s)
-                                         (and (string-prefix-p clean-prefix s)
-                                              (not (string-equal clean-prefix s))
-                                              (aweshell/history-command-valid-p s)))
-                                       hist)))
+                     (is-single-token (not (string-match-p "\\s-" clean-prefix)))
+                     (is-exact-cmd (or (member clean-prefix hist)
+                                       (and is-single-token
+                                            (or (executable-find clean-prefix)
+                                                (and (fboundp 'eshell-search-path) (eshell-search-path clean-prefix))
+                                                (fboundp (intern-soft (concat "eshell/" clean-prefix)))))))
+                     (cand
+                      (if is-exact-cmd
+                          (let ((first-match (cl-find-if (lambda (s)
+                                                           (and (string-prefix-p clean-prefix s)
+                                                                (aweshell/history-command-valid-p s)))
+                                                         hist)))
+                            (cond
+                             ((or (null first-match) (string-equal clean-prefix first-match))
+                              nil)
+                             ((string-prefix-p " " (substring first-match (length clean-prefix)))
+                              first-match)
+                             (t
+                              (cl-find-if (lambda (s)
+                                            (and (string-prefix-p (concat clean-prefix " ") s)
+                                                 (aweshell/history-command-valid-p s)))
+                                          hist))))
+                        (cl-find-if (lambda (s)
+                                      (and (string-prefix-p clean-prefix s)
+                                           (not (string-equal clean-prefix s))
+                                           (aweshell/history-command-valid-p s)))
+                                    hist))))
                 (if cand
                     (let* ((raw-suffix (substring cand (length clean-prefix)))
                            (suffix (car (split-string raw-suffix "\n"))))

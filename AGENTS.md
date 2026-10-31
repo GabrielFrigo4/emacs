@@ -27,7 +27,7 @@ O repositório `.emacs.d` provê um ambiente de desenvolvimento extensível, cen
 ## ⚠️ Invariantes Críticas para Agentes de IA
 
 1. **Fail-Safe & Graceful Degradation:** Toda biblioteca opcional ou chamada de pacote DEVE degradar graciosamente caso a rede esteja indisponível, a ferramenta não esteja instalada ou a flag correspondente esteja desativada. O Emacs NUNCA deve travar na inicialização.
-2. **Taxonomia Tripartite de Comentários:** O código adota estritamente três categorias: 1. Comentários de Sistema = PERMITIDOS (shebangs, lexical-binding, pragmas); 2. Comentários Estruturais de 64/32 colunas = PERMITIDOS (header banner 64 `-` ou `;;;`, seções 32 cols `### ===` ou `;;; ===`, réguas de 64 `=` em `.gitignore`, sem vazamento); 3. Comentários Explicativos/Narrativos = PROIBIDOS em código, configs E blocos de código dentro de Markdowns (docstrings Elisp continuam obrigatórias e autônomas).
+2. **Taxonomia Tripartite de Comentários:** O código adota estritamente três categorias: 1. Comentários de Sistema = PERMITIDOS (shebangs, lexical-binding, pragmas); 2. Comentários Estruturais de 64/32 colunas = PERMITIDOS (header banner 64 `-` ou `;;;`, seções e subseções de 32 colunas com títulos em MAIÚSCULO, réguas de 64 `=` em `.gitignore` com títulos em MAIÚSCULO, sem vazamento); 3. Comentários Explicativos/Narrativos = PROIBIDOS em código, configs E blocos de código dentro de Markdowns (docstrings Elisp continuam obrigatórias e autônomas).
 3. **Zero Secrets:** Credenciais e chaves de API NUNCA são salvas neste repositório. Use `auth-source` ou variáveis de ambiente injetadas pelo [Vault](https://github.com/GabrielFrigo4/vault).
 4. **Independência Git:** Este repositório é um Git Submodule no Environment. Commits feitos aqui pertencem ao repositório `.emacs.d`.
 5. **Hermetismo de Produção & Invariante `rm -rf .agents`:** Repositório 100% autônomo. Zero acoplamento de código de produção a `.agents/` ou `skills/` (o Emacs opera plenamente se `.agents/` for deletado).
@@ -63,7 +63,7 @@ Ao identificar linhas ou artefatos fora dos padrões estabelecidos:
 2. **Corrigir a inconformidade**, aplicando o padrão correspondente:
     - **Lexical Binding Obrigatório:** Garantir `;;; -*- lexical-binding: t -*-` rigorosamente na linha 1 de todos os arquivos `.el`.
     - **Taxonomia Tripartite de Comentários:** Eliminar comentários explicativos óbvios em código, configs e blocos de código em Markdowns, preservando exclusivamente comentários de sistema, docstrings Elisp e delimitadores estruturais (64/32 colunas).
-    - **Banners Estruturais:** Ajustar réguas para exatamente 64 hífens no topo ou 32 caracteres com `### ` no corpo (ou réguas `;;;` equivalentes em Elisp e 64 `=` em `.gitignore`).
+    - **Banners Estruturais:** Ajustar réguas para exatamente 64 hífens no topo ou 32 caracteres com `### ` no corpo (ou 64 `=` em `.gitignore`), com títulos sempre em MAIÚSCULO.
     - **Portabilidade POSIX:** Substituir bashismos (`[[ ]]`, `&>`, arrays, `source`) por sintaxe estrita POSIX `/bin/sh`.
     - **Shebang Universal:** Garantir sempre `#!/usr/bin/env sh` ou `#!/usr/bin/env python3`.
     - **Sequências ANSI & Escapes:** Não use octais (`\033`, `\001`) para caracteres ou escapes. Use `[ -t 1 ] && echo -n $'\e...'` ou notação hexadecimal (`\x01`, `\x1b`). Octal é exclusivo para permissões POSIX (`chmod 0755`, `chmod 0644`, `umask`).

@@ -4,7 +4,7 @@
 *                 text=auto
 
 # ================================================================
-# Shell Scripts & Unix Interpreters
+# SHELL SCRIPTS & UNIX INTERPRETERS
 # ================================================================
 *.sh              text eol=lf
 *.bash            text eol=lf
@@ -14,7 +14,7 @@
 *.nu              text eol=lf
 
 # ================================================================
-# Makefiles & Build Systems (GNU, BSD, NMake & Autotools)
+# MAKEFILES & BUILD SYSTEMS GNU, BSD, NMAKE & AUTOTOOLS
 # ================================================================
 BSDmakefile       text eol=lf
 GNUmakefile       text eol=lf
@@ -26,7 +26,7 @@ CMakeLists.txt    text eol=lf
 *.cmake           text eol=lf
 
 # ================================================================
-# Containers, Jails & Orchestration Recipes
+# CONTAINERS, JAILS & ORCHESTRATION RECIPES
 # ================================================================
 Dockerfile        text eol=lf
 Dockerfile.*      text eol=lf
@@ -38,7 +38,7 @@ Procfile          text eol=lf
 Vagrantfile       text eol=lf
 
 # ================================================================
-# Source Code & Semantic Diff Drivers
+# SOURCE CODE & SEMANTIC DIFF DRIVERS
 # ================================================================
 *.py              text eol=lf diff=python
 *.c               text eol=lf diff=cpp
@@ -73,7 +73,7 @@ vimrc             text eol=lf
 *.sql             text eol=lf
 
 # ================================================================
-# Documentation, Data & Configuration Files
+# DOCUMENTATION, DATA & CONFIGURATION FILES
 # ================================================================
 *.md              text eol=lf diff=markdown
 *.org             text eol=lf
@@ -95,7 +95,7 @@ vimrc             text eol=lf
 .editorconfig     text eol=lf
 
 # ================================================================
-# Windows Environment (Force CRLF)
+# WINDOWS ENVIRONMENT FORCE CRLF
 # ================================================================
 *.bat             text eol=crlf
 *.cmd             text eol=crlf
@@ -105,7 +105,7 @@ vimrc             text eol=lf
 *.vcxproj         text eol=crlf
 
 # ================================================================
-# Lockfiles & Generated Assets (Collapsed in PR Diffs)
+# LOCKFILES & GENERATED ASSETS COLLAPSED IN PR DIFFS
 # ================================================================
 package-lock.json linguist-generated=true -diff
 yarn.lock         linguist-generated=true -diff
@@ -120,7 +120,7 @@ composer.lock     linguist-generated=true -diff
 *.min.css         linguist-generated=true -diff
 
 # ================================================================
-# Documents, E-Books & Office Suites (Binary Protection)
+# DOCUMENTS, E-BOOKS & OFFICE SUITES BINARY PROTECTION
 # ================================================================
 *.pdf             binary
 *.ps              binary
@@ -139,7 +139,7 @@ composer.lock     linguist-generated=true -diff
 *.odp             binary
 
 # ================================================================
-# Raster Images, Icons & Design Assets
+# RASTER IMAGES, ICONS & DESIGN ASSETS
 # ================================================================
 *.png             binary
 *.jpg             binary
@@ -154,7 +154,7 @@ composer.lock     linguist-generated=true -diff
 *.xcf             binary
 
 # ================================================================
-# Audio, Video & Typography
+# AUDIO, VIDEO & TYPOGRAPHY
 # ================================================================
 *.mp3             binary
 *.wav             binary
@@ -172,7 +172,7 @@ composer.lock     linguist-generated=true -diff
 *.eot             binary
 
 # ================================================================
-# Archives, Binaries, Databases & Cryptographic Keys
+# ARCHIVES, BINARIES, DATABASES & CRYPTOGRAPHIC KEYS
 # ================================================================
 *.zip             binary
 *.tar             binary
@@ -206,7 +206,7 @@ composer.lock     linguist-generated=true -diff
 *.ppk             binary
 
 # ================================================================
-# Release & Archive Exclusions (git archive)
+# RELEASE & ARCHIVE EXCLUSIONS GIT ARCHIVE
 # ================================================================
 .gitattributes    export-ignore
 .gitignore        export-ignore

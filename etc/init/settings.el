@@ -76,6 +76,15 @@
 (setq-default display-line-numbers-type 'relative)
 (when (fboundp 'blink-cursor-mode)
   (blink-cursor-mode t))
+(when (fboundp 'tooltip-mode)
+  (tooltip-mode -1))
+(setq x-gtk-use-system-tooltips nil
+      use-dialog-box nil
+      use-file-dialog nil
+      completion-auto-help nil
+      select-enable-clipboard t
+      select-enable-primary t
+      save-interprogram-paste-before-kill t)
 (setq-default visible-bell nil)
 (setq-default ring-bell-function #'ignore)
 (setq use-short-answers t)
@@ -107,17 +116,55 @@
   (setq-default completion-preview-minimum-symbol-length 1
                 completion-preview-idle-delay 0.0)
   (setq completion-preview-minimum-symbol-length 1
-        completion-preview-idle-delay 0.0)
+        completion-preview-idle-delay 0.0
+        completion-preview-commands '(self-insert-command
+                                      insert-char
+                                      delete-backward-char
+                                      backward-delete-char-untabify
+                                      analyze-text-conversion))
   (global-completion-preview-mode 1)
   (with-eval-after-load 'completion-preview
+    (defun emacs/completion-preview-or-company ()
+      "Accept preview if single candidate, or invoke company popup on multiple."
+      (interactive)
+      (let ((suffixes (when (boundp 'completion-preview--overlay)
+                        (overlay-get completion-preview--overlay 'completion-preview-suffixes))))
+        (cond
+         ((or (null suffixes) (<= (length suffixes) 1))
+          (completion-preview-insert))
+         (t
+          (completion-preview-hide)
+          (if (and (bound-and-true-p company-mode) (fboundp 'company-manual-begin))
+              (company-manual-begin)
+            (if (fboundp 'company-complete-common-or-cycle)
+                (company-complete-common-or-cycle)
+              (completion-at-point)))))))
+
     (define-key completion-preview-active-mode-map (kbd "RET") nil)
     (define-key completion-preview-active-mode-map (kbd "<return>") nil)
     (define-key completion-preview-active-mode-map (kbd "<right>") #'completion-preview-insert)
     (define-key completion-preview-active-mode-map [right] #'completion-preview-insert)
     (define-key completion-preview-active-mode-map (kbd "C-f") #'completion-preview-insert)
-    (define-key completion-preview-active-mode-map (kbd "TAB") #'completion-preview-complete)
-    (define-key completion-preview-active-mode-map (kbd "<tab>") #'completion-preview-complete)
-    (define-key completion-preview-active-mode-map (kbd "C-i") #'completion-preview-complete)))
+    (define-key completion-preview-active-mode-map (kbd "TAB") #'emacs/completion-preview-or-company)
+    (define-key completion-preview-active-mode-map (kbd "<tab>") #'emacs/completion-preview-or-company)
+    (define-key completion-preview-active-mode-map (kbd "C-i") #'emacs/completion-preview-or-company)
+
+    (defun emacs/completion-preview--filter-valid-symbol-a (orig-fn &rest args)
+      "Do not show phantom extension if symbol is already a complete valid symbol."
+      (let* ((sym-str (thing-at-point 'symbol t))
+             (sym (when sym-str (intern-soft sym-str)))
+             (valid-p (and sym (or (fboundp sym) (boundp sym) (facep sym))))
+             (just-accepted (memq last-command '(completion-preview-insert
+                                                 completion-preview-complete
+                                                 company-complete-selection
+                                                 emacs/completion-preview-or-company))))
+        (if (or just-accepted
+                (and valid-p (not (memq this-command '(self-insert-command insert-char)))))
+            (when (fboundp 'completion-preview-hide)
+              (completion-preview-hide))
+          (apply orig-fn args))))
+
+    (advice-add 'completion-preview--update :around #'emacs/completion-preview--filter-valid-symbol-a)))
 
 (add-hook 'minibuffer-setup-hook
           (lambda ()

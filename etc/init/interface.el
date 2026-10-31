@@ -3,6 +3,12 @@
 ;; Module: Emacs User Interface Configuration
 ;; ----------------------------------------------------------------
 
+(when (fboundp 'tooltip-mode)
+  (tooltip-mode -1))
+(setq x-gtk-use-system-tooltips nil
+      use-dialog-box nil
+      use-file-dialog nil)
+
 ;; --------------------------------
 ;; ICONS
 ;; --------------------------------

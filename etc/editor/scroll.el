@@ -12,12 +12,9 @@
     (dolist (win (window-list nil 'no-minibuf))
       (when (window-live-p win)
         (with-current-buffer (window-buffer win)
-          (let* ((body-height (window-body-height win 'pixel))
-                 (text-size (window-text-pixel-size win (point-min) (point-max) nil (1+ body-height)))
-                 (pixel-fits (<= (cdr text-size) body-height))
-                 (visible-fits (and (pos-visible-in-window-p (point-min) win)
-                                    (pos-visible-in-window-p (max (point-min) (1- (point-max))) win)))
-                 (content-fits (or pixel-fits visible-fits))
+          (let* ((body-height (window-body-height win))
+                 (line-count (line-number-at-pos (point-max)))
+                 (content-fits (<= line-count body-height))
                  (current-state (window-parameter win 'auto-scroll-bar-state)))
             (if content-fits
                 (unless (eq current-state 'hidden)
@@ -35,8 +32,7 @@
     (progn
       (add-hook 'window-size-change-functions #'auto-scroll-bar-on-change)
       (add-hook 'window-scroll-functions #'auto-scroll-bar-on-change)
-      (add-hook 'window-configuration-change-hook #'auto-scroll-bar)
-      (run-with-idle-timer 0.15 t #'auto-scroll-bar))
+      (add-hook 'window-configuration-change-hook #'auto-scroll-bar))
   (use-package yascroll
     :ensure t
     :config

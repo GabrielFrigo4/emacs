@@ -26,15 +26,65 @@
 
   (when (featurep 'exwm)
     (setq exwm-replace t)
+    (setq select-enable-clipboard t
+          select-enable-primary t
+          save-interprogram-paste-before-kill t)
     (setq frame-resize-pixelwise t
           window-resize-pixelwise t
           frame-inhibit-implied-resize t)
     (setq exwm-workspace-number 1
           exwm-workspace-show-all-buffers t)
 
+    (defvar emacs/wm-gui-simulation-keys
+      `((,(kbd "C-b") . [left])
+        (,(kbd "C-f") . [right])
+        (,(kbd "C-p") . [up])
+        (,(kbd "C-n") . [down])
+        (,(kbd "C-a") . [home])
+        (,(kbd "C-e") . [end])
+        (,(kbd "M-v") . [prior])
+        (,(kbd "C-v") . [next])
+        (,(kbd "C-d") . [delete])
+        (,(kbd "C-k") . [S-end delete])
+        (,(kbd "C-c") . [?\C-c])
+        (,(kbd "M-w") . [?\C-c])
+        (,(kbd "C-y") . [?\C-v])
+        (,(kbd "C-w") . [?\C-x])
+        (,(kbd "C-s") . [?\C-f])
+        (,(kbd "C-/") . [?\C-z])
+        (,(kbd "C-g") . [escape]))
+      "Simulation keys for standard graphical applications.")
+
+    (defvar emacs/wm-terminal-simulation-keys
+      `((,(kbd "M-w") . [?\C-\S-c])
+        (,(kbd "C-y") . [?\C-\S-v])
+        (,(kbd "C-c") . [?\C-c])
+        (,(kbd "C-d") . [?\C-d])
+        (,(kbd "C-z") . [?\C-z])
+        (,(kbd "C-l") . [?\C-l])
+        (,(kbd "C-r") . [?\C-r])
+        (,(kbd "C-a") . [?\C-a])
+        (,(kbd "C-e") . [?\C-e])
+        (,(kbd "C-k") . [?\C-k])
+        (,(kbd "C-w") . [?\C-w]))
+      "Simulation keys for terminal emulators sending keys directly.")
+
+    (defun emacs/exwm-configure-input ()
+      "Configure simulation keys contextually based on window class."
+      (let ((is-term (and (fboundp 'emacs/wm-terminal-class-p)
+                          (emacs/wm-terminal-class-p exwm-class-name))))
+        (if is-term
+            (when (fboundp 'exwm-input-set-simulation-keys)
+              (exwm-input-set-simulation-keys emacs/wm-terminal-simulation-keys))
+          (when (fboundp 'exwm-input-set-simulation-keys)
+            (exwm-input-set-simulation-keys emacs/wm-gui-simulation-keys)))))
+
+    (add-hook 'exwm-manage-finish-hook #'emacs/exwm-configure-input)
+
     (add-hook 'exwm-update-class-hook
               (lambda ()
-                (exwm-workspace-rename-buffer exwm-class-name)))
+                (exwm-workspace-rename-buffer exwm-class-name)
+                (emacs/exwm-configure-input)))
 
     (add-hook 'exwm-update-title-hook
               (lambda ()
@@ -61,6 +111,7 @@
             ([?\s-e] . aweshell/toggle)
             ([?\s-b] . emacs/open-browser)
             ([?\s-f] . exwm-layout-toggle-fullscreen)
+            ([?\s-i] . exwm-input-toggle-keyboard-mode)
             ([?\s-q] . kill-current-buffer)
             ([?\s-Q] . save-buffers-kill-emacs)
             ([s-left] . windmove-left)

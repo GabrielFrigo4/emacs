@@ -30,6 +30,28 @@ so enabling it does not skew client geometry."
   :type 'boolean
   :group 'interface)
 
+(setq select-enable-clipboard t
+      select-enable-primary t
+      save-interprogram-paste-before-kill t)
+
+(defun emacs/wayland-paste ()
+  "Get clipboard text from Wayland via wl-paste or gui-backend."
+  (if (executable-find "wl-paste")
+      (with-temp-buffer
+        (when (zerop (call-process "wl-paste" nil t nil "--no-newline"))
+          (let ((str (buffer-string)))
+            (unless (string-empty-p str) str))))
+    (gui-backend-get-selection 'CLIPBOARD 'UTF8_STRING)))
+
+(defun emacs/wayland-copy (text)
+  "Send TEXT to Wayland clipboard via wl-copy or gui-backend."
+  (if (executable-find "wl-copy")
+      (let ((process-connection-type nil))
+        (let ((proc (start-process "wl-copy" nil "wl-copy")))
+          (process-send-string proc text)
+          (process-send-eof proc)))
+    (gui-backend-set-selection 'CLIPBOARD text)))
+
 (setq frame-resize-pixelwise t
       window-resize-pixelwise t
       frame-inhibit-implied-resize t)
@@ -101,6 +123,8 @@ so enabling it does not skew client geometry."
     (define-key ewm-mode-map (kbd "s-o") #'interface/show-dashboard)
     (define-key ewm-mode-map (kbd "s-e") #'aweshell/toggle)
     (define-key ewm-mode-map (kbd "s-b") #'emacs/open-browser)
+    (define-key ewm-mode-map (kbd "s-f") (if (fboundp 'ewm-toggle-fullscreen) #'ewm-toggle-fullscreen #'toggle-frame-fullscreen))
+    (define-key ewm-mode-map (kbd "s-i") (if (fboundp 'ewm-edit) #'ewm-edit #'ignore))
     (define-key ewm-mode-map (kbd "s-<left>") #'windmove-left)
     (define-key ewm-mode-map (kbd "s-<right>") #'windmove-right)
     (define-key ewm-mode-map (kbd "s-<up>") #'windmove-up)
@@ -118,7 +142,36 @@ so enabling it does not skew client geometry."
             (lambda ()
               (setq-local mode-line-format (default-value 'mode-line-format))
               (when (fboundp 'doom-modeline-set-modeline)
-                (doom-modeline-set-modeline 'special)))))
+                (doom-modeline-set-modeline 'special))))
+
+  (defun emacs/ewm-configure-surface-keys ()
+    "Configure simulation keys contextually on EWM surface buffers."
+    (let ((app (or (bound-and-true-p ewm-surface-app) "")))
+      (if (and (fboundp 'emacs/wm-terminal-class-p)
+               (emacs/wm-terminal-class-p app))
+          (setq-local ewm-surface-emulate-keys
+                      '((kill-ring-save . "C-S-c")
+                        (yank . "C-S-v")))
+        (setq-local ewm-surface-emulate-keys
+                    '((kill-ring-save . "C-c")
+                      (yank . "C-v")
+                      (backward-char . "<left>")
+                      (forward-char . "<right>")
+                      (previous-line . "<up>")
+                      (next-line . "<down>")
+                      (move-beginning-of-line . "<home>")
+                      (move-end-of-line . "<end>")
+                      (scroll-down-command . "<prior>")
+                      (scroll-up-command . "<next>")
+                      (delete-char . "<delete>")
+                      (kill-line . "S-<end> <delete>")
+                      (kill-region . "C-x")
+                      (isearch-forward . "C-f")
+                      (undo . "C-z")
+                      (keyboard-quit . "<escape>"))))))
+
+  (add-hook 'ewm-update-app-hook #'emacs/ewm-configure-surface-keys)
+  (add-hook 'ewm-surface-mode-hook #'emacs/ewm-configure-surface-keys))
 
 (with-eval-after-load 'ewm-input
   (setq ewm-input-config

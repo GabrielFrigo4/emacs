@@ -197,10 +197,146 @@ integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
                           s))))
                   flat))))
 
+(defun emacs/ensure-standard-paths ()
+  "Ensure standard application directories exist in `exec-path' and `PATH'."
+  (dolist (dir '("/var/lib/flatpak/exports/bin"
+                 "~/.local/share/flatpak/exports/bin"
+                 "/snap/bin"
+                 "~/.local/bin"
+                 "/usr/local/bin"
+                 "/opt"))
+    (let ((expanded (expand-file-name dir)))
+      (when (and (file-directory-p expanded)
+                 (not (member expanded exec-path)))
+        (setq exec-path (append exec-path (list expanded)))
+        (setenv "PATH" (concat (getenv "PATH") ":" expanded))))))
+
+(defvar emacs/desktop-app-flatpak-map
+  '(("onlyoffice" . ("org.onlyoffice.desktopeditors"))
+    ("office" . ("org.libreoffice.LibreOffice" "org.onlyoffice.desktopeditors"))
+    ("libreoffice" . ("org.libreoffice.LibreOffice"))
+    ("firefox" . ("org.mozilla.firefox"))
+    ("chrome" . ("com.google.Chrome" "org.chromium.Chromium"))
+    ("chromium" . ("org.chromium.Chromium"))
+    ("brave" . ("com.brave.Browser"))
+    ("vlc" . ("org.videolan.VLC"))
+    ("mpv" . ("io.mpv.Mpv"))
+    ("gimp" . ("org.gimp.GIMP"))
+    ("inkscape" . ("org.inkscape.Inkscape"))
+    ("obs" . ("com.obsproject.Studio"))
+    ("vscode" . ("com.visualstudio.code"))
+    ("discord" . ("com.discordapp.Discord" "dev.vencord.Vesktop"))
+    ("telegram" . ("org.telegram.desktop"))
+    ("spotify" . ("com.spotify.Client"))
+    ("thunderbird" . ("org.mozilla.Thunderbird"))
+    ("evince" . ("org.gnome.Evince"))
+    ("okular" . ("org.kde.okular"))
+    ("dbeaver" . ("io.dbeaver.DBeaverCommunity"))
+    ("foliate" . ("com.github.johnfactotum.Foliate"))
+    ("postman" . ("com.getpostman.Postman"))
+    ("insomnia" . ("rest.insomnia.Insomnia")))
+  "Alist mapping application labels to known reverse-DNS Flatpak identifiers.")
+
+(defun emacs/resolve-desktop-app (candidates &optional flatpak-ids mac-apps win-paths)
+  "Resolve executable command for CANDIDATES across multiple operating systems.
+Returns a list (EXECUTABLE . PREFIX-ARGS) or nil."
+  (emacs/ensure-standard-paths)
+  (let* ((cands (if (listp candidates) candidates (list candidates)))
+         (f-ids (if (listp flatpak-ids) flatpak-ids (if flatpak-ids (list flatpak-ids) nil)))
+         (m-apps (if (listp mac-apps) mac-apps (if mac-apps (list mac-apps) nil)))
+         (w-paths (if (listp win-paths) win-paths (if win-paths (list win-paths) nil)))
+         (all-bins (append cands f-ids)))
+    (cond
+     ;; 1. Native binary in exec-path (including Flatpak exported IDs)
+     ((seq-some (lambda (bin)
+                  (when-let ((path (executable-find bin)))
+                    (list path)))
+                all-bins))
+
+     ;; 2. Flatpak CLI invocation
+     ((and (executable-find "flatpak")
+           f-ids
+           (seq-some (lambda (id)
+                       (when (or (file-directory-p (format "/var/lib/flatpak/app/%s" id))
+                                 (file-directory-p (expand-file-name (format "~/.local/share/flatpak/app/%s" id))))
+                         (list "flatpak" "run" id)))
+                     f-ids)))
+
+     ;; 3. Snap package
+     ((seq-some (lambda (bin)
+                  (let ((snap (format "/snap/bin/%s" bin)))
+                    (when (file-executable-p snap)
+                      (list snap))))
+                cands))
+
+     ;; 4. AppImage
+     ((seq-some (lambda (bin)
+                  (let* ((dirs (list (expand-file-name "~/Applications")
+                                     (expand-file-name "~/.local/bin")))
+                         (matches (mapcan (lambda (d)
+                                            (when (file-directory-p d)
+                                              (file-expand-wildcards (format "%s/*%s*.AppImage" d bin))))
+                                          dirs)))
+                    (when-let ((appimage (car (seq-filter #'file-executable-p matches))))
+                      (list appimage))))
+                cands))
+
+     ;; 5. /opt paths
+     ((seq-some (lambda (bin)
+                  (let ((paths (list (format "/opt/%s/%s" bin bin)
+                                     (format "/opt/%s/bin/%s" bin bin)
+                                     (format "/opt/%s" bin)
+                                     "/opt/onlyoffice/desktopeditors/DesktopEditors")))
+                    (when-let ((opt-bin (car (seq-filter #'file-executable-p paths))))
+                      (list opt-bin))))
+                cands))
+
+     ;; 6. FreeBSD / OpenBSD (/usr/local/bin or Linuxulator)
+     ((and (memq system-type '(berkeley-unix))
+           (seq-some (lambda (bin)
+                       (let ((paths (list (format "/usr/local/bin/%s" bin)
+                                          (format "/compat/linux/usr/bin/%s" bin)
+                                          (format "/compat/linux/opt/%s/%s" bin bin))))
+                         (when-let ((bsd-bin (car (seq-filter #'file-executable-p paths))))
+                           (list bsd-bin))))
+                     cands)))
+
+     ;; 7. macOS (darwin)
+     ((eq system-type 'darwin)
+      (or (seq-some (lambda (app)
+                      (let ((app-path (format "/Applications/%s.app" app)))
+                        (when (file-directory-p app-path)
+                          (list "open" "-a" app))))
+                    m-apps)
+          (seq-some (lambda (bin)
+                      (when-let ((m (car (file-expand-wildcards (format "/Applications/*.app/Contents/MacOS/%s" bin)))))
+                        (list m)))
+                    cands)))
+
+     ;; 8. Windows (windows-nt, cygwin, msys)
+     ((memq system-type '(windows-nt cygwin))
+      (or (seq-some (lambda (p)
+                      (let ((exp (expand-file-name p)))
+                        (when (file-executable-p exp)
+                          (list exp))))
+                    w-paths)
+          (seq-some (lambda (bin)
+                      (let ((paths (list (format "/mingw64/bin/%s.exe" bin)
+                                         (format "/ucrt64/bin/%s.exe" bin)
+                                         (format "C:/Program Files/%s/%s.exe" bin bin)
+                                         (format "C:/Program Files (x86)/%s/%s.exe" bin bin)
+                                         (expand-file-name (format "~/AppData/Local/Programs/%s/%s.exe" bin bin)))))
+                        (when-let ((w-bin (car (seq-filter #'file-executable-p paths))))
+                          (list w-bin))))
+                    cands))))))
+
 (defun emacs/spawn-desktop-app (label candidates &rest args)
-  "Launch the first available executable in CANDIDATES with ARGS."
-  (let* ((bin (seq-find #'executable-find candidates))
-         (clean-args (emacs/normalize-app-args args))
+  "Launch application LABEL from CANDIDATES with ARGS using multi-OS resolution."
+  (let* ((flatpak-ids (cdr (assoc label emacs/desktop-app-flatpak-map)))
+         (resolved (emacs/resolve-desktop-app candidates flatpak-ids))
+         (bin (car resolved))
+         (prefix-args (cdr resolved))
+         (clean-args (append prefix-args (emacs/normalize-app-args args)))
          (process-connection-type nil))
     (if bin
         (progn
@@ -208,7 +344,7 @@ integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
           (message "Iniciado: %s%s" bin
                    (if clean-args (format " (%s)" (string-join clean-args " ")) "")))
       (message "[AVISO] Aplicativo '%s' (%s) não encontrado no PATH."
-               label (string-join candidates ", ")))))
+               label (string-join (if (listp candidates) candidates (list candidates)) ", ")))))
 
 (defun emacs/open-browser (&rest args)
   "Abre o navegador web universal com fallback em cascata com ARGS opcionais.
@@ -263,6 +399,19 @@ Aceita URL opcional em ARGS ou via `read-string' com `\\[universal-argument]'."
 
 (defalias 'files 'emacs/open-file-manager)
 (defalias 'file-manager 'emacs/open-file-manager)
+
+(defvar emacs/wm-terminal-classes
+  '("foot" "xterm" "uxterm" "alacritty" "kitty" "wezterm" "urxvt" "st"
+    "gnome-terminal" "konsole" "xfce4-terminal" "terminator" "tilix" "rxvt")
+  "List of recognized terminal emulator class names.")
+
+(defun emacs/wm-terminal-class-p (class-name)
+  "Return non-nil if CLASS-NAME matches a known terminal emulator."
+  (when (stringp class-name)
+    (let ((down (downcase class-name)))
+      (seq-some (lambda (term)
+                  (string-match-p (regexp-quote term) down))
+                emacs/wm-terminal-classes))))
 
 (defun emacs/open-terminal (&optional dir)
   "Abre um emulador de terminal gráfico externo no diretório DIR."
@@ -325,7 +474,8 @@ Resolve transparentemente `chrome' e `/usr/local/bin/chrome' no FreeBSD, além d
 (defun emacs/app-libreoffice (&rest args)
   "Inicia o LibreOffice."
   (interactive)
-  (apply #'emacs/spawn-desktop-app "libreoffice" '("libreoffice" "soffice") args))
+  (apply #'emacs/spawn-desktop-app "libreoffice"
+         '("libreoffice" "soffice" "org.libreoffice.LibreOffice") args))
 (defalias 'libreoffice 'emacs/app-libreoffice)
 (defalias 'soffice 'emacs/app-libreoffice)
 (defalias 'open-libreoffice 'emacs/app-libreoffice)
@@ -334,7 +484,8 @@ Resolve transparentemente `chrome' e `/usr/local/bin/chrome' no FreeBSD, além d
 (defun emacs/app-onlyoffice (&rest args)
   "Inicia o OnlyOffice Desktop Editors."
   (interactive)
-  (apply #'emacs/spawn-desktop-app "onlyoffice" '("onlyoffice-desktopeditors" "desktopeditors") args))
+  (apply #'emacs/spawn-desktop-app "onlyoffice"
+         '("onlyoffice-desktopeditors" "desktopeditors" "org.onlyoffice.desktopeditors") args))
 (defalias 'onlyoffice 'emacs/app-onlyoffice)
 (defalias 'open-onlyoffice 'emacs/app-onlyoffice)
 (defalias 'oo 'emacs/app-onlyoffice)

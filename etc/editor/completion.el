@@ -27,6 +27,7 @@
   (setq-default company-idle-delay 0.0)
   (setq-default company-selection-default nil)
   (setq-default company-require-match nil)
+  (setq completion-auto-help nil)
   (with-eval-after-load 'company
     (define-key company-active-map (kbd "RET") nil)
     (define-key company-active-map (kbd "<return>") nil)
@@ -36,6 +37,12 @@
     (define-key company-active-map (kbd "TAB") #'company-complete-common-or-cycle)
     (define-key company-active-map (kbd "<tab>") #'company-complete-common-or-cycle)
     (define-key company-active-map (kbd "C-i") #'company-complete-common-or-cycle)
+    (define-key company-active-map (kbd "<up>") #'company-select-previous)
+    (define-key company-active-map [up] #'company-select-previous)
+    (define-key company-active-map (kbd "<down>") #'company-select-next)
+    (define-key company-active-map [down] #'company-select-next)
+    (define-key company-active-map (kbd "C-p") #'company-select-previous)
+    (define-key company-active-map (kbd "C-n") #'company-select-next)
     (define-key company-active-map (kbd "C-y") #'company-complete-selection)))
 
 (with-eval-after-load 'evil
