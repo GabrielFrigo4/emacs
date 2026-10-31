@@ -30,6 +30,10 @@ so enabling it does not skew client geometry."
   :type 'boolean
   :group 'interface)
 
+(setq frame-resize-pixelwise t
+      window-resize-pixelwise t
+      frame-inhibit-implied-resize t)
+
 (defun ewm--preserve-menu-bar (&optional frame)
   "Keep the graphical menu-bar and tool-bar enabled on EWM FRAME."
   (let ((target (or frame (selected-frame))))
@@ -50,8 +54,26 @@ so enabling it does not skew client geometry."
   (dolist (f (frame-list))
     (when (and (frame-live-p f) (display-graphic-p f))
       (ewm--preserve-menu-bar f)
-      (when (fboundp 'interface/show-dashboard)
-        (interface/show-dashboard f)))))
+      (with-selected-frame f
+        (when (fboundp 'interface/show-dashboard)
+          (interface/show-dashboard f))))))
+
+(defun ewm--ensure-graphic-frame ()
+  "Ensure a graphical frame exists on wayland-ewm display."
+  (let ((has-graphic (cl-some (lambda (f) (and (frame-live-p f) (display-graphic-p f))) (frame-list))))
+    (unless has-graphic
+      (if (and (fboundp 'ewm-get-active-outputs) (ewm-get-active-outputs))
+          (when (fboundp 'ewm--handle-outputs-complete)
+            (ewm--handle-outputs-complete))
+        (ignore-errors
+          (make-frame '((window-system . pgtk) (display . "wayland-ewm") (fullscreen . fullboth)))))))
+  (ewm--sync-output-frames))
+
+(defun ewm--bootstrap-session ()
+  "Bootstrap EWM frames and output synchronization."
+  (ewm--ensure-graphic-frame)
+  (run-with-timer 0.5 nil #'ewm--ensure-graphic-frame)
+  (run-with-timer 1.5 nil #'ewm--ensure-graphic-frame))
 
 (with-eval-after-load 'ewm-frame
   (when (fboundp 'ewm--disable-csd)
@@ -62,6 +84,7 @@ so enabling it does not skew client geometry."
 (with-eval-after-load 'ewm
   (when (fboundp 'ewm--disable-csd)
     (advice-add 'ewm--disable-csd :after #'ewm--preserve-menu-bar))
+  (advice-add 'ewm-start-module :after #'ewm--bootstrap-session)
 
   (defun ewm-launch-terminal ()
     "Launch preferred terminal emulator inside EWM session."
@@ -99,11 +122,9 @@ so enabling it does not skew client geometry."
 
 (with-eval-after-load 'ewm-input
   (setq ewm-input-config
-        ;; XKB names are omitted on purpose: `set_xkb_config' segfaults in
-        ;; libxkbcommon on FreeBSD; the keymap comes from XKB_DEFAULT_*.
         '((keyboard :repeat-delay 200 :repeat-rate 50)
-          (touchpad :natural-scroll t :tap t :dwt t)
-          (mouse :accel-profile "flat"))))
+          (touchpad :natural-scroll t :tap t :dwt t :accel-profile "adaptive" :accel-speed 0.4)
+          (mouse :accel-profile "adaptive" :accel-speed 0.35 :natural-scroll nil))))
 
 (with-eval-after-load 'ewm-layout
   (defun ewm--external-bars-height (frame)
@@ -149,6 +170,7 @@ so enabling it does not skew client geometry."
            (ewm-available-p)
            (daemonp))
   (require 'ewm nil t)
-  (add-hook 'elpaca-after-init-hook #'ewm--sync-output-frames))
+  (add-hook 'elpaca-after-init-hook #'ewm--bootstrap-session)
+  (add-hook 'emacs-startup-hook #'ewm--bootstrap-session))
 
 (provide 'init-ewm)

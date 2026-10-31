@@ -62,4 +62,22 @@
   (defalias 'eshell/esh  'aweshell/new)
   (defalias 'eshell/aweshell 'aweshell/new))
 
+(defun shell/sanitize-tty-environment (&rest _)
+  "Strip raw TTY flags from process environment when running in a graphical session."
+  (when (display-graphic-p)
+    (dolist (var '("RAW_TTY" "LC_RAW_TTY" "UNIVERSAL_RAW_TTY"))
+      (let ((prefix (concat var "=")))
+        (setq process-environment
+              (seq-filter (lambda (env) (not (string-prefix-p prefix env)))
+                          process-environment))))))
+
+(add-hook 'vterm-mode-hook  #'shell/sanitize-tty-environment)
+(add-hook 'term-mode-hook   #'shell/sanitize-tty-environment)
+(add-hook 'eshell-mode-hook #'shell/sanitize-tty-environment)
+(advice-add 'vterm :before  #'shell/sanitize-tty-environment)
+(advice-add 'term  :before  #'shell/sanitize-tty-environment)
+(advice-add 'eshell :before #'shell/sanitize-tty-environment)
+(with-eval-after-load 'aweshell
+  (advice-add 'aweshell/new :before #'shell/sanitize-tty-environment))
+
 (provide 'feature-shell)

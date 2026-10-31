@@ -27,7 +27,8 @@
   (when (featurep 'exwm)
     (setq exwm-replace t)
     (setq frame-resize-pixelwise t
-          window-resize-pixelwise t)
+          window-resize-pixelwise t
+          frame-inhibit-implied-resize t)
     (setq exwm-workspace-number 1
           exwm-workspace-show-all-buffers t)
 

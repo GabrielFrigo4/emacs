@@ -199,6 +199,10 @@
                                   evil-insert-state-cursor
                                 '(bar . 2)))))
   (add-hook 'minibuffer-setup-hook          #'emacs/sync-minibuffer-cursor)
+  (add-hook 'minibuffer-setup-hook
+            (lambda ()
+              (when (memq this-command '(evil-ex evil-ex-search-forward evil-ex-search-backward))
+                (setq-local vertico-preselect 'prompt))))
   (advice-add 'evil-refresh-cursor :after   #'emacs/sync-minibuffer-cursor)
   (advice-add 'evil-refresh-cursor :after   #'emacs/sync-evil-terminal-cursor)
   (advice-add 'evil-replace :around

@@ -1,2 +1,217 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# ----------------------------------------------------------------
+# Default Behavior & Line Ending Normalization
+# ----------------------------------------------------------------
+*                 text=auto
+
+# ================================================================
+# Shell Scripts & Unix Interpreters
+# ================================================================
+*.sh              text eol=lf
+*.bash            text eol=lf
+*.zsh             text eol=lf
+*.ksh             text eol=lf
+*.fish            text eol=lf
+*.nu              text eol=lf
+
+# ================================================================
+# Makefiles & Build Systems (GNU, BSD, NMake & Autotools)
+# ================================================================
+BSDmakefile       text eol=lf
+GNUmakefile       text eol=lf
+[Mm]akefile       text eol=lf
+Makefile.*        text eol=lf
+*.mk              text eol=lf
+*.mak             text eol=lf
+CMakeLists.txt    text eol=lf
+*.cmake           text eol=lf
+
+# ================================================================
+# Containers, Jails & Orchestration Recipes
+# ================================================================
+Dockerfile        text eol=lf
+Dockerfile.*      text eol=lf
+Containerfile     text eol=lf
+Containerfile.*   text eol=lf
+Bastillefile      text eol=lf
+[Jj]ustfile       text eol=lf
+Procfile          text eol=lf
+Vagrantfile       text eol=lf
+
+# ================================================================
+# Source Code & Semantic Diff Drivers
+# ================================================================
+*.py              text eol=lf diff=python
+*.c               text eol=lf diff=cpp
+*.cpp             text eol=lf diff=cpp
+*.cc              text eol=lf diff=cpp
+*.h               text eol=lf diff=cpp
+*.hpp             text eol=lf diff=cpp
+*.cs              text eol=lf diff=csharp
+*.rs              text eol=lf diff=rust
+*.go              text eol=lf diff=golang
+*.java            text eol=lf diff=java
+*.js              text eol=lf
+*.mjs             text eol=lf
+*.cjs             text eol=lf
+*.ts              text eol=lf
+*.jsx             text eol=lf
+*.tsx             text eol=lf
+*.svelte          text eol=lf
+*.el              text eol=lf diff=elisp
+*.lisp            text eol=lf diff=lisp
+*.lua             text eol=lf
+*.vim             text eol=lf
+vimrc             text eol=lf
+*.nix             text eol=lf
+*.typ             text eol=lf
+*.glsl            text eol=lf
+*.vert            text eol=lf
+*.frag            text eol=lf
+*.html            text eol=lf diff=html
+*.css             text eol=lf diff=css
+*.scss            text eol=lf diff=css
+*.sql             text eol=lf
+
+# ================================================================
+# Documentation, Data & Configuration Files
+# ================================================================
+*.md              text eol=lf diff=markdown
+*.org             text eol=lf
+*.texi            text eol=lf
+*.tex             text eol=lf diff=tex
+*.bib             text eol=lf
+*.kdl             text eol=lf
+*.json            text eol=lf
+*.yml             text eol=lf
+*.yaml            text eol=lf
+*.toml            text eol=lf
+*.xml             text eol=lf
+*.svg             text eol=lf
+*.csv             text eol=lf
+*.ini             text eol=lf
+*.conf            text eol=lf
+.gitignore        text eol=lf
+.gitattributes    text eol=lf
+.editorconfig     text eol=lf
+
+# ================================================================
+# Windows Environment (Force CRLF)
+# ================================================================
+*.bat             text eol=crlf
+*.cmd             text eol=crlf
+*.ps1             text eol=crlf
+*.reg             text eol=crlf
+*.sln             text eol=crlf
+*.vcxproj         text eol=crlf
+
+# ================================================================
+# Lockfiles & Generated Assets (Collapsed in PR Diffs)
+# ================================================================
+package-lock.json linguist-generated=true -diff
+yarn.lock         linguist-generated=true -diff
+pnpm-lock.yaml    linguist-generated=true -diff
+Cargo.lock        linguist-generated=true -diff
+poetry.lock       linguist-generated=true -diff
+uv.lock           linguist-generated=true -diff
+go.sum            linguist-generated=true -diff
+Gemfile.lock      linguist-generated=true -diff
+composer.lock     linguist-generated=true -diff
+*.min.js          linguist-generated=true -diff
+*.min.css         linguist-generated=true -diff
+
+# ================================================================
+# Documents, E-Books & Office Suites (Binary Protection)
+# ================================================================
+*.pdf             binary
+*.ps              binary
+*.eps             binary
+*.epub            binary
+*.mobi            binary
+*.djvu            binary
+*.doc             binary
+*.docx            binary
+*.xls             binary
+*.xlsx            binary
+*.ppt             binary
+*.pptx            binary
+*.odt             binary
+*.ods             binary
+*.odp             binary
+
+# ================================================================
+# Raster Images, Icons & Design Assets
+# ================================================================
+*.png             binary
+*.jpg             binary
+*.jpeg            binary
+*.gif             binary
+*.webp            binary
+*.avif            binary
+*.ico             binary
+*.bmp             binary
+*.tiff            binary
+*.psd             binary
+*.xcf             binary
+
+# ================================================================
+# Audio, Video & Typography
+# ================================================================
+*.mp3             binary
+*.wav             binary
+*.ogg             binary
+*.flac            binary
+*.mp4             binary
+*.mkv             binary
+*.avi             binary
+*.mov             binary
+*.webm            binary
+*.ttf             binary
+*.otf             binary
+*.woff            binary
+*.woff2           binary
+*.eot             binary
+
+# ================================================================
+# Archives, Binaries, Databases & Cryptographic Keys
+# ================================================================
+*.zip             binary
+*.tar             binary
+*.gz              binary
+*.tgz             binary
+*.xz              binary
+*.bz2             binary
+*.7z              binary
+*.rar             binary
+*.zst             binary
+*.exe             binary
+*.dll             binary
+*.so              binary
+*.dylib           binary
+*.bin             binary
+*.o               binary
+*.a               binary
+*.pyc             binary
+*.elc             binary
+*.eln             binary
+*.wasm            binary
+*.sqlite          binary
+*.sqlite3         binary
+*.db              binary
+*.pem             binary
+*.crt             binary
+*.key             binary
+*.p12             binary
+*.age             binary
+*.gpg             binary
+*.ppk             binary
+
+# ================================================================
+# Release & Archive Exclusions (git archive)
+# ================================================================
+.gitattributes    export-ignore
+.gitignore        export-ignore
+.editorconfig     export-ignore
+.github/          export-ignore
+.scripts/         export-ignore
+.agents/          export-ignore
+.githooks/        export-ignore

@@ -21,6 +21,8 @@
 5. **Lexical Binding Obrigatório (Linha 1):**
     - Todo arquivo `.el` DEVE começar estritamente com `;;; -*- lexical-binding: t -*-` na Linha 1.
     - Evita warnings do compilador nativo e byte-compiler no Emacs 30/31+, previne vazamento de escopo dinâmico e otimiza compilação `.eln`.
-6. **Filosofia de Autodocumentação Introspectiva (`C-h f` / `C-h v` / `C-h k` / `which-key`):**
-    - Todo símbolo público ou interativo (`defun`, `defmacro`, `defvar`, `defcustom`, `defface`) DEVE possuir docstring clara e autônoma (distinta de comentários `;;` narrativos).
-    - A primeira linha deve caber em $\le 80$ colunas, destacar parâmetros em `MAIÚSCULAS` e referenciar símbolos com `` `simbolo' `` para navegação hipertextual no `*Help*`.
+6. **Padrão de Autodocumentação Integral em Elisp (GNU Emacs Self-Documenting Standard):**
+    - 100% dos formulários `defun`, `defmacro`, `defvar`, `defcustom` e `defface` DEVEM possuir docstrings completas e autônomas (distintas de comentários `;;` narrativos, que são terminantemente banidos).
+    - A primeira linha da docstring deve consistir em oração concisa e autossuficiente de até 80 colunas ($\le 80$ cols).
+    - Parâmetros formais DEVEM ser grafados rigorosamente em `MAIÚSCULAS` (ex: `ARGS`, `FRAME`, `DIR`).
+    - Símbolos e comandos referenciados DEVEM usar a notação canônica com acento grave e apóstrofo (` `simbolo' `) para geração de hiperlinks interativos nos buffers de ajuda `_Help_` (`C-h f`, `C-h v`, `C-h k`, `which-key`).

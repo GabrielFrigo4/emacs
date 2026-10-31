@@ -11,33 +11,111 @@
   "Return true if the system is FreeBSD (or any other BSD)."
   (memq system-type '(berkeley-unix gnu/kfreebsd)))
 
-(defmacro when-system (type &rest body) (declare (indent defun)) `(when (eq system-type ',type) ,@body))
-(defmacro when-gnu      (&rest body) `(when-system gnu ,@body))
-(defmacro when-linux    (&rest body) `(when-system gnu/linux ,@body))
-(defmacro when-kfreebsd (&rest body) `(when-system gnu/kfreebsd ,@body))
-(defmacro when-darwin   (&rest body) `(when-system darwin ,@body))
-(defmacro when-bsd      (&rest body) `(when-system berkeley-unix ,@body))
-(defmacro when-freebsd  (&rest body) `(when (system-is-freebsd-p) ,@body))
-(defmacro when-unix     (&rest body) `(when (system-is-unix-p) ,@body))
-(defmacro when-msdos    (&rest body) `(when-system ms-dos ,@body))
-(defmacro when-windows  (&rest body) `(when-system windows-nt ,@body))
-(defmacro when-cygwin   (&rest body) `(when-system cygwin ,@body))
-(defmacro when-haiku    (&rest body) `(when-system haiku ,@body))
-(defmacro when-android  (&rest body) `(when-system android ,@body))
+(defmacro when-system (type &rest body)
+  "Execute BODY when `system-type' equals TYPE."
+  (declare (indent defun))
+  `(when (eq system-type ',type) ,@body))
 
-(defmacro if-system (type &rest body) (declare (indent defun)) `(if (eq system-type ',type) ,@body))
-(defmacro if-gnu      (&rest body) `(if-system gnu ,@body))
-(defmacro if-linux    (&rest body) `(if-system gnu/linux ,@body))
-(defmacro if-kfreebsd (&rest body) `(if-system gnu/kfreebsd ,@body))
-(defmacro if-darwin   (&rest body) `(if-system darwin ,@body))
-(defmacro if-bsd      (&rest body) `(if-system berkeley-unix ,@body))
-(defmacro if-freebsd  (&rest body) `(if (system-is-freebsd-p) ,@body))
-(defmacro if-unix     (&rest body) `(if (system-is-unix-p) ,@body))
-(defmacro if-msdos    (&rest body) `(if-system ms-dos ,@body))
-(defmacro if-windows  (&rest body) `(if-system windows-nt ,@body))
-(defmacro if-cygwin   (&rest body) `(if-system cygwin ,@body))
-(defmacro if-haiku    (&rest body) `(if-system haiku ,@body))
-(defmacro if-android  (&rest body) `(if-system android ,@body))
+(defmacro when-gnu (&rest body)
+  "Execute BODY when running under GNU/Hurd."
+  `(when-system gnu ,@body))
+
+(defmacro when-linux (&rest body)
+  "Execute BODY when running under GNU/Linux."
+  `(when-system gnu/linux ,@body))
+
+(defmacro when-kfreebsd (&rest body)
+  "Execute BODY when running under GNU/kFreeBSD."
+  `(when-system gnu/kfreebsd ,@body))
+
+(defmacro when-darwin (&rest body)
+  "Execute BODY when running under macOS (Darwin)."
+  `(when-system darwin ,@body))
+
+(defmacro when-bsd (&rest body)
+  "Execute BODY when running under BSD (Berkeley Unix)."
+  `(when-system berkeley-unix ,@body))
+
+(defmacro when-freebsd (&rest body)
+  "Execute BODY when running under FreeBSD."
+  `(when (system-is-freebsd-p) ,@body))
+
+(defmacro when-unix (&rest body)
+  "Execute BODY when running under a Unix-like system."
+  `(when (system-is-unix-p) ,@body))
+
+(defmacro when-msdos (&rest body)
+  "Execute BODY when running under MS-DOS."
+  `(when-system ms-dos ,@body))
+
+(defmacro when-windows (&rest body)
+  "Execute BODY when running under Windows (windows-nt)."
+  `(when-system windows-nt ,@body))
+
+(defmacro when-cygwin (&rest body)
+  "Execute BODY when running under Cygwin."
+  `(when-system cygwin ,@body))
+
+(defmacro when-haiku (&rest body)
+  "Execute BODY when running under Haiku OS."
+  `(when-system haiku ,@body))
+
+(defmacro when-android (&rest body)
+  "Execute BODY when running under Android."
+  `(when-system android ,@body))
+
+(defmacro if-system (type &rest body)
+  "Evaluate first of BODY if `system-type' equals TYPE, otherwise rest."
+  (declare (indent defun))
+  `(if (eq system-type ',type) ,@body))
+
+(defmacro if-gnu (&rest body)
+  "Conditional execution based on GNU/Hurd runtime for BODY."
+  `(if-system gnu ,@body))
+
+(defmacro if-linux (&rest body)
+  "Conditional execution based on GNU/Linux runtime for BODY."
+  `(if-system gnu/linux ,@body))
+
+(defmacro if-kfreebsd (&rest body)
+  "Conditional execution based on GNU/kFreeBSD runtime for BODY."
+  `(if-system gnu/kfreebsd ,@body))
+
+(defmacro if-darwin (&rest body)
+  "Conditional execution based on macOS (Darwin) runtime for BODY."
+  `(if-system darwin ,@body))
+
+(defmacro if-bsd (&rest body)
+  "Conditional execution based on BSD runtime for BODY."
+  `(if-system berkeley-unix ,@body))
+
+(defmacro if-freebsd (&rest body)
+  "Conditional execution based on FreeBSD runtime for BODY."
+  `(if (system-is-freebsd-p) ,@body))
+
+(defmacro if-unix (&rest body)
+  "Conditional execution based on Unix-like runtime for BODY."
+  `(if (system-is-unix-p) ,@body))
+
+(defmacro if-msdos (&rest body)
+  "Conditional execution based on MS-DOS runtime for BODY."
+  `(if-system ms-dos ,@body))
+
+(defmacro if-windows (&rest body)
+  "Conditional execution based on Windows NT runtime for BODY."
+  `(if-system windows-nt ,@body))
+
+(defmacro if-cygwin (&rest body)
+  "Conditional execution based on Cygwin runtime for BODY."
+  `(if-system cygwin ,@body))
+
+(defmacro if-haiku (&rest body)
+  "Conditional execution based on Haiku OS runtime for BODY."
+  `(if-system haiku ,@body))
+
+(defmacro if-android (&rest body)
+  "Conditional execution based on Android runtime for BODY."
+  `(if-system android ,@body))
 
 ;;; ================================
 ;;; HARDWARE & DISPLAY DETECTION
@@ -81,17 +159,17 @@
   "Return non-nil if native compilation (libgccjit) is available."
   (featurep 'native-compile))
 
-(defmacro when-pgtk           (&rest body) `(when (display-pgtk-p) ,@body))
-(defmacro when-x11            (&rest body) `(when (display-x11-p) ,@body))
-(defmacro when-w32            (&rest body) `(when (display-w32-p) ,@body))
-(defmacro when-tty            (&rest body) `(when (display-tty-p) ,@body))
-(defmacro when-native-compile (&rest body) `(when (native-compile-p) ,@body))
+(defmacro when-pgtk           (&rest body) "Execute BODY under Pure GTK (PGTK) Wayland build." `(when (display-pgtk-p) ,@body))
+(defmacro when-x11            (&rest body) "Execute BODY under X11 window system." `(when (display-x11-p) ,@body))
+(defmacro when-w32            (&rest body) "Execute BODY under Windows GUI." `(when (display-w32-p) ,@body))
+(defmacro when-tty            (&rest body) "Execute BODY in a text terminal." `(when (display-tty-p) ,@body))
+(defmacro when-native-compile (&rest body) "Execute BODY when native compilation is available." `(when (native-compile-p) ,@body))
 
-(defmacro if-pgtk           (&rest body) `(if (display-pgtk-p) ,@body))
-(defmacro if-x11            (&rest body) `(if (display-x11-p) ,@body))
-(defmacro if-w32            (&rest body) `(if (display-w32-p) ,@body))
-(defmacro if-tty            (&rest body) `(if (display-tty-p) ,@body))
-(defmacro if-native-compile (&rest body) `(if (native-compile-p) ,@body))
+(defmacro if-pgtk           (&rest body) "Conditional execution under PGTK Wayland for BODY." `(if (display-pgtk-p) ,@body))
+(defmacro if-x11            (&rest body) "Conditional execution under X11 for BODY." `(if (display-x11-p) ,@body))
+(defmacro if-w32            (&rest body) "Conditional execution under Windows GUI for BODY." `(if (display-w32-p) ,@body))
+(defmacro if-tty            (&rest body) "Conditional execution in a terminal for BODY." `(if (display-tty-p) ,@body))
+(defmacro if-native-compile (&rest body) "Conditional execution when native compilation is present for BODY." `(if (native-compile-p) ,@body))
 
 ;;; ================================
 ;;; NETWORK & LOCAL AI PROBES
@@ -121,8 +199,8 @@
       (accept-process-output nil (expt 10 -3)))))
 
 (defun treesit/get-mode (mode)
-  "Return the tree-sitter equivalent of MODE if `treesit/enable` is non-nil,
-otherwise return MODE."
+  "Return the tree-sitter equivalent of MODE if `treesit/enable' is non-nil.
+Otherwise return MODE."
   (if (and (bound-and-true-p treesit/enable)
            (symbolp mode))
       (let* ((mode-name (symbol-name mode))

@@ -277,3 +277,39 @@
 
 (add-hook 'elpaca-after-init-hook #'emacs/restore-gc-defaults)
 (add-hook 'emacs-startup-hook #'emacs/restore-gc-defaults)
+
+;; ================================
+;; SHIELD DEFAULT DIRECTORY
+;; ================================
+(defun emacs/sanitize-default-directory ()
+  "Shield default-directory to home directory if unassigned or inside emacs dir."
+  (let* ((home (expand-file-name "~/"))
+         (emacs-root (expand-file-name user-emacs-directory))
+         (args (cdr command-line-args))
+         (has-file-arg
+          (catch 'found
+            (while args
+              (let ((arg (car args)))
+                (cond
+                 ((member arg '("-l" "--load" "-f" "--funcall" "-u" "--user"
+                                "--eval" "--execute" "-e" "-d" "--display"
+                                "--name" "--title"))
+                  (setq args (cddr args)))
+                 ((string-prefix-p "-" arg)
+                  (setq args (cdr args)))
+                 ((file-exists-p arg)
+                  (throw 'found t))
+                 (t
+                  (setq args (cdr args))))))
+            nil)))
+    (when (or (not has-file-arg)
+              (string-prefix-p emacs-root (expand-file-name default-directory)))
+      (setq default-directory home)
+      (dolist (buf-name '("*scratch*" "*Messages*"))
+        (let ((buf (get-buffer buf-name)))
+          (when buf
+            (with-current-buffer buf
+              (setq default-directory home))))))))
+
+(add-hook 'elpaca-after-init-hook #'emacs/sanitize-default-directory)
+(add-hook 'emacs-startup-hook #'emacs/sanitize-default-directory)

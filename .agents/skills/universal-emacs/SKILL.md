@@ -20,9 +20,12 @@ Este runbook orienta desenvolvedores e agentes de inteligência artificial no ge
     - `var/`: Estado mutável de runtime (`cache/`, `run/`, `backup/`) — 100% ignorado no Git.
 3. **Zero Symlinks Manuais:** O repositório é clonado como árvore canônica diretamente em `${HOME}/.emacs.d`.
 4. **Lexical Binding Obrigatório (Linha 1):** Todo e qualquer arquivo `.el` deve conter impreterivelmente `;;; -*- lexical-binding: t -*-` como primeira linha absoluta (Linha 1), antes de qualquer régua ou cabeçalho. Isso elimina warnings de compilação no Emacs 30/31+, previne bugs de escopo dinâmico e potencializa a compilação nativa (`.eln`).
-5. **Filosofia de Autodocumentação Introspectiva (`Self-Documenting Emacs`):**
-    - Diferente de comentários narrativos `;;` (que são proibidos), **docstrings Elisp** fazem parte da árvore de símbolos em tempo de execução e alimentam `C-h f` (`describe-function`), `C-h v` (`describe-variable`), `C-h k` (`describe-key`), `M-x apropos`, ElDoc e `which-key`.
-    - Toda definição (`defun`, `defmacro`, `defvar`, `defcustom`, `defface`) deve conter docstring com 1ª linha concisa ($\le 80$ colunas), parâmetros em `MAIÚSCULAS` e links `` `simbolo' ``.
+5. **Autodocumentação Integral em Elisp (GNU Emacs Self-Documenting Standard):**
+    - 100% de cobertura obrigatória de docstrings em `defun`, `defmacro`, `defvar`, `defcustom` e `defface`.
+    - Docstrings alimentam o ecossistema introspectivo em tempo real (`C-h f`, `C-h v`, `C-h k`, `M-x apropos`, ElDoc e `which-key`), sendo distintas de comentários narrativos inline (que são estritamente banidos).
+    - A primeira linha da docstring deve ser uma síntese concisa ($\le 80$ colunas).
+    - Parâmetros formais DEVEM constar em `MAIÚSCULAS` (ex: `ARGS`, `FRAME`, `DIR`).
+    - Nomes de funções, comandos e variáveis referenciados DEVEM ser delimitados por acento grave e apóstrofo (` `simbolo' `) para hiperlinkagem nativa no buffer `_Help_`.
 6. **Ergonomia de Cursor & Renderização Tri-Modal (GUI vs PTY 24-Bit vs Raw TTY 16-Color):**
     - **Armadilha de `(getenv "TERM")` no Emacs:** Ao carregar `tramp`/`comint`, o Emacs altera `TERM=dumb` em `process-environment` para proteger subprocessos assíncronos. Para inspecionar o terminal real do frame ativo, use sempre `(tty-type frame)` (implementado em `display-raw-tty-p` em `lib/core.el` e em `emacs/set-terminal-cursor` em `etc/editor/editor.el`).
     - **Inicialização Silenciosa em `-nw`:** `early-init.el` define `load-prefer-newer t`, `site-run-file nil`, desativa `menu-bar-lines` em frames não-gráficos antes do primeiro redraw e silencia o echo area durante o bootstrap (`inhibit-message t` restaurado em `emacs-startup-hook`), eliminando qualquer lixo visual ou sobreposição de mensagens na abertura de `emacs -nw`.

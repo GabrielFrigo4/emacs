@@ -309,7 +309,9 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
 ;; FRAME MANAGEMENT
 ;; --------------------------------
 
-(setq frame-resize-pixelwise nil)
+(setq frame-resize-pixelwise t
+      window-resize-pixelwise t
+      frame-inhibit-implied-resize t)
 (dolist (param '((width . 81) (height . 27)))
   (add-to-list 'default-frame-alist param)
   (add-to-list 'initial-frame-alist param))

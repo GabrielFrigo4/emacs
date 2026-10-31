@@ -38,6 +38,7 @@
 (declare-function aweshell/suggest-update "aweshell" ())
 (declare-function aweshell/suggest-clear "aweshell" ())
 (declare-function aweshell/suggest-accept "aweshell" ())
+(declare-function aweshell/accept-suggestion "aweshell" ())
 (declare-function aweshell/tab-complete "aweshell" ())
 (declare-function aweshell/company-backend "aweshell" (command &optional arg &rest ignored))
 (declare-function company-select-next "company" ())
@@ -566,10 +567,10 @@ Otherwise return nil."
             (define-key eshell-mode-map (kbd "<tab>") #'aweshell/tab-complete)
             (define-key eshell-mode-map (kbd "TAB") #'aweshell/tab-complete)
             (define-key eshell-mode-map (kbd "C-i") #'aweshell/tab-complete)
-            (define-key eshell-mode-map (kbd aweshell/complete-selection-key) #'aweshell/suggest-accept)
-            (define-key eshell-mode-map (kbd aweshell/suggest-accept-key) #'aweshell/suggest-accept)
-            (define-key eshell-mode-map [right] #'aweshell/suggest-accept)
-            (define-key eshell-mode-map (kbd "C-f") #'aweshell/suggest-accept)
+            (define-key eshell-mode-map (kbd aweshell/complete-selection-key) #'aweshell/accept-suggestion)
+            (define-key eshell-mode-map (kbd aweshell/suggest-accept-key) #'aweshell/accept-suggestion)
+            (define-key eshell-mode-map [right] #'aweshell/accept-suggestion)
+            (define-key eshell-mode-map (kbd "C-f") #'aweshell/accept-suggestion)
             (define-key eshell-mode-map (kbd aweshell/suggest-accept-word-key) #'aweshell/suggest-accept-word)
             (define-key eshell-mode-map (kbd "C-<right>") #'aweshell/suggest-accept-word)
             (define-key eshell-mode-map (kbd "C-e") #'aweshell/suggest-accept-end)
@@ -1307,6 +1308,9 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
 
      ;; Case 3: Complete multiline heredoc (pasted) or input redirection (< file)
      (t
+      (when (and (bound-and-true-p company-mode)
+                 (fboundp 'company-abort))
+        (company-abort))
       (when (fboundp 'aweshell/suggest-clear)
         (aweshell/suggest-clear))
       (let* ((rewritten-heredoc (aweshell--rewrite-heredoc-multiline input))
@@ -1354,6 +1358,7 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
 (defun aweshell/suggest-pre-command ()
   "Clear ghost-text overlay before non-acceptance commands so cursor and edits never collide."
   (unless (memq this-command '(aweshell/suggest-accept
+                               aweshell/accept-suggestion
                                aweshell/suggest-accept-word
                                aweshell/suggest-accept-end
                                aweshell/tab-complete))
@@ -1422,6 +1427,8 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
       (if (fboundp 'right-char)
           (right-char 1)
         (forward-char 1))))))
+
+(defalias 'aweshell/accept-suggestion #'aweshell/suggest-accept)
 
 (defun aweshell/suggest-accept-word ()
   "Accept the next word of active autosuggestion (Fish / Zsh style)."
@@ -1585,9 +1592,12 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
           (when (and (stringp common)
                      (> (length common) (length prefix)))
             (insert (substring common (length prefix)))))
-        (when (and (bound-and-true-p company-mode)
-                   (fboundp 'company-manual-begin))
-          (company-manual-begin)))
+        (if (and (bound-and-true-p company-mode)
+                 (fboundp 'company-manual-begin))
+            (company-manual-begin)
+          (if (fboundp 'completion-at-point)
+              (completion-at-point)
+            (pcomplete))))
 
        ;; Fallback: if ghost-text exists, accept it
        ((and (bound-and-true-p aweshell--suggest-current)
@@ -1614,6 +1624,8 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
     (sorted t)))
 
 (with-eval-after-load 'company
+  (define-key company-active-map (kbd "RET")     nil)
+  (define-key company-active-map (kbd "<return>") nil)
   (define-key company-active-map (kbd "<right>") #'company-complete-selection)
   (define-key company-active-map [right]         #'company-complete-selection)
   (define-key company-active-map (kbd "C-f")     #'company-complete-selection)

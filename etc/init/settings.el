@@ -37,15 +37,30 @@
       (funcall clean-empty-dir (expand-file-name "gnus/" etc-dir)))))
 
 (with-eval-after-load 'dired
-  (cond
-   ((memq system-type '(gnu gnu/linux cygwin))
-    (setq dired-use-ls-dired t))
-   ((let ((gls (executable-find "gls")))
-      (when gls
-        (setq insert-directory-program gls
-              dired-use-ls-dired t))))
-   (t
-    (setq dired-use-ls-dired nil))))
+  (let ((gls (executable-find "gls")))
+    (cond
+     ((eq system-type 'gnu/linux)
+      (setq insert-directory-program "ls"
+            dired-listing-switches "-alh --group-directories-first"
+            dired-use-ls-dired t))
+     (gls
+      (setq insert-directory-program gls
+            dired-listing-switches "-alh --group-directories-first"
+            dired-use-ls-dired t))
+     ((and (eq system-type 'berkeley-unix)
+           (boundp 'system-configuration)
+           (string-match-p "openbsd" system-configuration))
+      (setq insert-directory-program "ls"
+            dired-listing-switches "-alh"
+            dired-use-ls-dired nil))
+     ((memq system-type '(berkeley-unix darwin cygwin windows-nt))
+      (setq insert-directory-program "ls"
+            dired-listing-switches "-alhG"
+            dired-use-ls-dired nil))
+     (t
+      (setq insert-directory-program "ls"
+            dired-listing-switches "-alh"
+            dired-use-ls-dired nil)))))
 
 (set-language-environment "UTF-8")
 (prefer-coding-system 'utf-8)
@@ -89,7 +104,25 @@
                mac-option-modifier 'super))
 
 (when (fboundp 'global-completion-preview-mode)
-  (global-completion-preview-mode 1))
+  (setq-default completion-preview-minimum-symbol-length 1
+                completion-preview-idle-delay 0.0)
+  (setq completion-preview-minimum-symbol-length 1
+        completion-preview-idle-delay 0.0)
+  (global-completion-preview-mode 1)
+  (with-eval-after-load 'completion-preview
+    (define-key completion-preview-active-mode-map (kbd "RET") nil)
+    (define-key completion-preview-active-mode-map (kbd "<return>") nil)
+    (define-key completion-preview-active-mode-map (kbd "<right>") #'completion-preview-insert)
+    (define-key completion-preview-active-mode-map [right] #'completion-preview-insert)
+    (define-key completion-preview-active-mode-map (kbd "C-f") #'completion-preview-insert)
+    (define-key completion-preview-active-mode-map (kbd "TAB") #'completion-preview-complete)
+    (define-key completion-preview-active-mode-map (kbd "<tab>") #'completion-preview-complete)
+    (define-key completion-preview-active-mode-map (kbd "C-i") #'completion-preview-complete)))
+
+(add-hook 'minibuffer-setup-hook
+          (lambda ()
+            (when (bound-and-true-p completion-preview-mode)
+              (completion-preview-mode -1))))
 
 ;; --------------------------------
 ;; PROGRAMMING

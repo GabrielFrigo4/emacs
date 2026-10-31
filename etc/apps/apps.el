@@ -25,6 +25,7 @@
   (setq-default nov-text-width t)
 
   (defun my-nov-mode-hook ()
+    "Setup visual settings for `nov-mode'."
     (visual-line-mode 1)
     (display-line-numbers-mode -1)
     (setq-local header-line-format nil))
@@ -68,7 +69,7 @@
 ;; --------------------------------
 
 (defun emacs/file-mime-type (file)
-  "Retorna a string MIME do arquivo via comando `file` do SO (libmagic) ou nil.
+  "Retorna a string MIME de FILE via comando `file' do SO (libmagic) ou nil.
 Compatível com Linux, FreeBSD, macOS e MSYS2."
   (when (and (file-exists-p file)
              (not (file-directory-p file))
@@ -80,10 +81,10 @@ Compatível com Linux, FreeBSD, macOS e MSYS2."
 
 (defun emacs/file-binary-p (file)
   "Retorna non-nil se FILE for um arquivo binário existente no disco.
-Utiliza como autoridade primária o utilitário UNIX `file` (libmagic) do SO
-para obter o MIME type real. Arquivos text/* e formatos textuais de dados/código
+Utiliza como autoridade primária o utilitário UNIX `file' (libmagic) do SO
+para obter o MIME type real.  Arquivos text/* e formatos textuais de dados/código
 são classificados como texto.
-Como segunda linha de defesa antifrágil (caso `file` não esteja no PATH),
+Como segunda linha de defesa antifrágil (caso `file' não esteja no PATH),
 inspeciona os primeiros 1024 bytes procurando por byte nulo (\\0)."
   (and (file-exists-p file)
        (not (file-directory-p file))
@@ -117,8 +118,8 @@ inspeciona os primeiros 1024 bytes procurando por byte nulo (\\0)."
 
 (defun emacs/emacs-viewable-p (file)
   "Retorna non-nil se FILE puder ser visualizado ou renderizado nativamente no Emacs.
-PDFs e documentos DjVu utilizam pdf-tools/doc-view, e imagens utilizam image-mode
-quando sob display gráfico."
+PDFs e documentos DjVu utilizam `pdf-tools'/`doc-view', e imagens utilizam
+`image-mode' quando sob display gráfico."
   (let ((mime (emacs/file-mime-type file))
         (ext (downcase (or (file-name-extension file) ""))))
     (cond
@@ -210,15 +211,20 @@ integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
                label (string-join candidates ", ")))))
 
 (defun emacs/open-browser (&rest args)
-  "Abre o navegador web padrão do sistema (ou URL opcional com C-u / argumento)."
+  "Abre o navegador web universal com fallback em cascata com ARGS opcionais.
+Ordem de resolução: Google Chrome > Brave > Chromium > Edge > Firefox > Safari.
+Aceita URL opcional em ARGS ou via `read-string' com `\\[universal-argument]'."
   (interactive
    (when current-prefix-arg
      (list (read-string "URL: " "https://duckduckgo.com"))))
   (let* ((clean-args (emacs/normalize-app-args args))
          (bin (seq-find #'executable-find
-                        '("firefox" "firefox-esr" "librewolf" "brave-browser" "brave"
-                          "chromium" "chromium-browser" "google-chrome-stable"
-                          "google-chrome" "epiphany" "falkon" "qutebrowser"))))
+                        '("google-chrome-stable" "google-chrome"
+                          "brave-browser" "brave"
+                          "chromium" "chromium-browser" "chrome" "/usr/local/bin/chrome" "ungoogled-chromium"
+                          "microsoft-edge-stable" "microsoft-edge"
+                          "firefox" "firefox-esr" "librewolf"
+                          "safari" "epiphany" "falkon" "qutebrowser"))))
     (cond
      (bin
       (apply #'emacs/spawn-desktop-app "browser" (list bin) clean-args))
@@ -228,6 +234,9 @@ integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
       (browse-url "https://duckduckgo.com")))))
 
 (defalias 'browser 'emacs/open-browser)
+(defalias 'open-browser 'emacs/open-browser)
+(defalias 'open-web 'emacs/open-browser)
+(defalias 'ow 'emacs/open-browser)
 
 (defun emacs/open-office (&rest args)
   "Abre a suíte de escritório (LibreOffice / OnlyOffice) com argumentos opcionais."
@@ -277,26 +286,34 @@ integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
       (message "[AVISO] Nenhum emulador de terminal gráfico encontrado no PATH."))))
 
 (defalias 'terminal 'emacs/open-terminal)
+(defalias 'open-terminal 'emacs/open-terminal)
+(defalias 'ot 'emacs/open-terminal)
 
 (defun emacs/app-firefox (&rest args)
   "Inicia o Mozilla Firefox (ou variante ESR/LibreWolf)."
   (interactive)
   (apply #'emacs/spawn-desktop-app "firefox" '("firefox" "firefox-esr" "librewolf") args))
 (defalias 'firefox 'emacs/app-firefox)
+(defalias 'open-firefox 'emacs/app-firefox)
+(defalias 'of 'emacs/app-firefox)
 
 (defun emacs/app-chrome (&rest args)
-  "Inicia o Google Chrome (ou Chromium como fallback)."
+  "Inicia o Google Chrome ou Chromium como fallback com ARGS opcionais."
   (interactive)
   (apply #'emacs/spawn-desktop-app "chrome"
-         '("google-chrome-stable" "google-chrome" "chrome" "chromium" "chromium-browser")
+         '("google-chrome-stable" "google-chrome" "chrome" "/usr/local/bin/chrome" "chromium" "chromium-browser" "ungoogled-chromium")
          args))
 (defalias 'chrome 'emacs/app-chrome)
 (defalias 'google-chrome 'emacs/app-chrome)
 
 (defun emacs/app-chromium (&rest args)
-  "Inicia o navegador Chromium."
+  "Inicia o navegador Chromium com ARGS opcionais.
+Resolve transparentemente `chrome' e `/usr/local/bin/chrome' no FreeBSD, além de
+`chromium' e `chromium-browser' no Linux."
   (interactive)
-  (apply #'emacs/spawn-desktop-app "chromium" '("chromium" "chromium-browser" "ungoogled-chromium") args))
+  (apply #'emacs/spawn-desktop-app "chromium"
+         '("chromium" "chromium-browser" "chrome" "/usr/local/bin/chrome" "ungoogled-chromium")
+         args))
 (defalias 'chromium 'emacs/app-chromium)
 
 (defun emacs/app-brave (&rest args)
@@ -311,12 +328,16 @@ integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
   (apply #'emacs/spawn-desktop-app "libreoffice" '("libreoffice" "soffice") args))
 (defalias 'libreoffice 'emacs/app-libreoffice)
 (defalias 'soffice 'emacs/app-libreoffice)
+(defalias 'open-libreoffice 'emacs/app-libreoffice)
+(defalias 'ol 'emacs/app-libreoffice)
 
 (defun emacs/app-onlyoffice (&rest args)
   "Inicia o OnlyOffice Desktop Editors."
   (interactive)
   (apply #'emacs/spawn-desktop-app "onlyoffice" '("onlyoffice-desktopeditors" "desktopeditors") args))
 (defalias 'onlyoffice 'emacs/app-onlyoffice)
+(defalias 'open-onlyoffice 'emacs/app-onlyoffice)
+(defalias 'oo 'emacs/app-onlyoffice)
 
 (defun emacs/app-nautilus (&rest args)
   "Inicia o GNOME Files (Nautilus)."
@@ -359,12 +380,16 @@ integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
   (interactive)
   (apply #'emacs/spawn-desktop-app "mpv" '("mpv" "celluloid") args))
 (defalias 'mpv 'emacs/app-mpv)
+(defalias 'open-mpv 'emacs/app-mpv)
+(defalias 'om 'emacs/app-mpv)
 
 (defun emacs/app-vlc (&rest args)
   "Inicia o reprodutor multimídia VLC."
   (interactive)
   (apply #'emacs/spawn-desktop-app "vlc" '("vlc") args))
 (defalias 'vlc 'emacs/app-vlc)
+(defalias 'open-vlc 'emacs/app-vlc)
+(defalias 'ov 'emacs/app-vlc)
 
 (defun emacs/app-kate (&rest args)
   "Inicia o editor Kate (KDE)."
@@ -377,6 +402,9 @@ integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
   (interactive)
   (apply #'emacs/spawn-desktop-app "wireshark" '("wireshark") args))
 (defalias 'wireshark 'emacs/app-wireshark)
+(defalias 'open-wireshark 'emacs/app-wireshark)
+(defalias 'open-shark 'emacs/app-wireshark)
+(defalias 'os 'emacs/app-wireshark)
 
 (defun emacs/app-kdeconnect (&rest args)
   "Inicia o aplicativo KDE Connect."
@@ -390,6 +418,9 @@ integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
   (interactive)
   (apply #'emacs/spawn-desktop-app "thunderbird" '("thunderbird") args))
 (defalias 'thunderbird 'emacs/app-thunderbird)
+(defalias 'open-thunderbird 'emacs/app-thunderbird)
+(defalias 'omail 'emacs/app-thunderbird)
+(defalias 'oth 'emacs/app-thunderbird)
 
 (defun emacs/app-gimp (&rest args)
   "Inicia o editor de imagens GIMP."
@@ -459,18 +490,29 @@ integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
 (defalias 'antigravity 'emacs/app-antigravity)
 
 (dolist (pair '((browser       . emacs/open-browser)
+                (open-browser  . emacs/open-browser)
+                (open-web      . emacs/open-browser)
+                (ow            . emacs/open-browser)
                 (office        . emacs/open-office)
                 (files         . emacs/open-file-manager)
                 (file-manager  . emacs/open-file-manager)
                 (terminal      . emacs/open-terminal)
+                (open-terminal . emacs/open-terminal)
+                (ot            . emacs/open-terminal)
                 (firefox       . emacs/app-firefox)
+                (open-firefox  . emacs/app-firefox)
+                (of            . emacs/app-firefox)
                 (chrome        . emacs/app-chrome)
                 (google-chrome . emacs/app-chrome)
                 (chromium      . emacs/app-chromium)
                 (brave         . emacs/app-brave)
                 (libreoffice   . emacs/app-libreoffice)
                 (soffice       . emacs/app-libreoffice)
+                (open-libreoffice . emacs/app-libreoffice)
+                (ol            . emacs/app-libreoffice)
                 (onlyoffice    . emacs/app-onlyoffice)
+                (open-onlyoffice . emacs/app-onlyoffice)
+                (oo            . emacs/app-onlyoffice)
                 (nautilus      . emacs/app-nautilus)
                 (dolphin       . emacs/app-dolphin)
                 (thunar        . emacs/app-thunar)
@@ -478,12 +520,22 @@ integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
                 (xterm         . emacs/app-xterm)
                 (konsole       . emacs/app-konsole)
                 (mpv           . emacs/app-mpv)
+                (open-mpv      . emacs/app-mpv)
+                (om            . emacs/app-mpv)
                 (vlc           . emacs/app-vlc)
+                (open-vlc      . emacs/app-vlc)
+                (ov            . emacs/app-vlc)
                 (kate          . emacs/app-kate)
                 (wireshark     . emacs/app-wireshark)
+                (open-wireshark . emacs/app-wireshark)
+                (open-shark    . emacs/app-wireshark)
+                (os            . emacs/app-wireshark)
                 (kdeconnect    . emacs/app-kdeconnect)
                 (kdeconnect-app . emacs/app-kdeconnect)
                 (thunderbird   . emacs/app-thunderbird)
+                (open-thunderbird . emacs/app-thunderbird)
+                (omail         . emacs/app-thunderbird)
+                (oth           . emacs/app-thunderbird)
                 (gimp          . emacs/app-gimp)
                 (inkscape      . emacs/app-inkscape)
                 (obs           . emacs/app-obs)

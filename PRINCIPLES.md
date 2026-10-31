@@ -268,11 +268,16 @@ Para garantir longevidade, idempotência e excelência técnica, toda contribui�
     - `_ui_info`: Informação contextual ou nota de recarga em Magenta (`ℹ️ `).
     - `_ui_banner`: Delimitador estrutural com réguas duplas de 64 caracteres `=` em Ciano.
 
-### 6. Padrão Exclusivo de Comentários Estruturais (Regra do Não-Vazamento)
+### 6. Taxonomia Tripartite de Comentários & Padrão Estrutural (Regra do Não-Vazamento)
 
-- **Zero Comentários Narrativos:** Comentários explicativos inline são proibidos em código, scripts, templates e exemplos. O código expressa sua intenção através de separação por linhas em branco e nomenclatura semântica.
-- **Cabeçalho de Topo (Header Banner):** Exclusivo para as linhas 2 a 4 do arquivo, delimitado por exatamente 64 hífens (`# ----------------------------------------------------------------`).
-- **Corpo do Script:** Seções estruturais internas usam estritamente réguas de 32 caracteres (`### ================================` ou `### --------------------------------`), com o título estritamente contido no limite de 32 caracteres (não-vazamento).
+- **1. Comentários de Sistema (PERMITIDOS):** Instruções indispensáveis para o sistema operacional, interpretadores, compiladores e linters (ex.: shebangs `#!/usr/bin/env sh`, diretivas de binding `;;; -*- lexical-binding: t -*-`, pragmas `# shellcheck disable=...`, `#pragma once`, frontmatter YAML).
+- **2. Comentários Estruturais de 64/32 Colunas (PERMITIDOS):**
+    - **Header Banner de Topo:** Exclusivo para as linhas 2 a 4 do arquivo, delimitado por exatamente 64 hífens (`# ----------------------------------------------------------------`).
+    - **Seções e Subseções Internas:** Delimitadores internos usam estritamente réguas de 32 colunas (`### ================================` ou `### --------------------------------`), com o título estritamente contido no limite de 32 caracteres (regra do não-vazamento). Em arquivos `.gitignore`, seções estruturais adotam réguas de 64 sinais de igualdade (`# ================================================================`).
+- **3. Comentários Explicativos/Narrativos (PROIBIDOS):** Não insira comentários explicativos, narrativos ou redundantes que parafraseiem lógica algorítmica. Esta regra aplica-se a:
+    - Código-fonte, scripts executáveis e receitas de infraestrutura.
+    - Dotfiles, Makefiles e arquivos de configuração.
+    - **Blocos de código dentro de Markdowns:** Trechos de código ou snippets embutidos em arquivos `.md` NÃO devem conter comentários explicativos inline; o código deve ser autoexplicativo por construção, modularização e nomenclatura semântica.
 
 ### 7. Ordem Canônica de Priorização de Pacotes (Dispatch Universal)
 

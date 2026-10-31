@@ -20,7 +20,10 @@
       inhibit-startup-echo-area-message user-login-name
       inhibit-default-init t
       gc-cons-threshold most-positive-fixnum
-      gc-cons-percentage 0.6)
+      gc-cons-percentage 0.6
+      frame-resize-pixelwise t
+      window-resize-pixelwise t
+      frame-inhibit-implied-resize t)
 
 (defun emacs/external-file-p (&optional file)
   "Return non-nil if FILE belongs to external packages (var/, opt/) or system."
@@ -28,30 +31,38 @@
                      (and (fboundp 'macroexp--file-name) (macroexp--file-name))
                      load-true-file-name
                      load-file-name
-                     (and (boundp 'byte-compile-current-file) byte-compile-current-file)
-                     buffer-file-name))
+                     (and (boundp 'byte-compile-current-file) byte-compile-current-file)))
          (full (and (stringp target) (expand-file-name target)))
          (root (expand-file-name user-emacs-directory))
          (var-prefix (expand-file-name "var/" root))
          (opt-prefix (expand-file-name "opt/" root)))
-    (and full
-         (or (string-prefix-p var-prefix full)
-             (string-prefix-p opt-prefix full)
-             (not (string-prefix-p root full))))))
+    (or (null target)
+        (and full
+             (or (string-prefix-p var-prefix full)
+                 (string-prefix-p opt-prefix full)
+                 (not (string-prefix-p root full)))))))
 
 (with-eval-after-load 'macroexp
   (advice-add 'macroexp--warn-and-return :around
               (lambda (orig-fn msg form &optional category compile-only symbol)
                 (if (and (or (eq category 'obsolete)
                              (and (listp category) (memq 'obsolete category))
-                             (and (stringp msg) (string-match-p "is obsolete" msg)))
-                         (emacs/external-file-p))
+                             (and (stringp msg) (string-match-p "is obsolete" msg))
+                             (memq symbol '(when-let if-let)))
+                         (or (emacs/external-file-p)
+                             (and (null load-file-name) (null (bound-and-true-p byte-compile-current-file)))))
                     form
                   (funcall orig-fn msg form category compile-only symbol)))))
 
+(setq warning-suppress-types '((obsolete) (macroexp obsolete) (defvaralias obsolete))
+      warning-suppress-log-types '((bytecomp) (obsolete) (defvaralias obsolete) (macroexp obsolete)))
+
 (with-eval-after-load 'warnings
+  (push '(obsolete) warning-suppress-types)
   (push '(defvaralias obsolete) warning-suppress-types)
-  (push '(macroexp obsolete) warning-suppress-types))
+  (push '(macroexp obsolete) warning-suppress-types)
+  (push '(bytecomp) warning-suppress-log-types)
+  (push '(obsolete) warning-suppress-log-types))
 
 (dolist (param '((width . 81) (height . 27)))
   (add-to-list 'default-frame-alist param)

@@ -3,7 +3,8 @@
 ;; Module: Emacs Latex Feature
 ;; ----------------------------------------------------------------
 
-(setq-default latex/preview-enable t)
+(defvar latex/preview-enable t
+  "When non-nil, automatically enable inline LaTeX previews.")
 
 (use-package auctex
   :ensure (:type git :host github :repo "emacsmirror/auctex" :branch "master")
