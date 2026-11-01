@@ -83,6 +83,32 @@ O **Aweshell** atua como a camada de projeção e interoperabilidade do [Univers
 | **Smart Open**    | `open <alvo>` / `o`     | `emacs/universal-open`                  | Abre texto/código/PDF em buffer; binários externos (Office/mídia) em app do SO |
 | **Git**           | `gs`, `ga`, `gc`, `gp`  | `git status`, `add`, etc.               | Ciclo de vida Git idêntico ao terminal                                         |
 
+### Biblioteca Semântica de UI (`_ui_*`)
+
+O Aweshell incorpora nativamente a biblioteca semântica de mensagens `_ui_*`, assegurando paridade 1:1 com os scripts do Universal Shell (`Shell/library/ui.sh`). As funções detectam suporte a cores em tempo de execução (`aweshell--ui-color-p`), aplicando realce tipográfico em terminais gráficos/PTY e fallback limpo em ASCII puro:
+
+| Comando Aweshell      |          Glifo (Cores)          |   Fallback ASCII   | Finalidade Semântica                                         |
+| :-------------------- | :-----------------------------: | :----------------: | :----------------------------------------------------------- |
+| `_ui_banner <título>` | `================` (Ciano Bold) | `================` | Delimitador de seções e banners de cabeçalho                 |
+| `_ui_step <msg>`      |        `▶️` (Ciano Bold)        |       `==>`        | Etapa principal de processamento                             |
+| `_ui_sub <msg>`       |     `↳` (Azul Celeste Bold)     |       `  ->`       | Sub-etapa ou detalhe operacional                             |
+| `_ui_ok <msg>`        |        `✅` (Verde Bold)        |       `  OK`       | Confirmação de operação concluída com sucesso                |
+| `_ui_warn <msg>`      |       `⚠️` (Amarelo Bold)       |      `  WARN`      | Alerta de aviso ou condição atípica                          |
+| `_ui_err <msg>`       |      `❌` (Vermelho Bold)       |      `  FAIL`      | Mensagem de erro emitida no stream de erro (`eshell-errorn`) |
+| `_ui_info <msg>`      |       `ℹ️` (Magenta Bold)       |      `  INFO`      | Notificação contextual e informativa                         |
+
+---
+
+## ⚡ Arquitetura de Runtime, Completação & Interface
+
+O Aweshell opera harmonizado com as diretrizes de performance e consistência visual do GNU Emacs:
+
+- **Isolamento de Completação do `eshell-mode`:** O modo global `completion-preview-mode` é desativado nos buffers do Aweshell (`(completion-preview-mode -1)`), eliminando interferências entre sugestões Lisp e sintaxe de shell. Nos buffers convencionais de código e texto, o `completion-preview-mode` atua com delay de `0.2s` (`completion-preview-idle-delay 0.2`) e comprimento mínimo de símbolo de `2` caracteres (`completion-preview-minimum-symbol-length 2`).
+- **Motor Preditivo com Parada em Match Exato:** O Ghost Completion do Aweshell pesquisa o histórico persistente em ordem decrescente de tempo (mais recente primeiro) e cessa a projeção imediatamente se o prefixo corresponder a um comando exato. A aceitação é acionada via `<right>`, enquanto `TAB` delega para o menu popup do `company-mode`.
+- **Supressão Incondicional da Tool-Bar:** Em harmonia com a governança do Emacs, a rotina `interface/apply-tool-bar` força `tool-bar-lines 0` e `tool-bar-mode -1` em todos os quadros (GUI, EWM e consoles TTY), mantendo a barra de menu (`menu-bar`) ativa exclusivamente em ambientes gráficos.
+- **Flush Imediato de Hover Cairo em Wayland PGTK:** Configuração de `track-mouse t` e gancho `interface/pgtk-flush-mouse-hover` no evento `[mouse-movement]`, forçando `redisplay t` instantâneo na superfície Cairo ao sobrevoar botões com `mouse-face` (eliminando o atraso de 500ms atrelado ao piscar do cursor).
+- **Correção Ortográfica Bilíngue Sem Processo Externo:** Desativação de chamadas síncronas a `/usr/bin/look` (`text-mode-ispell-word-completion nil`, `ispell-look-p nil`) e suporte simultâneo a Inglês e Português (`hunspell` com `en_US,pt_BR` via `ispell-hunspell-add-multi-dic`).
+
 ---
 
 ## 🎨 Catálogo de Temas de Prompt
