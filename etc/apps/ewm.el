@@ -80,22 +80,13 @@ so enabling it does not skew client geometry."
         (when (fboundp 'interface/show-dashboard)
           (interface/show-dashboard f))))))
 
-(defun ewm--ensure-graphic-frame ()
-  "Ensure a graphical frame exists on wayland-ewm display."
-  (let ((has-graphic (cl-some (lambda (f) (and (frame-live-p f) (display-graphic-p f))) (frame-list))))
-    (unless has-graphic
-      (if (and (fboundp 'ewm-get-active-outputs) (ewm-get-active-outputs))
-          (when (fboundp 'ewm--handle-outputs-complete)
-            (ewm--handle-outputs-complete))
-        (ignore-errors
-          (make-frame '((window-system . pgtk) (display . "wayland-ewm") (fullscreen . fullboth)))))))
-  (ewm--sync-output-frames))
-
 (defun ewm--bootstrap-session ()
-  "Bootstrap EWM frames and output synchronization."
-  (ewm--ensure-graphic-frame)
-  (run-with-timer 0.5 nil #'ewm--ensure-graphic-frame)
-  (run-with-timer 1.5 nil #'ewm--ensure-graphic-frame))
+  "Bootstrap EWM output frames synchronization after compositor initialization."
+  (run-with-timer 0.2 nil
+                  (lambda ()
+                    (when (cl-some (lambda (f) (and (frame-live-p f) (display-graphic-p f)))
+                                   (frame-list))
+                      (ewm--sync-output-frames)))))
 
 (with-eval-after-load 'ewm-frame
   (when (fboundp 'ewm--disable-csd)
@@ -222,8 +213,6 @@ so enabling it does not skew client geometry."
 (when (and (string= (getenv "EMACS_OS_MODE") "wayland")
            (ewm-available-p)
            (daemonp))
-  (require 'ewm nil t)
-  (add-hook 'elpaca-after-init-hook #'ewm--bootstrap-session)
-  (add-hook 'emacs-startup-hook #'ewm--bootstrap-session))
+  (require 'ewm nil t))
 
 (provide 'init-ewm)

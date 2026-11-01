@@ -113,15 +113,18 @@
                mac-option-modifier 'super))
 
 (when (fboundp 'global-completion-preview-mode)
-  (setq-default completion-preview-minimum-symbol-length 1
-                completion-preview-idle-delay 0.0)
-  (setq completion-preview-minimum-symbol-length 1
-        completion-preview-idle-delay 0.0
+  (setq-default completion-preview-minimum-symbol-length 2
+                completion-preview-idle-delay 0.2)
+  (setq completion-preview-minimum-symbol-length 2
+        completion-preview-idle-delay 0.2
         completion-preview-commands '(self-insert-command
                                       insert-char
                                       delete-backward-char
                                       backward-delete-char-untabify
                                       analyze-text-conversion))
+  (when (boundp 'global-completion-preview-modes)
+    (setq global-completion-preview-modes
+          '((not archive-mode calc-mode compilation-mode diff-mode dired-mode image-mode minibuffer-mode minibuffer-inactive-mode org-agenda-mode special-mode wdired-mode eshell-mode) t)))
   (global-completion-preview-mode 1)
   (with-eval-after-load 'completion-preview
     (defun emacs/completion-preview-or-company ()
@@ -151,18 +154,20 @@
 
     (defun emacs/completion-preview--filter-valid-symbol-a (orig-fn &rest args)
       "Do not show phantom extension if symbol is already a complete valid symbol."
-      (let* ((sym-str (thing-at-point 'symbol t))
-             (sym (when sym-str (intern-soft sym-str)))
-             (valid-p (and sym (or (fboundp sym) (boundp sym) (facep sym))))
-             (just-accepted (memq last-command '(completion-preview-insert
-                                                 completion-preview-complete
-                                                 company-complete-selection
-                                                 emacs/completion-preview-or-company))))
-        (if (or just-accepted
-                (and valid-p (not (memq this-command '(self-insert-command insert-char)))))
-            (when (fboundp 'completion-preview-hide)
-              (completion-preview-hide))
-          (apply orig-fn args))))
+      (condition-case nil
+          (let* ((sym-str (thing-at-point 'symbol t))
+                 (sym (when (stringp sym-str) (intern-soft sym-str)))
+                 (valid-p (and sym (or (fboundp sym) (boundp sym) (facep sym))))
+                 (just-accepted (memq last-command '(completion-preview-insert
+                                                     completion-preview-complete
+                                                     company-complete-selection
+                                                     emacs/completion-preview-or-company))))
+            (if (or just-accepted
+                    (and valid-p (not (memq this-command '(self-insert-command insert-char)))))
+                (when (fboundp 'completion-preview-hide)
+                  (completion-preview-hide))
+              (apply orig-fn args)))
+        (error (apply orig-fn args))))
 
     (advice-add 'completion-preview--update :around #'emacs/completion-preview--filter-valid-symbol-a)))
 
@@ -170,6 +175,38 @@
           (lambda ()
             (when (bound-and-true-p completion-preview-mode)
               (completion-preview-mode -1))))
+
+(add-hook 'eshell-mode-hook
+          (lambda ()
+            (when (fboundp 'completion-preview-mode)
+              (completion-preview-mode -1))))
+
+;; --------------------------------
+;; SPELLCHECK & DICTIONARY
+;; --------------------------------
+
+(setq-default text-mode-ispell-word-completion nil
+              ispell-look-p nil)
+(setq completion-at-point-functions
+      (delq 'ispell-completion-at-point completion-at-point-functions))
+(add-hook 'text-mode-hook
+          (lambda ()
+            (setq-local text-mode-ispell-word-completion nil)
+            (setq-local completion-at-point-functions
+                        (delq 'ispell-completion-at-point completion-at-point-functions))))
+
+(with-eval-after-load 'ispell
+  (when (executable-find "hunspell")
+    (setenv "DICPATH" "/usr/share/hunspell:/usr/share/myspell:/usr/local/share/hunspell")
+    (setq ispell-program-name "hunspell")
+    (when (and (or (file-exists-p "/usr/share/hunspell/en_US.aff")
+                   (file-exists-p "/usr/share/myspell/en_US.aff"))
+               (or (file-exists-p "/usr/share/hunspell/pt_BR.aff")
+                   (file-exists-p "/usr/share/myspell/pt_BR.aff")))
+      (setq ispell-dictionary "en_US,pt_BR"
+            ispell-default-dictionary "en_US,pt_BR")
+      (ispell-set-spellchecker-params)
+      (ispell-hunspell-add-multi-dic "en_US,pt_BR"))))
 
 ;; --------------------------------
 ;; PROGRAMMING

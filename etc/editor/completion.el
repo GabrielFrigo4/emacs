@@ -22,12 +22,33 @@
   :ensure (:type git :host github :repo "emacs-straight/company" :branch "master")
   :hook (after-init . global-company-mode)
   :config
-  (setq-default company-minimum-prefix-length 1)
+  (setq-default company-minimum-prefix-length 2)
   (setq-default company-dabbrev-downcase 0)
-  (setq-default company-idle-delay 0.0)
+  (setq-default company-idle-delay 0.2)
   (setq-default company-selection-default nil)
   (setq-default company-require-match nil)
   (setq completion-auto-help nil)
+  (setq-default text-mode-ispell-word-completion nil
+                ispell-look-p nil)
+  (setq completion-at-point-functions
+        (delq 'ispell-completion-at-point completion-at-point-functions))
+  (add-hook 'text-mode-hook
+            (lambda ()
+              (setq-local text-mode-ispell-word-completion nil)
+              (setq-local completion-at-point-functions
+                          (delq 'ispell-completion-at-point completion-at-point-functions))))
+  (with-eval-after-load 'ispell
+    (when (executable-find "hunspell")
+      (setenv "DICPATH" "/usr/share/hunspell:/usr/share/myspell:/usr/local/share/hunspell")
+      (setq ispell-program-name "hunspell")
+      (when (and (or (file-exists-p "/usr/share/hunspell/en_US.aff")
+                     (file-exists-p "/usr/share/myspell/en_US.aff"))
+                 (or (file-exists-p "/usr/share/hunspell/pt_BR.aff")
+                     (file-exists-p "/usr/share/myspell/pt_BR.aff")))
+        (setq ispell-dictionary "en_US,pt_BR"
+              ispell-default-dictionary "en_US,pt_BR")
+        (ispell-set-spellchecker-params)
+        (ispell-hunspell-add-multi-dic "en_US,pt_BR"))))
   (with-eval-after-load 'company
     (define-key company-active-map (kbd "RET") nil)
     (define-key company-active-map (kbd "<return>") nil)

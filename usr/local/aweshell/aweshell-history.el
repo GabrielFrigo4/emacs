@@ -56,12 +56,15 @@
           (setq aweshell--zsh-history-mtime mtime
                 aweshell--zsh-history-cache
                 (ignore-errors
-                  (nreverse
-                   (split-string
-                    (with-temp-buffer
-                      (insert-file-contents hist-file)
-                      (replace-regexp-in-string "^:[^;]*;" "" (buffer-string)))
-                    "\n" t)))))
+                  (let ((lines (split-string
+                                (with-temp-buffer
+                                  (insert-file-contents hist-file)
+                                  (buffer-string))
+                                "\n" t)))
+                    (nreverse
+                     (mapcar (lambda (line)
+                               (replace-regexp-in-string "^:[^;]*;" "" line))
+                             lines))))))
         aweshell--zsh-history-cache))))
 
 (defun aweshell/parse-shell-history ()

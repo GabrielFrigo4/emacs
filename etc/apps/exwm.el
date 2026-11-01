@@ -94,6 +94,8 @@
 
     (add-hook 'exwm-init-hook
               (lambda ()
+                (when (executable-find "xsetroot")
+                  (start-process "exwm-cursor" nil "xsetroot" "-cursor_name" "left_ptr"))
                 (when (fboundp 'interface/apply-menu-bar)
                   (interface/apply-menu-bar (selected-frame)))
                 (when (fboundp 'interface/show-dashboard)

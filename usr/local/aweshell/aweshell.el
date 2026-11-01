@@ -3,9 +3,9 @@
 ;; Module: Aweshell — Universal Emacs Shell
 ;; ----------------------------------------------------------------
 
-;; ============================================================================
-;;  REQUIRE & FORWARD DECLARATIONS
-;; ============================================================================
+;;; ================================
+;;; REQUIRE & DECLARATIONS
+;;; ================================
 
 (require 'eshell)
 (require 'cl-lib)
@@ -52,9 +52,9 @@
       (with-no-warnings (eshell-bol))
     (beginning-of-line)))
 
-;; ============================================================================
-;;  OS CONFIG
-;; ============================================================================
+;;; ================================
+;;; OS CONFIGURATION
+;;; ================================
 
 (defvar aweshell/use-aweshell/exec-path t)
 
@@ -63,9 +63,9 @@
   (require 'aweshell-exec-path)
   (aweshell/exec-path-initialize))
 
-;; ============================================================================
-;;  CUSTOMIZE
-;; ============================================================================
+;;; ================================
+;;; CUSTOMIZATION
+;;; ================================
 
 (defgroup aweshell nil
   "Multi eshell manager."
@@ -187,22 +187,22 @@ If this function affects you, disable this option."
   :type 'boolean
   :group 'aweshell)
 
-;; ============================================================================
-;;  VARIABLE
-;; ============================================================================
+;;; ================================
+;;; BUFFER VARIABLES
+;;; ================================
 
 (defvar aweshell/buffer-list nil
   "The list of non-dedicated eshell buffers.")
 
-;; ============================================================================
-;;  HOOK
-;; ============================================================================
+;;; ================================
+;;; GLOBAL HOOKS
+;;; ================================
 
 (add-hook 'kill-buffer-hook 'aweshell/kill-buffer-hook)
 
-;; ============================================================================
-;;  CUSTOM FUNCTIONS
-;; ============================================================================
+;;; ================================
+;;; CUSTOM FUNCTIONS
+;;; ================================
 
 (defun aweshell/update-custom-color ()
   "Update custom colors with theme colors safely."
@@ -245,9 +245,9 @@ If this function affects you, disable this option."
 (add-hook 'after-make-frame-functions #'aweshell/update-custom-color-on-frame)
 (add-hook 'eshell-mode-hook #'aweshell/update-custom-color)
 
-;; ============================================================================
-;;  UTILISE FUNCTIONS
-;; ============================================================================
+;;; ================================
+;;; UTILITY FUNCTIONS
+;;; ================================
 
 (defun aweshell/kill-buffer-hook ()
   "Function that hook `kill-buffer-hook'."
@@ -291,9 +291,9 @@ If this function affects you, disable this option."
           eshell-buffer-index-list)
       nil)))
 
-;; ============================================================================
-;;  INTERACTIVE FUNCTIONS
-;; ============================================================================
+;;; ================================
+;;; INTERACTIVE COMMANDS
+;;; ================================
 
 (defun aweshell/toggle (&optional arg)
   "Toggle Aweshell buffer.
@@ -429,9 +429,9 @@ Create new one if no eshell buffer exists."
                          (bound-and-true-p eshell-current-command))))
         (format "  <%s> %s" (or hist "") (if running "(Running)" ""))))))
 
-;; ============================================================================
-;;  AWESHELL DEDICATED WINDOW
-;; ============================================================================
+;;; ================================
+;;; DEDICATED WINDOW
+;;; ================================
 
 (defvar aweshell/dedicated-window nil
   "The dedicated `aweshell' window.")
@@ -551,9 +551,9 @@ Otherwise return nil."
           (lambda ()
             (face-remap-add-relative 'hl-line :background (face-background 'default))))
 
-;; ============================================================================
-;;  AWESHELL KEYMAP
-;; ============================================================================
+;;; ================================
+;;; KEYMAP BINDINGS
+;;; ================================
 
 (add-hook 'eshell-mode-hook
           (lambda ()
@@ -578,9 +578,9 @@ Otherwise return nil."
             (define-key eshell-mode-map [end] #'aweshell/suggest-accept-end)
             (define-key eshell-mode-map (kbd "C-c C-c") #'aweshell/cancel-heredoc)))
 
-;; ============================================================================
-;;  AWESHELL HIGHLIGHT
-;; ============================================================================
+;;; ================================
+;;; COMMAND HIGHLIGHTING
+;;; ================================
 
 (defvar aweshell/validate-executable t
   "Search executable in `exec-path` for validating eshell command.")
@@ -649,20 +649,26 @@ Otherwise return nil."
 
 (defun aweshell/input-bounds ()
   "Return (BEG . END) of the active user command input on the current line, or nil."
-  (when (aweshell/on-input-line-p)
-    (save-excursion
-      (let ((bol (line-beginning-position))
-            (eol (line-end-position))
-            (out-end (marker-position eshell-last-output-end)))
-        (goto-char bol)
-        (let ((beg (cond
-                    ((and out-end (>= out-end bol) (<= out-end eol))
-                     out-end)
-                    ((looking-at eshell-prompt-regexp)
-                     (match-end 0))
-                    (t bol))))
-          (when (< beg eol)
-            (cons beg eol)))))))
+  (condition-case nil
+      (when (aweshell/on-input-line-p)
+        (save-excursion
+          (let ((bol (line-beginning-position))
+                (eol (line-end-position))
+                (out-end (and (boundp 'eshell-last-output-end)
+                              (markerp eshell-last-output-end)
+                              (marker-position eshell-last-output-end))))
+            (goto-char bol)
+            (let ((beg (cond
+                        ((and out-end (>= out-end bol) (<= out-end eol))
+                         out-end)
+                        ((and (stringp (bound-and-true-p eshell-prompt-regexp))
+                              (not (string-empty-p eshell-prompt-regexp))
+                              (looking-at eshell-prompt-regexp))
+                         (match-end 0))
+                        (t bol))))
+              (when (< beg eol)
+                (cons beg eol))))))
+    (error nil)))
 
 (defun aweshell/validate-command ()
   "Validate and highlight all commands in eshell input line."
@@ -849,9 +855,9 @@ Otherwise return nil."
 (add-hook 'eshell-exit-hook #'aweshell/stop-highlight-timer)
 (add-hook 'buffer-list-update-hook #'aweshell/maybe-toggle-highlight-timer)
 
-;; ============================================================================
-;;  ESHELL EXTENSIONS
-;; ============================================================================
+;;; ================================
+;;; ESHELL EXTENSIONS
+;;; ================================
 
 (defalias 'eshell/up 'aweshell/up)
 (defalias 'eshell/up-peek 'aweshell/up-peek)
@@ -938,9 +944,75 @@ Available Universal Shell themes:
 
 (add-hook 'eshell-output-filter-functions #'aweshell/lock-output-filter)
 
-;; ============================================================================
-;;  UNIX-LIKE ALIASES
-;; ============================================================================
+;;; ================================
+;;; SEMANTIC UI EMISSION
+;;; ================================
+
+(defconst aweshell--ui-sep (make-string 64 ?=))
+
+(defun aweshell--ui-color-p ()
+  "Return non-nil if current frame or terminal supports color."
+  (and (fboundp 'display-color-p) (display-color-p)))
+
+(defun eshell/_ui_step (&rest args)
+  "Emit step UI message."
+  (let ((msg (string-join (mapcar (lambda (x) (format "%s" x)) args) " ")))
+    (if (aweshell--ui-color-p)
+        (eshell-printn (format "%s %s" (propertize "▶️" 'face '(:foreground "cyan" :weight bold)) msg))
+      (eshell-printn (format "==> %s" msg)))))
+
+(defun eshell/_ui_sub (&rest args)
+  "Emit sub-step UI message."
+  (let ((msg (string-join (mapcar (lambda (x) (format "%s" x)) args) " ")))
+    (if (aweshell--ui-color-p)
+        (eshell-printn (format "%s %s" (propertize "↳" 'face '(:foreground "deep sky blue" :weight bold)) msg))
+      (eshell-printn (format "  -> %s" msg)))))
+
+(defun eshell/_ui_ok (&rest args)
+  "Emit success UI message."
+  (let ((msg (string-join (mapcar (lambda (x) (format "%s" x)) args) " ")))
+    (if (aweshell--ui-color-p)
+        (eshell-printn (format "%s %s" (propertize "✅" 'face '(:foreground "green" :weight bold)) msg))
+      (eshell-printn (format "  OK %s" msg)))))
+
+(defun eshell/_ui_warn (&rest args)
+  "Emit warning UI message."
+  (let ((msg (string-join (mapcar (lambda (x) (format "%s" x)) args) " ")))
+    (if (aweshell--ui-color-p)
+        (eshell-printn (format "%s %s" (propertize "⚠️ " 'face '(:foreground "yellow" :weight bold)) msg))
+      (eshell-printn (format "  WARN %s" msg)))))
+
+(defun eshell/_ui_err (&rest args)
+  "Emit error UI message."
+  (let ((msg (string-join (mapcar (lambda (x) (format "%s" x)) args) " ")))
+    (if (aweshell--ui-color-p)
+        (eshell-errorn (format "%s %s" (propertize "❌" 'face '(:foreground "red" :weight bold)) msg))
+      (eshell-errorn (format "  FAIL %s" msg)))))
+
+(defun eshell/_ui_info (&rest args)
+  "Emit info UI message."
+  (let ((msg (string-join (mapcar (lambda (x) (format "%s" x)) args) " ")))
+    (if (aweshell--ui-color-p)
+        (eshell-printn (format "%s %s" (propertize "ℹ️ " 'face '(:foreground "magenta" :weight bold)) msg))
+      (eshell-printn (format "  INFO %s" msg)))))
+
+(defun eshell/_ui_banner (&rest args)
+  "Emit banner UI delimiter."
+  (let ((title (string-join (mapcar (lambda (x) (format "%s" x)) args) " ")))
+    (eshell-printn "")
+    (if (aweshell--ui-color-p)
+        (progn
+          (eshell-printn (propertize aweshell--ui-sep 'face '(:foreground "cyan" :weight bold)))
+          (eshell-printn (format "  %s" (propertize title 'face '(:weight bold))))
+          (eshell-printn (propertize aweshell--ui-sep 'face '(:foreground "cyan" :weight bold))))
+      (eshell-printn aweshell--ui-sep)
+      (eshell-printn (format "  %s" title))
+      (eshell-printn aweshell--ui-sep))
+    (eshell-printn "")))
+
+;;; ================================
+;;; UNIX ALIASES
+;;; ================================
 
 (defun aweshell/setup-aliases ()
   "Setup Unix-like aliases for a familiar shell experience.
@@ -970,7 +1042,6 @@ suppressing minibuffer write messages."
                    ("gl" "git pull $@*")
                    ("gd" "git diff $@*")
                    ("glog" "git log --oneline --graph --decorate $@*")
-                   ;; Antigravity AI CLI (agy)
                    ("agyc" "agy -c $@*")
                    ("agy-continue" "agy -c $@*")
                    ("agya" "agy --dangerously-skip-permissions $@*")
@@ -979,7 +1050,6 @@ suppressing minibuffer write messages."
                    ("agyca" "agy -c --dangerously-skip-permissions $@*")
                    ("agycd" "agy -c --dangerously-skip-permissions $@*")
                    ("agy-continue-auto" "agy -c --dangerously-skip-permissions $@*")
-                   ;; Universal Quarteto Updaters
                    ("upall" "update-all $@*")
                    ("upsh" "update-shell $@*")
                    ("uprc" "update-profile $@*")
@@ -1015,7 +1085,6 @@ suppressing minibuffer write messages."
                    ("gnu" "gnu")
                    ("bsd" "bsd")
                    ("default" "default")
-                   ;; Emacs Contextual Navigation
                    ("e" "find-file $1")
                    ("ee" "find-file-other-window $1")
                    ("d" "dired $1")
@@ -1259,9 +1328,9 @@ suppressing minibuffer write messages."
         (apply #'eshell-named-command "exwm" args)
       (message "EXWM não está carregado neste Emacs."))))
 
-;; ============================================================================
-;;  BUFFER LOCAL REGION FACE
-;; ============================================================================
+;;; ================================
+;;; LOCAL REGION FACE
+;;; ================================
 
 (defun aweshell/setup-region-face ()
   "Locally remap region face in eshell."
@@ -1324,9 +1393,9 @@ files (office documents, media) dispatch to system default applications."
 
 (defalias 'eshell/unpack 'aweshell/unpack)
 
-;; ----------------------------------------------------------------------------
-;;  Synchronal buffer name by directory change
-;; ----------------------------------------------------------------------------
+;;; --------------------------------
+;;; DIRECTORY BUFFER SYNC
+;;; --------------------------------
 
 (defun aweshell/sync-dir-buffer-name ()
   "Change aweshell buffer name by directory change."
@@ -1429,9 +1498,9 @@ files (office documents, media) dispatch to system default applications."
 
 (add-hook 'eshell-kill-hook #'eshell-command-alert)
 
-;; ============================================================================
-;;  AWESHELL POSIX REDIRECTION & HEREDOC ENGINE
-;; ============================================================================
+;;; ================================
+;;; REDIRECTION & HEREDOC
+;;; ================================
 
 (defvar-local aweshell--heredoc-state nil
   "State of active interactive heredoc session: (:cmd CMD :delim DELIM :lines LINES).")
@@ -1440,8 +1509,9 @@ files (office documents, media) dispatch to system default applications."
   "Detect if INPUT initiates a heredoc without ending it on the same line.
 Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
   (let ((clean (string-trim input)))
-    (when (and (string-match "\\`\\(.*?\\)[ \t]*<<-?[ \t]*\\(['\"]?\\)\\([A-Za-z0-9_]+\\)\\2\\([ \t]*>.*\\)?\\'" clean)
-               (not (string-match-p "\n" clean)))
+    (when (and (stringp clean)
+               (not (string-match-p "\n" clean))
+               (string-match "\\`\\(.*?\\)[ \t]*<<-?[ \t]*\\(['\"]?\\)\\([A-Za-z0-9_]+\\)\\2\\([ \t]*>.*\\)?\\'" clean))
       (let ((cmd (string-trim (match-string 1 clean)))
             (delim (match-string 3 clean))
             (redirs (or (match-string 4 clean) "")))
@@ -1451,7 +1521,8 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
 
 (defun aweshell--rewrite-heredoc-multiline (input)
   "Rewrite complete multiline heredoc in INPUT into printf ... | cmd."
-  (if (string-match "\\`\\(.*?\\)[ \t]*<<-?[ \t]*\\(['\"]?\\)\\([A-Za-z0-9_]+\\)\\2\\([ \t]*>.*\\)?\n\\(\\(?:.\\|\n\\)*?\\)\n[ \t]*\\3[ \t]*\\'" input)
+  (if (and (stringp input)
+           (string-match "\\`\\(.*?\\)[ \t]*<<-?[ \t]*\\(['\"]?\\)\\([A-Za-z0-9_]+\\)\\2\\([ \t]*>.*\\)?\n\\(\\(?:.\\|\n\\)*?\\)\n[ \t]*\\3[ \t]*\\'" input))
       (let ((cmd (string-trim (match-string 1 input)))
             (redirs (or (match-string 4 input) ""))
             (body (match-string 5 input)))
@@ -1463,7 +1534,8 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
 
 (defun aweshell--rewrite-input-redirection (input)
   "Rewrite '< file' to 'cat file | ...' avoiding 'Eshell does not support input redirection'."
-  (if (and (string-match "[ \t]<[ \t]" input)
+  (if (and (stringp input)
+           (string-match "[ \t]<[ \t]" input)
            (not (string-match-p "<<\\|<(" input)))
       (if (string-match "\\`\\(.*?\\)[ \t]+<[ \t]*\\([^<>|&;\n\t ]+\\)\\(.*\\)?\\'" input)
           (let ((cmd (string-trim (match-string 1 input)))
@@ -1486,13 +1558,11 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
   "Advice around `eshell-send-input` to handle interactive heredocs and POSIX redirections."
   (let ((input (buffer-substring-no-properties eshell-last-output-end (point))))
     (cond
-     ;; Case 1: In the middle of an interactive heredoc session
      (aweshell--heredoc-state
       (let ((delim (plist-get aweshell--heredoc-state :delim))
             (cmd (plist-get aweshell--heredoc-state :cmd))
             (line (string-trim-right input "\n")))
         (if (string-equal (string-trim line) delim)
-            ;; Delimiter reached! Finalize heredoc
             (let* ((body (string-join (nreverse (plist-get aweshell--heredoc-state :lines)) "\n"))
                    (full-cmd (format "printf \"%%s\\n\" %S | %s"
                                      body
@@ -1502,7 +1572,6 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
               (insert-before-markers-and-inherit ?\n)
               (set-marker eshell-last-output-end (point))
               (eshell-command full-cmd t))
-          ;; Content line: append to lines and prompt for next
           (push line (plist-get aweshell--heredoc-state :lines))
           (delete-region eshell-last-output-end (point))
           (insert-before-markers-and-inherit ?\n)
@@ -1516,7 +1585,6 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
           (set-marker eshell-last-input-start (point))
           (set-marker eshell-last-input-end (point)))))
 
-     ;; Case 2: New interactive heredoc initiation (e.g. "cat << EOF > test")
      ((aweshell--heredoc-parse-start input)
       (let* ((parsed (aweshell--heredoc-parse-start input))
              (delim (plist-get parsed :delim)))
@@ -1533,7 +1601,6 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
         (set-marker eshell-last-input-start (point))
         (set-marker eshell-last-input-end (point))))
 
-     ;; Case 3: Complete multiline heredoc (pasted) or input redirection (< file)
      (t
       (when (and (bound-and-true-p company-mode)
                  (fboundp 'company-abort))
@@ -1558,9 +1625,9 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
 
 (advice-add 'eshell-interrupt-process :around #'aweshell/interrupt-advice)
 
-;; ============================================================================
-;;  AWESHELL NATIVE INLINE AUTOSUGGESTIONS (FISH / ZSH GHOST-TEXT)
-;; ============================================================================
+;;; ================================
+;;; INLINE AUTOSUGGESTIONS
+;;; ================================
 
 (defvar-local aweshell--suggest-overlay nil
   "Overlay displaying the inline autosuggestion ghost-text.")
@@ -1591,126 +1658,157 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
                                aweshell/tab-complete))
     (aweshell/suggest-clear)))
 
+(defun aweshell/find-suggestion (clean-prefix hist)
+  "Find the best autosuggestion candidate for CLEAN-PREFIX in HIST or fallback."
+  (condition-case nil
+      (when (and (stringp clean-prefix) (not (string-empty-p clean-prefix)))
+        (let* ((is-single-token (not (string-match-p "[ \t]" clean-prefix)))
+               (exact-cmd-p (and is-single-token
+                                 (or (and (fboundp 'aweshell/command-valid-p)
+                                          (aweshell/command-valid-p clean-prefix))
+                                     (member clean-prefix hist))))
+               (hist-match
+                (cl-find-if
+                 (lambda (h)
+                   (and (stringp h)
+                        (string-prefix-p clean-prefix h)
+                        (aweshell/history-command-valid-p h)))
+                 hist)))
+          (cond
+           ((and hist-match (string-equal clean-prefix hist-match))
+            nil)
+           (hist-match
+            (let ((suffix (substring hist-match (length clean-prefix))))
+              (cond
+               ((and exact-cmd-p (not (string-prefix-p " " suffix)))
+                (cl-find-if
+                 (lambda (h)
+                   (and (stringp h)
+                        (string-prefix-p (concat clean-prefix " ") h)
+                        (aweshell/history-command-valid-p h)))
+                 hist))
+               (t hist-match))))
+           ((and is-single-token (not exact-cmd-p))
+            (let* ((aliases (when (boundp 'eshell-command-aliases-list)
+                              (mapcar #'car eshell-command-aliases-list)))
+                   (builtins (mapcar (lambda (s) (substring s 7))
+                                     (all-completions "eshell/" obarray #'fboundp)))
+                   (bins (ignore-errors (all-completions clean-prefix (pcomplete-entries))))
+                   (candidates (delete-dups (delq nil (append aliases builtins bins))))
+                   (matching (cl-remove-if-not
+                              (lambda (c)
+                                (and (stringp c)
+                                     (string-prefix-p clean-prefix c)
+                                     (not (string-equal clean-prefix c))
+                                     (not (string-match-p "-" c))))
+                              candidates))
+                   (sorted (sort matching (lambda (a b) (< (length a) (length b))))))
+              (car sorted)))
+           (t nil))))
+    (error nil)))
+
 (defun aweshell/suggest-update ()
   "Update inline autosuggestion ghost-text at point."
-  (if (and aweshell/auto-suggestion-p
-           (derived-mode-p 'eshell-mode)
-           (not aweshell--heredoc-state)
-           (not (and (bound-and-true-p company-mode)
-                     (fboundp 'company--active-p)
-                     (company--active-p)))
-           (aweshell/on-input-line-p)
-           (= (point) (line-end-position))
-           (= (point) (point-max))
-           (not (get-text-property (point) 'read-only)))
-      (if-let* ((bounds (aweshell/input-bounds))
-                (raw-prefix (buffer-substring-no-properties (car bounds) (point)))
-                (clean-prefix (string-trim-left raw-prefix)))
-          (if (and (not (string-empty-p clean-prefix))
-                   (not (string-prefix-p " " raw-prefix))
-                   (not (member clean-prefix '("clear" "cls" "clr" "exit" "logout" "pwd" "reset"))))
-              (let* ((hist (aweshell/parse-shell-history))
-                     (is-single-token (not (string-match-p "\\s-" clean-prefix)))
-                     (is-exact-cmd (or (member clean-prefix hist)
-                                       (and is-single-token
-                                            (or (executable-find clean-prefix)
-                                                (and (fboundp 'eshell-search-path) (eshell-search-path clean-prefix))
-                                                (fboundp (intern-soft (concat "eshell/" clean-prefix)))))))
-                     (cand
-                      (if is-exact-cmd
-                          (let ((first-match (cl-find-if (lambda (s)
-                                                           (and (string-prefix-p clean-prefix s)
-                                                                (aweshell/history-command-valid-p s)))
-                                                         hist)))
-                            (cond
-                             ((or (null first-match) (string-equal clean-prefix first-match))
-                              nil)
-                             ((string-prefix-p " " (substring first-match (length clean-prefix)))
-                              first-match)
-                             (t
-                              (cl-find-if (lambda (s)
-                                            (and (string-prefix-p (concat clean-prefix " ") s)
-                                                 (aweshell/history-command-valid-p s)))
-                                          hist))))
-                        (cl-find-if (lambda (s)
-                                      (and (string-prefix-p clean-prefix s)
-                                           (not (string-equal clean-prefix s))
-                                           (aweshell/history-command-valid-p s)))
-                                    hist))))
-                (if cand
-                    (let* ((raw-suffix (substring cand (length clean-prefix)))
-                           (suffix (car (split-string raw-suffix "\n"))))
-                      (if (and suffix (not (string-empty-p suffix)))
-                          (progn
-                            (unless (overlayp aweshell--suggest-overlay)
-                              (setq aweshell--suggest-overlay (make-overlay (point) (point) (current-buffer) t nil))
-                              (overlay-put aweshell--suggest-overlay 'priority 1000))
-                            (move-overlay aweshell--suggest-overlay (point) (point) (current-buffer))
-                            (overlay-put aweshell--suggest-overlay 'after-string
-                                         (aweshell/propertize-ghost-text suffix))
-                            (setq aweshell--suggest-current suffix))
-                        (aweshell/suggest-clear)))
-                  (aweshell/suggest-clear)))
+  (condition-case nil
+      (if (and aweshell/auto-suggestion-p
+               (derived-mode-p 'eshell-mode)
+               (not aweshell--heredoc-state)
+               (not (and (bound-and-true-p company-mode)
+                         (fboundp 'company--active-p)
+                         (company--active-p)))
+               (aweshell/on-input-line-p)
+               (= (point) (line-end-position))
+               (= (point) (point-max))
+               (not (get-text-property (point) 'read-only)))
+          (if-let* ((bounds (aweshell/input-bounds))
+                    (raw-prefix (buffer-substring-no-properties (car bounds) (point)))
+                    (clean-prefix (string-trim-left raw-prefix)))
+              (if (and (not (string-empty-p clean-prefix))
+                       (not (string-prefix-p " " raw-prefix)))
+                  (let* ((hist (aweshell/parse-shell-history))
+                         (cand (aweshell/find-suggestion clean-prefix hist)))
+                    (if cand
+                        (let* ((raw-suffix (substring cand (length clean-prefix)))
+                               (suffix (car (split-string raw-suffix "\n"))))
+                          (if (and suffix (not (string-empty-p suffix)))
+                              (progn
+                                (unless (overlayp aweshell--suggest-overlay)
+                                  (setq aweshell--suggest-overlay (make-overlay (point) (point) (current-buffer) t nil))
+                                  (overlay-put aweshell--suggest-overlay 'priority 1000))
+                                (move-overlay aweshell--suggest-overlay (point) (point) (current-buffer))
+                                (overlay-put aweshell--suggest-overlay 'after-string
+                                             (aweshell/propertize-ghost-text suffix))
+                                (setq aweshell--suggest-current suffix))
+                            (aweshell/suggest-clear)))
+                      (aweshell/suggest-clear)))
+                (aweshell/suggest-clear))
             (aweshell/suggest-clear))
         (aweshell/suggest-clear))
-    (aweshell/suggest-clear)))
+    (error (aweshell/suggest-clear))))
 
 (defun aweshell/suggest-accept ()
   "Accept the active autosuggestion or complete selection in company."
   (interactive)
-  (cond
-   ((and (bound-and-true-p company-mode)
-         (fboundp 'company-complete-selection)
-         (fboundp 'company--active-p)
-         (company--active-p))
-    (company-complete-selection))
-   ((and aweshell--suggest-current
-         (= (point) (point-max)))
-    (let ((text aweshell--suggest-current))
-      (aweshell/suggest-clear)
-      (insert text)
-      (when (fboundp 'aweshell/highlight-input-line)
-        (aweshell/highlight-input-line))))
-   (t
-    (unless (= (point) (point-max))
-      (if (fboundp 'right-char)
-          (right-char 1)
-        (forward-char 1))))))
+  (condition-case nil
+      (cond
+       ((and (bound-and-true-p company-mode)
+             (fboundp 'company-complete-selection)
+             (fboundp 'company--active-p)
+             (company--active-p))
+        (company-complete-selection))
+       ((and aweshell--suggest-current
+             (= (point) (point-max)))
+        (let ((text aweshell--suggest-current))
+          (aweshell/suggest-clear)
+          (insert text)
+          (when (fboundp 'aweshell/highlight-input-line)
+            (aweshell/highlight-input-line))))
+       (t
+        (unless (= (point) (point-max))
+          (if (fboundp 'right-char)
+              (right-char 1)
+            (forward-char 1)))))
+    (error nil)))
 
 (defalias 'aweshell/accept-suggestion #'aweshell/suggest-accept)
 
 (defun aweshell/suggest-accept-word ()
   "Accept the next word of active autosuggestion (Fish / Zsh style)."
   (interactive)
-  (if (and aweshell--suggest-current
-           (= (point) (point-max)))
-      (if (string-match "\\`\\([ \t]*[^ \t\n]+[ \t]*\\|[ \t]+\\)" aweshell--suggest-current)
-          (let* ((word (match-string 1 aweshell--suggest-current))
-                 (rem (substring aweshell--suggest-current (match-end 0))))
-            (insert word)
-            (if (string-empty-p rem)
-                (aweshell/suggest-clear)
-              (setq aweshell--suggest-current rem)
-              (when (overlayp aweshell--suggest-overlay)
-                (move-overlay aweshell--suggest-overlay (point) (point) (current-buffer))
-                (overlay-put aweshell--suggest-overlay 'after-string
-                             (aweshell/propertize-ghost-text rem))))
-            (when (fboundp 'aweshell/highlight-input-line)
-              (aweshell/highlight-input-line)))
-        (aweshell/suggest-accept))
-    (forward-word 1)))
+  (condition-case nil
+      (if (and aweshell--suggest-current
+               (= (point) (point-max)))
+          (if (and (stringp aweshell--suggest-current)
+                   (string-match "\\`\\([ \t]*[^ \t\n]+[ \t]*\\|[ \t]+\\)" aweshell--suggest-current))
+              (let* ((word (match-string 1 aweshell--suggest-current))
+                     (rem (substring aweshell--suggest-current (match-end 0))))
+                (insert word)
+                (if (string-empty-p rem)
+                    (aweshell/suggest-clear)
+                  (setq aweshell--suggest-current rem)
+                  (when (overlayp aweshell--suggest-overlay)
+                    (move-overlay aweshell--suggest-overlay (point) (point) (current-buffer))
+                    (overlay-put aweshell--suggest-overlay 'after-string
+                                 (aweshell/propertize-ghost-text rem))))
+                (when (fboundp 'aweshell/highlight-input-line)
+                  (aweshell/highlight-input-line)))
+            (aweshell/suggest-accept))
+        (forward-word 1))
+    (error nil)))
 
 (defun aweshell/suggest-accept-end ()
   "Accept full autosuggestion and go to end of line."
   (interactive)
-  (if (and aweshell--suggest-current
-           (= (point) (point-max)))
-      (aweshell/suggest-accept)
-    (move-end-of-line 1)))
+  (condition-case nil
+      (if (and aweshell--suggest-current
+               (= (point) (point-max)))
+          (aweshell/suggest-accept)
+        (move-end-of-line 1))
+    (error nil)))
 
-;; ============================================================================
-;;  AWESHELL COMPLETION MENU & COMPANY INTEGRATION
-;; ============================================================================
+;;; ================================
+;;; COMPLETION & COMPANY
+;;; ================================
 
 (defun aweshell/candidate-annotation (cand)
   "Return semantic category annotation for completion CANDIDATE."
@@ -1801,63 +1899,60 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
 (defun aweshell/tab-complete ()
   "Complete current input or display selectable options menu on TAB (Zsh style)."
   (interactive)
-  (cond
-   ;; 1. If Company menu is already open, cycle to the next candidate
-   ((and (bound-and-true-p company-mode)
-         (fboundp 'company--active-p)
-         (company--active-p))
-    (if (fboundp 'company-complete-common-or-cycle)
-        (company-complete-common-or-cycle)
-      (company-select-next)))
-
-   ;; 2. Otherwise calculate candidates for current word
-   (t
-    (let* ((prefix (aweshell/current-word-prefix))
-           (cands (aweshell/company-candidates prefix)))
+  (condition-case nil
       (cond
-       ;; If ghost-text is active and there are no multiple completion choices:
-       ;; Accept the ghost-text suggestion immediately (ergonomia Zsh)
-       ((and (bound-and-true-p aweshell--suggest-current)
-             (= (point) (point-max))
-             (or (null cands) (<= (length cands) 1)))
-        (aweshell/suggest-accept))
+       ((and (bound-and-true-p company-mode)
+             (fboundp 'company--active-p)
+             (company--active-p))
+        (if (fboundp 'company-complete-common-or-cycle)
+            (company-complete-common-or-cycle)
+          (company-select-next)))
 
-       ;; If exactly 1 candidate: complete it directly into buffer
-       ((= (length cands) 1)
-        (let ((cand (car cands)))
-          (when (and (> (length cand) (length prefix))
-                     (string-prefix-p prefix cand))
-            (insert (substring cand (length prefix))))
-          (when (fboundp 'aweshell/suggest-clear)
-            (aweshell/suggest-clear))
-          (when (fboundp 'aweshell/highlight-input-line)
-            (aweshell/highlight-input-line))))
-
-       ;; If multiple candidates: expand common prefix if any, then open company menu
-       ((> (length cands) 1)
-        (when (fboundp 'aweshell/suggest-clear)
-          (aweshell/suggest-clear))
-        (let ((common (try-completion prefix cands)))
-          (when (and (stringp common)
-                     (> (length common) (length prefix)))
-            (insert (substring common (length prefix)))))
-        (if (and (bound-and-true-p company-mode)
-                 (fboundp 'company-manual-begin))
-            (company-manual-begin)
-          (if (fboundp 'completion-at-point)
-              (completion-at-point)
-            (pcomplete))))
-
-       ;; Fallback: if ghost-text exists, accept it
-       ((and (bound-and-true-p aweshell--suggest-current)
-             (= (point) (point-max)))
-        (aweshell/suggest-accept))
-
-       ;; Fallback to standard Eshell completion
        (t
-        (if (fboundp 'completion-at-point)
-            (completion-at-point)
-          (pcomplete))))))))
+        (let* ((prefix (aweshell/current-word-prefix))
+               (cands (aweshell/company-candidates prefix)))
+          (cond
+           ((and (bound-and-true-p aweshell--suggest-current)
+                 (= (point) (point-max))
+                 (or (null cands) (<= (length cands) 1)))
+            (aweshell/suggest-accept))
+
+           ((= (length cands) 1)
+            (let ((cand (car cands)))
+              (when (and (stringp cand)
+                         (stringp prefix)
+                         (> (length cand) (length prefix))
+                         (string-prefix-p prefix cand))
+                (insert (substring cand (length prefix))))
+              (when (fboundp 'aweshell/suggest-clear)
+                (aweshell/suggest-clear))
+              (when (fboundp 'aweshell/highlight-input-line)
+                (aweshell/highlight-input-line))))
+
+           ((> (length cands) 1)
+            (when (fboundp 'aweshell/suggest-clear)
+              (aweshell/suggest-clear))
+            (let ((common (try-completion prefix cands)))
+              (when (and (stringp common)
+                         (stringp prefix)
+                         (> (length common) (length prefix)))
+                (insert (substring common (length prefix)))))
+            (if (and (bound-and-true-p company-mode)
+                     (fboundp 'company-manual-begin))
+                (company-manual-begin)
+              (if (fboundp 'completion-at-point)
+                  (completion-at-point)
+                (pcomplete))))
+
+           ((and (bound-and-true-p aweshell--suggest-current)
+                 (= (point) (point-max)))
+            (aweshell/suggest-accept))
+
+           (t
+            (if (fboundp 'completion-at-point)
+                (completion-at-point)
+              (pcomplete)))))))
+    (error nil)))
 
 (defun aweshell/company-backend (command &optional arg &rest _ignored)
   "`company-mode' backend for Aweshell with rich categorized options."
@@ -1892,9 +1987,10 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
             (add-hook 'kill-buffer-hook #'aweshell/suggest-clear nil t)
             (when (fboundp 'company-mode)
               (company-mode 1)
-              ;; Never popup automatically on idle delay: only show on TAB or ghost-text
               (setq-local company-idle-delay nil)
               (setq-local company-minimum-prefix-length 1)
-              (setq-local company-backends '(aweshell/company-backend)))))
+              (setq-local company-backends '(aweshell/company-backend)))
+            (when (fboundp 'completion-preview-mode)
+              (completion-preview-mode -1))))
 
 (provide 'aweshell)
