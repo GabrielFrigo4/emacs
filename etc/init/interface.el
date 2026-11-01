@@ -155,6 +155,7 @@ renders the graphical logo on GUI frames created by emacsclient."
   (add-hook 'server-after-make-frame-hook #'interface/show-dashboard)
   (add-hook 'dashboard-mode-hook
             (lambda ()
+              (setq-local track-mouse t)
               (setq-local display-line-numbers nil)
               (setq-local display-line-numbers-type nil)
               (display-line-numbers-mode -1))))
@@ -239,6 +240,9 @@ renders the graphical logo on GUI frames created by emacsclient."
 ;; MENU & TOOL BAR & TTY MOUSE
 ;; --------------------------------
 
+(setq-default track-mouse t)
+(setq track-mouse t)
+
 (when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
 (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
 (when (fboundp 'window-divider-mode)
@@ -272,17 +276,59 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
      (interface/enable-tty-menu-bar 1)
      (t 0))))
 
+(defun interface/apply-tool-bar (&optional frame)
+  "Ensure tool-bar is unconditionally disabled on FRAME across GUI and TTY."
+  (let ((target (or frame (selected-frame))))
+    (when (frame-live-p target)
+      (set-frame-parameter target 'tool-bar-lines 0)))
+  (when (fboundp 'tool-bar-mode)
+    (tool-bar-mode -1)))
+
 (defun interface/apply-menu-bar (&optional frame)
   "Apply menu-bar visibility to FRAME."
-  (let* ((target (or frame (selected-frame)))
-         (lines (interface/menu-bar-lines-for-frame target)))
-    (set-frame-parameter target 'menu-bar-lines lines)
-    (if (display-graphic-p target)
-        (when (fboundp 'menu-bar-mode) (menu-bar-mode 1))
-      (when (= lines 0)
-        (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))))))
+  (let* ((target (or frame (selected-frame))))
+    (interface/apply-tool-bar target)
+    (let ((lines (interface/menu-bar-lines-for-frame target)))
+      (set-frame-parameter target 'menu-bar-lines lines)
+      (if (display-graphic-p target)
+          (when (fboundp 'menu-bar-mode) (menu-bar-mode 1))
+        (when (= lines 0)
+          (when (fboundp 'menu-bar-mode) (menu-bar-mode -1)))))))
 
+(interface/apply-tool-bar)
 (interface/apply-menu-bar)
+
+(defvar interface--last-hover-button-pos nil
+  "Last buffer position with mouse-face under pointer for PGTK redraw.")
+
+(defun interface/pgtk-flush-mouse-hover (event)
+  "Flush Cairo surface immediately on Wayland PGTK when hovering buttons."
+  (interactive "e")
+  (when (and (featurep 'pgtk) (mouse-movement-p event))
+    (let* ((posn (event-start event))
+           (win (and posn (posn-window posn)))
+           (pos (and (window-live-p win) (posn-point posn)))
+           (has-face (and (integerp pos)
+                          (window-live-p win)
+                          (with-current-buffer (window-buffer win)
+                            (ignore-errors
+                              (and (>= pos (point-min))
+                                   (<= pos (point-max))
+                                   (or (get-char-property pos 'mouse-face)
+                                       (get-char-property pos 'button))))))))
+      (when (not (equal has-face interface--last-hover-button-pos))
+        (setq interface--last-hover-button-pos has-face)
+        (when (window-live-p win)
+          (force-window-update win))
+        (redisplay t)))))
+
+(when (featurep 'pgtk)
+  (with-eval-after-load 'simple
+    (when (boundp 'special-mode-map)
+      (define-key special-mode-map [mouse-movement] #'interface/pgtk-flush-mouse-hover)))
+  (when (boundp 'special-mode-map)
+    (define-key special-mode-map [mouse-movement] #'interface/pgtk-flush-mouse-hover))
+  (define-key global-map [mouse-movement] #'interface/pgtk-flush-mouse-hover))
 
 (unless (display-graphic-p)
   (when (fboundp 'xterm-mouse-mode)
@@ -296,9 +342,13 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
     (ignore-errors (gpm-mouse-mode 1)))
   (interface/apply-tty-faces))
 
+(add-hook 'tty-setup-hook #'interface/apply-tool-bar)
+(add-hook 'window-setup-hook #'interface/apply-tool-bar)
+
 (add-hook 'after-make-frame-functions
           (lambda (frame)
             (with-selected-frame frame
+              (interface/apply-tool-bar frame)
               (interface/apply-menu-bar frame)
               (if (display-graphic-p frame)
                   nil

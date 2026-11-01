@@ -23,7 +23,7 @@
 (when (ewm-available-p)
   (setenv "EWM_MODULE_PATH" ewm-module-file))
 
-(defcustom ewm-show-tool-bar t
+(defcustom ewm-show-tool-bar nil
   "Non-nil means display the graphical tool-bar on EWM output frames.
 Compositor surface offsets are corrected by `ewm--external-bars-height',
 so enabling it does not skew client geometry."
@@ -57,7 +57,7 @@ so enabling it does not skew client geometry."
       frame-inhibit-implied-resize t)
 
 (defun ewm--preserve-menu-bar (&optional frame)
-  "Keep the graphical menu-bar and tool-bar enabled on EWM FRAME."
+  "Keep the graphical menu-bar enabled and tool-bar disabled on EWM FRAME."
   (let ((target (or frame (selected-frame))))
     (when (and (frame-live-p target) (display-graphic-p target))
       (set-frame-parameter target 'menu-bar-lines 1)
@@ -65,11 +65,9 @@ so enabling it does not skew client geometry."
         (menu-bar-mode 1))
       (when (fboundp 'interface/apply-menu-bar)
         (interface/apply-menu-bar target))
-      (when ewm-show-tool-bar
-        (set-frame-parameter target 'tool-bar-position 'top)
-        (set-frame-parameter target 'tool-bar-lines 1)
-        (when (facep 'tool-bar)
-          (set-face-attribute 'tool-bar target :background "#1e1e1e" :foreground "#d4d4d4" :box nil))))))
+      (set-frame-parameter target 'tool-bar-lines 0)
+      (when (fboundp 'tool-bar-mode)
+        (tool-bar-mode -1)))))
 
 (defun ewm--sync-output-frames (&rest _)
   "Ensure EWM output frames have menu-bar and *dashboard* displayed."
