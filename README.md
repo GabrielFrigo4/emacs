@@ -27,7 +27,44 @@ Este repositório contém a configuração pessoal do **GNU Emacs (versão 30+, 
 - **Terminal Aweshell & Biblioteca Semântica UI:** Integração do Eshell com a biblioteca nativa `_ui_*` (`_ui_banner`, `_ui_step`, `_ui_sub`, `_ui_ok`, `_ui_warn`, `_ui_err`, `_ui_info`) com total paridade semântica com o `Shell/library/ui.sh`. Isolamento do `eshell-mode` via desativação de `completion-preview-mode` no terminal (mantendo delay de `0.2s` e mínimo de `2` caracteres nos buffers convencionais de código/texto), operando com motor de sugestão histórica mais recente e parada em match exato.
 - **Correção Ortográfica Bilíngue Sem Processo Externo:** Eliminação definitiva de chamadas síncronas a `/usr/bin/look` (`text-mode-ispell-word-completion nil`, `ispell-look-p nil`) e suporte simultâneo a dicionários de Inglês e Português (`hunspell` com `en_US,pt_BR` via `ispell-hunspell-add-multi-dic`).
 - **Autodocumentação Integral em Elisp (GNU Emacs Self-Documenting Standard):** Honrando o pilar clássico do GNU Emacs como máquina Lisp viva e autodocumentada, 100% das definições (`defun`, `defmacro`, `defvar`, `defcustom`, `defface`) e comandos de sistema operacional (`firefox`, `libreoffice`, `apps`, etc.) possuem docstrings canônicas consultáveis em tempo real via `C-h f` (`describe-function`), `C-h v` (`describe-variable`), `C-h k` (`describe-key`), `M-x apropos`, ElDoc e `which-key`. O padrão estrito exige: primeira linha concisa ($\le 80$ colunas), argumentos formais em `MAIÚSCULAS` (ex: `ARGS`, `DIR`), referências a símbolos entre acento grave e apóstrofo (` `simbolo' `) para gerar links hipertextuais navegáveis no buffer `_Help_`, e zero comentários narrativos inline (`;;`).
-- **Ergonomia Híbrida Emacs + Evil (`C-z` & `ESC`) e Cursores Dinâmicos (`blink` em GUI/PTY e `noblink` em TTY):** Inicia sempre em **Emacs state** nativo em todos os modos e alterna instantaneamente para **Evil Normal state** via `C-z` (e retorno do Insert/Visual/Replace ao Normal state via `ESC`). Sincroniza os formatos de cursor dinâmicos e piscantes (`blink`) idênticos ao Vim/NeoVim/Helix em GUI (`box`, `bar`, `hbar`) e PTY (`\e[1 q`, `\e[3 q`, `\e[5 q`), ficando estático (`noblink`) apenas em consoles Linux Raw TTY (`\e[?2c` a `\e[?6c`, com auto-cura `\e%G\e[?16;238;0c`).
+- **Ergonomia Híbrida Emacs + Evil (`C-z` & `ESC`) e Ciclo Unificado de Cursor (1200ms):** Inicia sempre em **Emacs state** nativo em todos os modos e alterna instantaneamente para **Evil Normal state** via `C-z` (e retorno do Insert/Visual/Replace ao Normal state via `ESC`). Padroniza o ciclo unificado de 1200ms (`blink-cursor-interval 0.6`, `blink-cursor-delay 0.6`, `blink-cursor-blinks 0`) em perfeita sincronia com GTK3/GTK4 (`1200ms`), XTerm, NeoVim e Vim em GUI (`box`, `bar`, `hbar`) e PTY (`\e[1 q`, `\e[3 q`, `\e[5 q`), ficando estático (`noblink`) apenas em consoles Linux Raw TTY (`\e[?2c` a `\e[?6c`, com auto-cura `\e%G\e[?16;238;0c`).
+- **Suíte Soberana de Documentos & Substitutos Nativos de Apps:** Leitor nativo acelerado para PDF/DjVu (192 DPI contínuo com MuPDF/Poppler/DjVuLibre e dark mode `i`), EPUB (`nov-mode`), banco de dados relacional (`sqlite-mode`), arquivos compactados (`arc-mode`, `tar-mode`), inspeção de processos (`proced`), comparação visual (`ediff`), calculadora avançada (`calc`), edição binária (`hexl-mode`) e edição de diretórios (`dired` + `wdired`), plenamente integrados ao despachante `$ o <arquivo>` / `$ open <arquivo>`.
+
+---
+
+## 📖 Suíte Soberana de Leitura de Documentos & Aplicações Nativas
+
+O GNU Emacs substitui aplicações gráficas externas através de sua suíte integrada de leitores de documentos e utilitários de sistema nativos, operando com latência nula e integrados ao comando `$ o <arquivo>` / `$ open <arquivo>` no terminal e no Aweshell:
+
+### 1. Leitores Soberanos de Documentos
+
+| Formato  | Modo Emacs               | Recursos & Motor de Renderização                                                                                        | Atalhos Principais                                                                                 |
+| :------- | :----------------------- | :---------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------- |
+| **PDF**  | `doc-view-mode`          | Resolução nativa de 192 DPI contínua (`doc-view-continuous t`), aceleração com `mutool` (MuPDF) ou `pdftoppm` (Poppler) | `j`/`k` (scroll contínuo), `n`/`p` (página), `+`/`-` (zoom), `W`/`H`/`P` (ajuste), `i` (dark mode) |
+| **DjVu** | `doc-view-mode` / `djvu` | Renderização contínua a 192 DPI via motor nativo `ddjvu` (`graphics/djvulibre`), navegação fluida                       | `j`/`k` (scroll), `n`/`p` (página), `+`/`-` (zoom), `i` (modo escuro invertido)                    |
+| **EPUB** | `nov-mode`               | Leitor de e-books com reflow tipográfico dinâmico, largura calibrada (`nov-text-width t`), `visual-line-mode`           | `n`/`p` (capítulo/página), `SPC`/`S-SPC` (scroll), `t` (tabela de conteúdos)                       |
+
+### 2. Suíte de Substitutos Nativos de Aplicações
+
+| Utilitário                | Modo Emacs              | Comando / Alias                        | Função Operacional                                                                        |
+| :------------------------ | :---------------------- | :------------------------------------- | :---------------------------------------------------------------------------------------- |
+| **Bancos SQLite**         | `sqlite-mode`           | `$ o db.sqlite3` ou `$ sql db.sqlite3` | Navegador interativo de esquemas, tabelas e dados SQLite sem necessidade de apps externos |
+| **Compactados**           | `arc-mode` / `tar-mode` | `$ o arquivo.zip`                      | Visualização, navegação, edição e extração direta de arquivos ZIP, TAR, GZ, XZ e 7Z       |
+| **Imagens**               | `image-mode`            | `$ o foto.png`                         | Visualizador rápido de imagens rasterizadas (PNG, JPEG, WebP) e vetoriais (SVG)           |
+| **Processos**             | `proced`                | `$ procs` ou `$ htop`                  | Monitor de processos interativo com envio de sinais (`k` kill, `r` renice)                |
+| **Diff & Merge**          | `ediff`                 | `$ ediff file-a file-b`                | Comparador visual granular lado a lado com aplicação refinada de hunks e merge            |
+| **Calculadora**           | `calc`                  | `$ calc [expressão]`                   | Calculadora avançada RPN simbólica, algébrica e financeira nativa do Emacs                |
+| **Hex Editor**            | `hexl-mode`             | `$ hex arquivo.bin`                    | Editor e inspetor hexadecimal de baixo nível com edição em hexadecimal ou ASCII           |
+| **Gerenciador de Pastas** | `dired` + `wdired`      | `$ d` ou `C-x d`                       | Gerenciador dual-pane com modo de edição em lote de nomes de arquivos (`C-x C-q` / `r`)   |
+
+### 3. Ciclo Unificado de Piscar de Cursor (1200ms)
+
+O Emacs alinha perfeitamente seu ciclo de cursor ao padrão do ecossistema:
+
+- **Intervalo:** `blink-cursor-interval 0.6` (600ms aceso, 600ms apagado = ciclo completo de 1200ms).
+- **Atraso de Inicialização:** `blink-cursor-delay 0.6` (início após 600ms de inatividade).
+- **Persistência Infinita:** `blink-cursor-blinks 0` (o cursor nunca para de piscar por inatividade).
+- **Paridade com a Suíte:** Sincronizado com GTK3/GTK4 (`gtk-cursor-blink-time=1200`), XTerm (`*cursorBlink: always`), NeoVim e Vim (`blinkwait600-blinkoff600-blinkon600`).
 
 ---
 

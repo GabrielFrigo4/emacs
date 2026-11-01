@@ -97,38 +97,6 @@
     (add-hook 'find-file-hook #'latex/preview-setup)
     (add-hook 'after-save-hook #'latex/preview-setup)))
 
-;; ================================
-;; PDF FEATURE
-;; ================================
-
-(use-package pdf-tools
-  :ensure (:type git :host github :repo "emacsmirror/pdf-tools" :branch "master")
-  :mode ("\\.pdf\\'" . pdf-view-mode)
-  :config
-  (pdf-tools-install :no-query)
-  (when-windows (setq-default pdf-tools-msys2-directory "C:/msys64"))
-  (setq-default pdf-view-use-scaling t)
-  (setq-default pdf-view-image-relief 2)
-  (setq-default pdf-view-use-imagemagick nil)
-  (defadvice pdf-cache--prefetch-start (around suppress-timer activate)
-    (cancel-function-timers 'pdf-cache--prefetch-start))
-
-  (defun pdf-view/toggle-dark-mode ()
-    "Toggle dark mode (midnight mode) in pdf-view."
-    (interactive)
-    (pdf-view-midnight-minor-mode 'toggle))
-
-  (setq-default pdf-view-display-size 'fit-width)
-
-  (with-eval-after-load 'pdf-view
-    (define-key pdf-view-mode-map (kbd "D") #'pdf-view/toggle-dark-mode)
-    (define-key pdf-view-mode-map [down-mouse-1] nil)
-    (define-key pdf-view-mode-map [drag-mouse-1] nil))
-
-  :hook (pdf-view-mode . (lambda ()
-                           (display-line-numbers-mode -1)
-                           (pdf-view-midnight-minor-mode 1))))
-
 (use-package cdlatex
   :defer t
   :ensure (:type git :host github :repo "emacsmirror/cdlatex" :branch "master"))

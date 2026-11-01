@@ -67,21 +67,33 @@ O **Aweshell** atua como a camada de projeção e interoperabilidade do [Univers
 
 ### Dicionário de Paridade de Aliases
 
-| Categoria         | Alias Aweshell          | Comando Expandido                       | Papel no Ecossistema                                                           |
-| :---------------- | :---------------------- | :-------------------------------------- | :----------------------------------------------------------------------------- |
-| **IA CLI**        | `agyc` / `agy-continue` | `agy -c`                                | Retoma a última sessão do Antigravity CLI                                      |
-| **IA CLI**        | `agya` / `agyd`         | `agy --dangerously-skip-permissions`    | Executa o agy CLI aprovando ferramentas automaticamente                        |
-| **IA CLI**        | `agyca` / `agycd`       | `agy -c --dangerously-skip-permissions` | Retoma sessão com auto-aprovação total                                         |
-| **Sincronização** | `upall`                 | `update-all`                            | Atualiza todo o Quarteto (Shell, Profile, Vault, Editores)                     |
-| **Sincronização** | `upsh`                  | `update-shell`                          | Atualiza repositório do Shell e recarrega                                      |
-| **Sincronização** | `uped`                  | `update-editors`                        | Atualiza suíte de editores e Elisp                                             |
-| **Sincronização** | `uprc`                  | `update-profile`                        | Atualiza dotfiles e skills                                                     |
-| **Sincronização** | `upmodes`               | `update-emacs-modes`                    | Sincroniza submódulos de modos locais do Emacs                                 |
-| **Emacs Buffer**  | `e <alvo>`              | `find-file`                             | Abre arquivo no buffer corrente do Emacs                                       |
-| **Emacs Buffer**  | `ee <alvo>`             | `find-file-other-window`                | Abre arquivo dividindo a janela                                                |
-| **Emacs Buffer**  | `d` / `dired`           | `dired`                                 | Abre navegação de diretórios Dired                                             |
-| **Smart Open**    | `open <alvo>` / `o`     | `emacs/universal-open`                  | Abre texto/código/PDF em buffer; binários externos (Office/mídia) em app do SO |
-| **Git**           | `gs`, `ga`, `gc`, `gp`  | `git status`, `add`, etc.               | Ciclo de vida Git idêntico ao terminal                                         |
+| Categoria         | Alias Aweshell          | Comando Expandido                       | Papel no Ecossistema                                                            |
+| :---------------- | :---------------------- | :-------------------------------------- | :------------------------------------------------------------------------------ |
+| **IA CLI**        | `agyc` / `agy-continue` | `agy -c`                                | Retoma a última sessão do Antigravity CLI                                       |
+| **IA CLI**        | `agya` / `agyd`         | `agy --dangerously-skip-permissions`    | Executa o agy CLI aprovando ferramentas automaticamente                         |
+| **IA CLI**        | `agyca` / `agycd`       | `agy -c --dangerously-skip-permissions` | Retoma sessão com auto-aprovação total                                          |
+| **Sincronização** | `upall`                 | `update-all`                            | Atualiza todo o Quarteto (Shell, Profile, Vault, Editores)                      |
+| **Sincronização** | `upsh`                  | `update-shell`                          | Atualiza repositório do Shell e recarrega                                       |
+| **Sincronização** | `uped`                  | `update-editors`                        | Atualiza suíte de editores e Elisp                                              |
+| **Sincronização** | `uprc`                  | `update-profile`                        | Atualiza dotfiles e skills                                                      |
+| **Sincronização** | `upmodes`               | `update-emacs-modes`                    | Sincroniza submódulos de modos locais do Emacs                                  |
+| **Emacs Buffer**  | `e <alvo>`              | `find-file`                             | Abre arquivo no buffer corrente do Emacs                                        |
+| **Emacs Buffer**  | `ee <alvo>`             | `find-file-other-window`                | Abre arquivo dividindo a janela                                                 |
+| **Emacs Buffer**  | `d` / `dired`           | `dired`                                 | Abre navegação de diretórios Dired                                              |
+| **Smart Open**    | `open <alvo>` / `o`     | `aweshell/open`                         | Smart Open: texto, código, PDF, EPUB, DjVu, SQLite em buffer; binários externos |
+| **Processos**     | `procs` / `htop`        | `proced`                                | Gerenciador de processos nativo interativo do sistema                           |
+| **Comparação**    | `ediff <a> <b>`         | `ediff-files`                           | Comparador visual granular e mesclador lado a lado                              |
+| **Calculadora**   | `calc [expr]`           | `calc`                                  | Calculadora científica RPN e simbólica (interativa ou inline)                   |
+| **Hex Inspector** | `hex <alvo>`            | `hexl-find-file`                        | Editor e inspetor de arquivos em modo hexadecimal                               |
+| **SQLite DB**     | `sql <alvo>`            | `sqlite-mode-open-file`                 | Inspetor de esquema e tabelas de bancos de dados SQLite                         |
+| **Git**           | `gs`, `ga`, `gc`, `gp`  | `git status`, `add`, etc.               | Ciclo de vida Git idêntico ao terminal                                          |
+
+### Suíte Soberana de Documentos & Aplicações Nativas
+
+O Aweshell atua como console de despacho para a suíte nativa de leitura de documentos e ferramentas de sistema do Emacs:
+
+- **Leitores Nativos:** Ao digitar `o slide.pdf`, `o book.epub` ou `o doc.djvu`, o arquivo é imediatamente renderizado em buffers especializados (`doc-view-mode` a 192 DPI contínuo com MuPDF/Poppler/DjVuLibre e modo escuro via `i`; `nov-mode` para EPUB).
+- **Substitutos de Utilitários Externos:** O terminal embutido elimina ferramentas externas pesadas ao expor comandos diretos para inspeção de processos (`procs` / `htop`), diff visual (`ediff`), calculadora simbólica (`calc`), visualização hexadecimal (`hex`) e bancos de dados relacionais (`sql`).
 
 ### Biblioteca Semântica de UI (`_ui_*`)
 
@@ -108,6 +120,7 @@ O Aweshell opera harmonizado com as diretrizes de performance e consistência vi
 - **Supressão Incondicional da Tool-Bar:** Em harmonia com a governança do Emacs, a rotina `interface/apply-tool-bar` força `tool-bar-lines 0` e `tool-bar-mode -1` em todos os quadros (GUI, EWM e consoles TTY), mantendo a barra de menu (`menu-bar`) ativa exclusivamente em ambientes gráficos.
 - **Flush Imediato de Hover Cairo em Wayland PGTK:** Configuração de `track-mouse t` e gancho `interface/pgtk-flush-mouse-hover` no evento `[mouse-movement]`, forçando `redisplay t` instantâneo na superfície Cairo ao sobrevoar botões com `mouse-face` (eliminando o atraso de 500ms atrelado ao piscar do cursor).
 - **Correção Ortográfica Bilíngue Sem Processo Externo:** Desativação de chamadas síncronas a `/usr/bin/look` (`text-mode-ispell-word-completion nil`, `ispell-look-p nil`) e suporte simultâneo a Inglês e Português (`hunspell` com `en_US,pt_BR` via `ispell-hunspell-add-multi-dic`).
+- **Ciclo Unificado de Cursor (1200ms):** Alinhado com a governança central (`blink-cursor-interval 0.6`, `blink-cursor-delay 0.6`, `blink-cursor-blinks 0`), sincronizando perfeitamente o piscar do cursor com GTK3/GTK4, XTerm, NeoVim e Vim.
 
 ---
 

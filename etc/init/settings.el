@@ -75,6 +75,9 @@
 (global-display-line-numbers-mode 1)
 (setq-default display-line-numbers-type 'relative)
 (when (fboundp 'blink-cursor-mode)
+  (setq blink-cursor-interval 0.6
+        blink-cursor-delay 0.6
+        blink-cursor-blinks 0)
   (blink-cursor-mode t))
 (when (fboundp 'tooltip-mode)
   (tooltip-mode -1))

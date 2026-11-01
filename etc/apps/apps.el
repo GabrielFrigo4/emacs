@@ -3,6 +3,162 @@
 ;; Module: Emacs Applications Feature
 ;; ----------------------------------------------------------------
 
+;; ================================
+;; DOCUMENT READERS
+;; ================================
+
+(setq-default doc-view-continuous t)
+(setq-default doc-view-resolution 192)
+(setq-default doc-view-scale-internally nil)
+(when (executable-find "mutool")
+  (setq-default doc-view-pdfdraw-program "mutool"
+                doc-view-pdf->png-converter-function #'doc-view-pdf->png-converter-mupdf))
+(add-to-list 'auto-mode-alist '("\\.\\(pdf\\|djvu\\|ps\\|eps\\|dvi\\|fb2\\|cbz\\)\\'" . doc-view-mode))
+
+(defun apps/doc-view-initiate-display-advice (orig-fun &rest args)
+  (if (and noninteractive (not (display-graphic-p)))
+      (doc-view-buffer-message)
+    (apply orig-fun args)))
+
+(advice-add 'doc-view-initiate-display :around #'apps/doc-view-initiate-display-advice)
+
+(defvar-local doc-view-inverted-p nil)
+
+(defun doc-view-invert-colors ()
+  "Toggle inverted colors (dark mode) in `doc-view-mode'."
+  (interactive)
+  (setq doc-view-inverted-p (not doc-view-inverted-p))
+  (let ((ol (ignore-errors (doc-view-current-overlay))))
+    (when (overlayp ol)
+      (overlay-put ol 'face (if doc-view-inverted-p '(:inverse-video t) nil))))
+  (message "DocView Invert Colors: %s" (if doc-view-inverted-p "ON" "OFF")))
+
+(defun apps/doc-view-mode-hook ()
+  (setq-local large-file-warning-threshold nil)
+  (when (fboundp 'display-line-numbers-mode)
+    (display-line-numbers-mode -1))
+  (when (fboundp 'hl-line-mode)
+    (hl-line-mode -1)))
+
+(add-hook 'doc-view-mode-hook #'apps/doc-view-mode-hook)
+
+(with-eval-after-load 'doc-view
+  (define-key doc-view-mode-map (kbd "j") #'doc-view-next-line-or-next-page)
+  (define-key doc-view-mode-map (kbd "k") #'doc-view-previous-line-or-previous-page)
+  (define-key doc-view-mode-map (kbd "<down>") #'doc-view-next-line-or-next-page)
+  (define-key doc-view-mode-map (kbd "<up>") #'doc-view-previous-line-or-previous-page)
+  (define-key doc-view-mode-map (kbd "n") #'doc-view-next-page)
+  (define-key doc-view-mode-map (kbd "<next>") #'doc-view-next-page)
+  (define-key doc-view-mode-map (kbd "p") #'doc-view-previous-page)
+  (define-key doc-view-mode-map (kbd "<prior>") #'doc-view-previous-page)
+  (define-key doc-view-mode-map (kbd "+") #'doc-view-enlarge)
+  (define-key doc-view-mode-map (kbd "=") #'doc-view-enlarge)
+  (define-key doc-view-mode-map (kbd "-") #'doc-view-shrink)
+  (define-key doc-view-mode-map (kbd "0") #'doc-view-scale-reset)
+  (define-key doc-view-mode-map (kbd "W") #'doc-view-fit-width-to-window)
+  (define-key doc-view-mode-map (kbd "H") #'doc-view-fit-height-to-window)
+  (define-key doc-view-mode-map (kbd "P") #'doc-view-fit-page-to-window)
+  (define-key doc-view-mode-map (kbd "i") #'doc-view-invert-colors))
+
+(with-eval-after-load 'evil
+  (when (fboundp 'evil-define-key*)
+    (evil-define-key* '(normal motion) doc-view-mode-map
+      (kbd "j") #'doc-view-next-line-or-next-page
+      (kbd "k") #'doc-view-previous-line-or-previous-page
+      (kbd "<down>") #'doc-view-next-line-or-next-page
+      (kbd "<up>") #'doc-view-previous-line-or-previous-page
+      (kbd "n") #'doc-view-next-page
+      (kbd "<next>") #'doc-view-next-page
+      (kbd "p") #'doc-view-previous-page
+      (kbd "<prior>") #'doc-view-previous-page
+      (kbd "+") #'doc-view-enlarge
+      (kbd "=") #'doc-view-enlarge
+      (kbd "-") #'doc-view-shrink
+      (kbd "0") #'doc-view-scale-reset
+      (kbd "W") #'doc-view-fit-width-to-window
+      (kbd "H") #'doc-view-fit-height-to-window
+      (kbd "P") #'doc-view-fit-page-to-window
+      (kbd "i") #'doc-view-invert-colors)))
+
+(use-package djvu
+  :defer t
+  :ensure t)
+
+(use-package nov
+  :defer t
+  :ensure t
+  :mode ("\\.epub\\'" . nov-mode)
+  :config
+  (setq-default nov-text-width t)
+
+  (defun apps/nov-mode-hook ()
+    (visual-line-mode 1)
+    (when (fboundp 'display-line-numbers-mode)
+      (display-line-numbers-mode -1))
+    (setq-local header-line-format nil))
+
+  (defun apps/nov-window-size-change (frame)
+    (dolist (win (window-list frame))
+      (with-current-buffer (window-buffer win)
+        (when (eq major-mode 'nov-mode)
+          (ignore-errors (nov-render-document))))))
+
+  (add-hook 'nov-mode-hook #'apps/nov-mode-hook)
+  (add-hook 'window-size-change-functions #'apps/nov-window-size-change)
+
+  (with-eval-after-load 'nov
+    (define-key nov-mode-map (kbd "j") #'scroll-up-line)
+    (define-key nov-mode-map (kbd "k") #'scroll-down-line)
+    (define-key nov-mode-map (kbd "n") #'nov-next-document)
+    (define-key nov-mode-map (kbd "p") #'nov-previous-document)
+    (define-key nov-mode-map (kbd "t") #'nov-goto-toc)
+    (define-key nov-mode-map (kbd "+") #'text-scale-increase)
+    (define-key nov-mode-map (kbd "=") #'text-scale-increase)
+    (define-key nov-mode-map (kbd "-") #'text-scale-decrease)
+    (define-key nov-mode-map (kbd "0") #'text-scale-adjust)
+    (define-key nov-mode-map (kbd "q") #'quit-window))
+
+  (with-eval-after-load 'evil
+    (when (fboundp 'evil-define-key*)
+      (evil-define-key* '(normal motion) nov-mode-map
+        (kbd "j") #'scroll-up-line
+        (kbd "k") #'scroll-down-line
+        (kbd "n") #'nov-next-document
+        (kbd "p") #'nov-previous-document
+        (kbd "t") #'nov-goto-toc
+        (kbd "+") #'text-scale-increase
+        (kbd "=") #'text-scale-increase
+        (kbd "-") #'text-scale-decrease
+        (kbd "0") #'text-scale-adjust
+        (kbd "q") #'quit-window))))
+
+;; ================================
+;; NATIVE APPLICATIONS
+;; ================================
+
+(setq-default image-auto-resize 'fit-window
+              image-use-external-converter t)
+
+(add-to-list 'auto-mode-alist '("\\.\\(zip\\|7z\\|jar\\|whl\\|apk\\)\\'" . archive-mode))
+(add-to-list 'auto-mode-alist '("\\.\\(tar\\|tgz\\|tar\\.gz\\|tar\\.bz2\\|tbz2\\|tar\\.xz\\|txz\\|tar\\.zst\\|tzst\\)\\'" . tar-mode))
+
+(setq-default proced-auto-update-flag t
+              proced-auto-update-interval 2
+              proced-enable-color-flag t
+              proced-format 'medium)
+(defalias 'procs #'proced)
+(defalias 'htop #'proced)
+
+(setq-default ediff-window-setup-function 'ediff-setup-windows-plain
+              ediff-split-window-function 'split-window-horizontally)
+
+(setq-default dired-dwim-target t
+              wdired-allow-to-change-permissions t)
+
+;; ================================
+;; WEB BROWSING
+;; ================================
+
 (use-package shr-tag-pre-highlight
   :ensure (:type git :host github :repo "emacsmirror/shr-tag-pre-highlight" :branch "master")
   :commands (shr-tag-pre-highlight))
@@ -16,38 +172,6 @@
   (shrface-basic))
 
 (use-package w3m :defer t :ensure t :config (w3m-display-mode 'plain))
-
-(use-package nov
-  :defer t
-  :ensure t
-  :mode ("\\.epub\\'" . nov-mode)
-  :config
-  (setq-default nov-text-width t)
-
-  (defun my-nov-mode-hook ()
-    "Setup visual settings for `nov-mode'."
-    (visual-line-mode 1)
-    (display-line-numbers-mode -1)
-    (setq-local header-line-format nil))
-
-  (defun my-nov-window-size-change (frame)
-    "Re-render nov documents when the window is resized."
-    (dolist (win (window-list frame))
-      (with-current-buffer (window-buffer win)
-        (when (eq major-mode 'nov-mode)
-          (ignore-errors (nov-render-document))))))
-
-  (add-hook 'nov-mode-hook 'my-nov-mode-hook)
-  (add-hook 'window-size-change-functions 'my-nov-window-size-change)
-
-  (with-eval-after-load 'nov
-    (define-key nov-mode-map (kbd "n") 'nov-next-document)
-    (define-key nov-mode-map (kbd "p") 'nov-previous-document)
-    (define-key nov-mode-map (kbd "t") 'nov-goto-toc)
-    (define-key nov-mode-map (kbd "+") 'text-scale-increase)
-    (define-key nov-mode-map (kbd "-") 'text-scale-decrease)
-    (define-key nov-mode-map (kbd "0") 'text-scale-adjust)
-    (define-key nov-mode-map (kbd "q") 'quit-window)))
 
 (use-package eww
   :ensure nil
@@ -64,9 +188,9 @@
     (autoload 'aweww-search "aweww" "Pesquisa na web via Aweww." t)
     (autoload 'aweww-doctor "aweww" "Diagnóstico do componente Aweww." t)))
 
-;; --------------------------------
+;; ================================
 ;; UNIVERSAL OPEN & APP LAUNCHERS
-;; --------------------------------
+;; ================================
 
 (defun emacs/file-mime-type (file)
   "Retorna a string MIME de FILE via comando `file' do SO (libmagic) ou nil.
@@ -116,20 +240,39 @@ inspeciona os primeiros 1024 bytes procurando por byte nulo (\\0)."
                    (search-forward "\0" nil t))
                (error nil)))))))
 
+(defconst emacs/viewable-extensions
+  '("pdf" "epub" "djvu" "ps" "eps" "dvi" "cbz" "fb2"
+    "sqlite" "sqlite3" "db" "db3"
+    "zip" "tar" "gz" "tgz" "bz2" "tbz2" "xz" "txz" "zst" "tzst" "7z" "jar" "whl" "deb" "rpm"
+    "png" "jpg" "jpeg" "gif" "webp" "svg" "bmp" "ico" "tiff" "tif" "pbm" "pgm" "ppm" "xpm"))
+
+(defconst emacs/viewable-mime-types
+  '("application/pdf"
+    "application/epub+zip"
+    "image/vnd.djvu"
+    "application/postscript"
+    "application/x-dvi"
+    "application/vnd.sqlite3"
+    "application/x-sqlite3"
+    "application/zip"
+    "application/x-tar"
+    "application/gzip"
+    "application/x-bzip2"
+    "application/x-xz"
+    "application/zstd"
+    "application/x-7z-compressed"))
+
 (defun emacs/emacs-viewable-p (file)
-  "Retorna non-nil se FILE puder ser visualizado ou renderizado nativamente no Emacs.
-PDFs e documentos DjVu utilizam `pdf-tools'/`doc-view', e imagens utilizam
-`image-mode' quando sob display gráfico."
+  "Retorna non-nil se FILE puder ser visualizado ou operado nativamente no Emacs."
   (let ((mime (emacs/file-mime-type file))
         (ext (downcase (or (file-name-extension file) ""))))
     (cond
-     ((or (and mime (member mime '("application/pdf" "application/postscript" "image/vnd.djvu")))
-          (member ext '("pdf" "djvu" "ps" "eps")))
+     ((member ext emacs/viewable-extensions) t)
+     ((and mime (or (member mime emacs/viewable-mime-types)
+                    (string-prefix-p "image/" mime)))
       t)
-     ((and (display-graphic-p)
-           (or (and mime (string-prefix-p "image/" mime))
-               (and (fboundp 'image-type-from-file-name)
-                    (image-type-from-file-name file))))
+     ((and (fboundp 'image-type-from-file-name)
+           (image-type-from-file-name file))
       t)
      (t nil))))
 
@@ -153,10 +296,7 @@ PDFs e documentos DjVu utilizam `pdf-tools'/`doc-view', e imagens utilizam
     (message "Abrindo externamente: %s" (file-name-nondirectory expanded))))
 
 (defun emacs/universal-open (target)
-  "Abre TARGET de forma inteligente (Smart Open / Open DWIM).
-URLs abrem no navegador, diretórios no Dired, arquivos de texto, código,
-PDFs e imagens em buffers nativos do Emacs. Arquivos binários sem visualizador
-integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
+  "Abre TARGET de forma inteligente (Smart Open / Open DWIM)."
   (interactive "fAbrir arquivo, diretório ou URL: ")
   (cond
    ((string-match-p "\\`\\(https?\\|ftp\\|mailto\\|file\\)://" target)
@@ -169,19 +309,27 @@ integrado (Office, mídias, etc.) abrem no aplicativo padrão do sistema."
            (expanded (expand-file-name clean)))
       (cond
        ((not (file-exists-p expanded))
-        (find-file expanded))
+        (let ((large-file-warning-threshold nil))
+          (find-file expanded)))
        ((and (emacs/file-binary-p expanded)
              (not (emacs/emacs-viewable-p expanded)))
         (emacs/open-external expanded))
+       ((and (fboundp 'sqlite-mode-open-file)
+             (let ((ext (downcase (or (file-name-extension expanded) "")))
+                   (mime (emacs/file-mime-type expanded)))
+               (or (member ext '("sqlite" "sqlite3" "db" "db3"))
+                   (member mime '("application/vnd.sqlite3" "application/x-sqlite3")))))
+        (sqlite-mode-open-file expanded))
        (t
-        (find-file expanded)))))))
+        (let ((large-file-warning-threshold nil))
+          (find-file expanded))))))))
 
 (defalias 'open 'emacs/universal-open)
 (defalias 'open-file 'emacs/universal-open)
 
-;; --------------------------------
-;; DESKTOP OS APPLICATION COMMANDS
-;; --------------------------------
+;; ================================
+;; DESKTOP OS APP COMMANDS
+;; ================================
 
 (defun emacs/normalize-app-args (args)
   "Normalize ARGS list passed from interactive, Elisp, or Eshell calls."
@@ -247,13 +395,11 @@ Returns a list (EXECUTABLE . PREFIX-ARGS) or nil."
          (w-paths (if (listp win-paths) win-paths (if win-paths (list win-paths) nil)))
          (all-bins (append cands f-ids)))
     (cond
-     ;; 1. Native binary in exec-path (including Flatpak exported IDs)
      ((seq-some (lambda (bin)
                   (when-let ((path (executable-find bin)))
                     (list path)))
                 all-bins))
 
-     ;; 2. Flatpak CLI invocation
      ((and (executable-find "flatpak")
            f-ids
            (seq-some (lambda (id)
@@ -262,14 +408,12 @@ Returns a list (EXECUTABLE . PREFIX-ARGS) or nil."
                          (list "flatpak" "run" id)))
                      f-ids)))
 
-     ;; 3. Snap package
      ((seq-some (lambda (bin)
                   (let ((snap (format "/snap/bin/%s" bin)))
                     (when (file-executable-p snap)
                       (list snap))))
                 cands))
 
-     ;; 4. AppImage
      ((seq-some (lambda (bin)
                   (let* ((dirs (list (expand-file-name "~/Applications")
                                      (expand-file-name "~/.local/bin")))
@@ -281,7 +425,6 @@ Returns a list (EXECUTABLE . PREFIX-ARGS) or nil."
                       (list appimage))))
                 cands))
 
-     ;; 5. /opt paths
      ((seq-some (lambda (bin)
                   (let ((paths (list (format "/opt/%s/%s" bin bin)
                                      (format "/opt/%s/bin/%s" bin bin)
@@ -291,7 +434,6 @@ Returns a list (EXECUTABLE . PREFIX-ARGS) or nil."
                       (list opt-bin))))
                 cands))
 
-     ;; 6. FreeBSD / OpenBSD (/usr/local/bin or Linuxulator)
      ((and (memq system-type '(berkeley-unix))
            (seq-some (lambda (bin)
                        (let ((paths (list (format "/usr/local/bin/%s" bin)
@@ -301,7 +443,6 @@ Returns a list (EXECUTABLE . PREFIX-ARGS) or nil."
                            (list bsd-bin))))
                      cands)))
 
-     ;; 7. macOS (darwin)
      ((eq system-type 'darwin)
       (or (seq-some (lambda (app)
                       (let ((app-path (format "/Applications/%s.app" app)))
@@ -313,7 +454,6 @@ Returns a list (EXECUTABLE . PREFIX-ARGS) or nil."
                         (list m)))
                     cands)))
 
-     ;; 8. Windows (windows-nt, cygwin, msys)
      ((memq system-type '(windows-nt cygwin))
       (or (seq-some (lambda (p)
                       (let ((exp (expand-file-name p)))
@@ -703,9 +843,9 @@ Resolve transparentemente `chrome' e `/usr/local/bin/chrome' no FreeBSD, além d
                 (app-launcher  . emacs/os-app-launcher)))
   (defalias (intern (format "eshell/%s" (car pair))) (cdr pair)))
 
-;; --------------------------------
-;; XDG DESKTOP APP LAUNCHER & OS KEYS
-;; --------------------------------
+;; ================================
+;; XDG APP LAUNCHER & OS KEYS
+;; ================================
 
 (defvar emacs/desktop-apps-cache nil
   "Cached alist of (DISPLAY-NAME . EXEC-COMMAND) from XDG .desktop files.")

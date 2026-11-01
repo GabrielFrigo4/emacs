@@ -1371,6 +1371,36 @@ files (office documents, media) dispatch to system default applications."
 (defalias 'eshell/open 'aweshell/open)
 (defalias 'eshell/o 'aweshell/open)
 
+(defun eshell/procs (&rest _)
+  "Open system process manager buffer."
+  (proced))
+
+(defalias 'eshell/htop #'eshell/procs)
+
+(defun eshell/ediff (file-a file-b)
+  "Open Ediff comparing FILE-A and FILE-B."
+  (ediff-files (expand-file-name (format "%s" file-a))
+               (expand-file-name (format "%s" file-b))))
+
+(defun eshell/calc (&rest args)
+  "Calculate expression via Calc or open interactive Calc buffer."
+  (if args
+      (let ((expr (mapconcat (lambda (a) (format "%s" a)) args " ")))
+        (require 'calc)
+        (calc-eval expr))
+    (calc)))
+
+(defun eshell/hex (target)
+  "Open TARGET in Hexl mode for binary inspection."
+  (hexl-find-file (expand-file-name (format "%s" target))))
+
+(defun eshell/sql (target)
+  "Open SQLite TARGET file in interactive SQLite mode."
+  (let ((path (expand-file-name (format "%s" target))))
+    (if (fboundp 'sqlite-mode-open-file)
+        (sqlite-mode-open-file path)
+      (find-file path))))
+
 (defun aweshell/unpack (file &rest args)
   "Unpack FILE with ARGS."
   (let ((command (cl-some (lambda (x)
