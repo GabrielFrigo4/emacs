@@ -1658,15 +1658,17 @@ Returns a plist (:cmd CMD :delim DELIM :lines nil) or nil."
                                aweshell/tab-complete))
     (aweshell/suggest-clear)))
 
-(defun aweshell/find-suggestion (clean-prefix hist)
+(defun aweshell/find-suggestion (clean-prefix &optional hist)
   "Find the best autosuggestion candidate for CLEAN-PREFIX in HIST or fallback."
   (condition-case nil
       (when (and (stringp clean-prefix) (not (string-empty-p clean-prefix)))
+        (setq hist (or hist (aweshell/parse-shell-history)))
         (let* ((is-single-token (not (string-match-p "[ \t]" clean-prefix)))
                (exact-cmd-p (and is-single-token
                                  (or (and (fboundp 'aweshell/command-valid-p)
                                           (aweshell/command-valid-p clean-prefix))
-                                     (member clean-prefix hist))))
+                                     (and (fboundp 'aweshell/history-command-valid-p)
+                                          (aweshell/history-command-valid-p clean-prefix)))))
                (hist-match
                 (cl-find-if
                  (lambda (h)
