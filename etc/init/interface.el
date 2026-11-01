@@ -155,7 +155,6 @@ renders the graphical logo on GUI frames created by emacsclient."
   (add-hook 'server-after-make-frame-hook #'interface/show-dashboard)
   (add-hook 'dashboard-mode-hook
             (lambda ()
-              (setq-local track-mouse t)
               (setq-local display-line-numbers nil)
               (setq-local display-line-numbers-type nil)
               (display-line-numbers-mode -1))))
@@ -294,37 +293,6 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
 
 (interface/apply-tool-bar)
 (interface/apply-menu-bar)
-
-(defvar interface--last-hover-button-pos nil
-  "Last buffer position with mouse-face under pointer for PGTK redraw.")
-
-(defun interface/pgtk-flush-mouse-hover (event)
-  "Flush Cairo surface immediately on Wayland PGTK when hovering buttons."
-  (interactive "e")
-  (when (and (featurep 'pgtk)
-             (eq major-mode 'dashboard-mode)
-             (not (eq track-mouse 'drag-tracking))
-             (mouse-movement-p event))
-    (let* ((posn (event-start event))
-           (win (and posn (posn-window posn)))
-           (pos (and (window-live-p win) (posn-point posn)))
-           (has-face (and (integerp pos)
-                          (window-live-p win)
-                          (with-current-buffer (window-buffer win)
-                            (ignore-errors
-                              (and (>= pos (point-min))
-                                   (<= pos (point-max))
-                                   (or (get-char-property pos 'mouse-face)
-                                       (get-char-property pos 'button))))))))
-      (when (not (equal has-face interface--last-hover-button-pos))
-        (setq interface--last-hover-button-pos has-face)
-        (when (window-live-p win)
-          (force-window-update win))
-        (redisplay t)))))
-
-(when (featurep 'pgtk)
-  (with-eval-after-load 'dashboard
-    (define-key dashboard-mode-map [mouse-movement] #'interface/pgtk-flush-mouse-hover)))
 
 (unless (display-graphic-p)
   (when (fboundp 'xterm-mouse-mode)
