@@ -7,12 +7,14 @@
 ;; DOCUMENT READERS
 ;; ================================
 
-(setq-default doc-view-continuous t)
-(setq-default doc-view-resolution 192)
-(setq-default doc-view-scale-internally nil)
-(when (executable-find "mutool")
-  (setq-default doc-view-pdfdraw-program "mutool"
-                doc-view-pdf->png-converter-function #'doc-view-pdf->png-converter-mupdf))
+(setq-default doc-view-continuous t
+              doc-view-resolution 192
+              doc-view-scale-internally t)
+
+(when (and (executable-find "pdftoppm")
+           (fboundp 'doc-view-pdf->png-converter-poppler))
+  (setq-default doc-view-pdf->png-converter-function #'doc-view-pdf->png-converter-poppler))
+
 (add-to-list 'auto-mode-alist '("\\.\\(pdf\\|djvu\\|ps\\|eps\\|dvi\\|fb2\\|cbz\\)\\'" . doc-view-mode))
 
 (defun apps/doc-view-initiate-display-advice (orig-fun &rest args)
@@ -33,14 +35,26 @@
       (overlay-put ol 'face (if doc-view-inverted-p '(:inverse-video t) nil))))
   (message "DocView Invert Colors: %s" (if doc-view-inverted-p "ON" "OFF")))
 
-(defun apps/doc-view-mode-hook ()
-  (setq-local large-file-warning-threshold nil)
+(defalias 'doc-view-rotate-current-page #'image-rotate)
+
+(defun apps/reader-view-hook ()
+  (setq-local large-file-warning-threshold nil
+              cursor-type nil)
   (when (fboundp 'display-line-numbers-mode)
     (display-line-numbers-mode -1))
   (when (fboundp 'hl-line-mode)
-    (hl-line-mode -1)))
+    (hl-line-mode -1))
+  (when (bound-and-true-p evil-local-mode)
+    (setq-local evil-normal-state-cursor '(nil)
+                evil-motion-state-cursor '(nil))))
 
-(add-hook 'doc-view-mode-hook #'apps/doc-view-mode-hook)
+(add-hook 'doc-view-mode-hook #'apps/reader-view-hook)
+(add-hook 'doc-view-mode-hook
+          (lambda ()
+            (run-with-idle-timer 0.1 nil
+                                 (lambda ()
+                                   (when (derived-mode-p 'doc-view-mode)
+                                     (ignore-errors (doc-view-fit-page-to-window)))))))
 
 (with-eval-after-load 'doc-view
   (define-key doc-view-mode-map (kbd "j") #'doc-view-next-line-or-next-page)
@@ -48,17 +62,33 @@
   (define-key doc-view-mode-map (kbd "<down>") #'doc-view-next-line-or-next-page)
   (define-key doc-view-mode-map (kbd "<up>") #'doc-view-previous-line-or-previous-page)
   (define-key doc-view-mode-map (kbd "n") #'doc-view-next-page)
+  (define-key doc-view-mode-map (kbd "J") #'doc-view-next-page)
   (define-key doc-view-mode-map (kbd "<next>") #'doc-view-next-page)
+  (define-key doc-view-mode-map (kbd "SPC") #'doc-view-next-page)
   (define-key doc-view-mode-map (kbd "p") #'doc-view-previous-page)
+  (define-key doc-view-mode-map (kbd "K") #'doc-view-previous-page)
   (define-key doc-view-mode-map (kbd "<prior>") #'doc-view-previous-page)
+  (define-key doc-view-mode-map (kbd "S-SPC") #'doc-view-previous-page)
+  (define-key doc-view-mode-map (kbd "DEL") #'doc-view-previous-page)
   (define-key doc-view-mode-map (kbd "+") #'doc-view-enlarge)
   (define-key doc-view-mode-map (kbd "=") #'doc-view-enlarge)
   (define-key doc-view-mode-map (kbd "-") #'doc-view-shrink)
   (define-key doc-view-mode-map (kbd "0") #'doc-view-scale-reset)
+  (define-key doc-view-mode-map (kbd "w") #'doc-view-fit-width-to-window)
   (define-key doc-view-mode-map (kbd "W") #'doc-view-fit-width-to-window)
+  (define-key doc-view-mode-map (kbd "h") #'doc-view-fit-height-to-window)
   (define-key doc-view-mode-map (kbd "H") #'doc-view-fit-height-to-window)
+  (define-key doc-view-mode-map (kbd "f") #'doc-view-fit-page-to-window)
   (define-key doc-view-mode-map (kbd "P") #'doc-view-fit-page-to-window)
-  (define-key doc-view-mode-map (kbd "i") #'doc-view-invert-colors))
+  (define-key doc-view-mode-map (kbd "r") #'doc-view-rotate-current-page)
+  (define-key doc-view-mode-map (kbd "R") #'doc-view-rotate-current-page)
+  (define-key doc-view-mode-map (kbd "i") #'doc-view-invert-colors)
+  (define-key doc-view-mode-map (kbd "m") #'doc-view-invert-colors)
+  (define-key doc-view-mode-map (kbd "o") #'imenu)
+  (define-key doc-view-mode-map (kbd "t") #'imenu)
+  (define-key doc-view-mode-map (kbd "g") #'doc-view-goto-page)
+  (define-key doc-view-mode-map (kbd "G") #'doc-view-last-page)
+  (define-key doc-view-mode-map (kbd "q") #'quit-window))
 
 (with-eval-after-load 'evil
   (when (fboundp 'evil-define-key*)
@@ -68,17 +98,117 @@
       (kbd "<down>") #'doc-view-next-line-or-next-page
       (kbd "<up>") #'doc-view-previous-line-or-previous-page
       (kbd "n") #'doc-view-next-page
+      (kbd "J") #'doc-view-next-page
       (kbd "<next>") #'doc-view-next-page
+      (kbd "SPC") #'doc-view-next-page
       (kbd "p") #'doc-view-previous-page
+      (kbd "K") #'doc-view-previous-page
       (kbd "<prior>") #'doc-view-previous-page
+      (kbd "S-SPC") #'doc-view-previous-page
+      (kbd "DEL") #'doc-view-previous-page
       (kbd "+") #'doc-view-enlarge
       (kbd "=") #'doc-view-enlarge
       (kbd "-") #'doc-view-shrink
       (kbd "0") #'doc-view-scale-reset
+      (kbd "w") #'doc-view-fit-width-to-window
       (kbd "W") #'doc-view-fit-width-to-window
+      (kbd "h") #'doc-view-fit-height-to-window
       (kbd "H") #'doc-view-fit-height-to-window
+      (kbd "f") #'doc-view-fit-page-to-window
       (kbd "P") #'doc-view-fit-page-to-window
-      (kbd "i") #'doc-view-invert-colors)))
+      (kbd "r") #'doc-view-rotate-current-page
+      (kbd "R") #'doc-view-rotate-current-page
+      (kbd "i") #'doc-view-invert-colors
+      (kbd "m") #'doc-view-invert-colors
+      (kbd "o") #'imenu
+      (kbd "t") #'imenu
+      (kbd "g") #'doc-view-goto-page
+      (kbd "G") #'doc-view-last-page
+      (kbd "q") #'quit-window)))
+
+(use-package pdf-tools
+  :ensure (:type git :host github :repo "vedang/pdf-tools" :branch "master")
+  :mode ("\\.pdf\\'" . pdf-view-mode)
+  :magic ("%PDF" . pdf-view-mode)
+  :config
+  (pdf-tools-install :no-query)
+  (setq-default pdf-view-display-size 'fit-page
+                pdf-view-use-scaling t
+                pdf-view-use-imagemagick nil
+                pdf-view-resize-factor 1.1
+                pdf-view-midnight-colors '("#e5e9f0" . "#1e1e22"))
+
+  (add-hook 'pdf-view-mode-hook #'apps/reader-view-hook)
+
+  (with-eval-after-load 'pdf-view
+    (define-key pdf-view-mode-map (kbd "j") #'pdf-view-next-line-or-next-page)
+    (define-key pdf-view-mode-map (kbd "k") #'pdf-view-previous-line-or-previous-page)
+    (define-key pdf-view-mode-map (kbd "<down>") #'pdf-view-next-line-or-next-page)
+    (define-key pdf-view-mode-map (kbd "<up>") #'pdf-view-previous-line-or-previous-page)
+    (define-key pdf-view-mode-map (kbd "n") #'pdf-view-next-page-command)
+    (define-key pdf-view-mode-map (kbd "J") #'pdf-view-next-page-command)
+    (define-key pdf-view-mode-map (kbd "<next>") #'pdf-view-next-page-command)
+    (define-key pdf-view-mode-map (kbd "SPC") #'pdf-view-next-page-command)
+    (define-key pdf-view-mode-map (kbd "p") #'pdf-view-previous-page-command)
+    (define-key pdf-view-mode-map (kbd "K") #'pdf-view-previous-page-command)
+    (define-key pdf-view-mode-map (kbd "<prior>") #'pdf-view-previous-page-command)
+    (define-key pdf-view-mode-map (kbd "S-SPC") #'pdf-view-previous-page-command)
+    (define-key pdf-view-mode-map (kbd "DEL") #'pdf-view-previous-page-command)
+    (define-key pdf-view-mode-map (kbd "+") #'pdf-view-enlarge)
+    (define-key pdf-view-mode-map (kbd "=") #'pdf-view-enlarge)
+    (define-key pdf-view-mode-map (kbd "-") #'pdf-view-shrink)
+    (define-key pdf-view-mode-map (kbd "0") #'pdf-view-scale-reset)
+    (define-key pdf-view-mode-map (kbd "w") #'pdf-view-fit-width-to-window)
+    (define-key pdf-view-mode-map (kbd "W") #'pdf-view-fit-width-to-window)
+    (define-key pdf-view-mode-map (kbd "h") #'pdf-view-fit-height-to-window)
+    (define-key pdf-view-mode-map (kbd "H") #'pdf-view-fit-height-to-window)
+    (define-key pdf-view-mode-map (kbd "f") #'pdf-view-fit-page-to-window)
+    (define-key pdf-view-mode-map (kbd "P") #'pdf-view-fit-page-to-window)
+    (define-key pdf-view-mode-map (kbd "r") #'pdf-view-rotate)
+    (define-key pdf-view-mode-map (kbd "R") #'pdf-view-rotate)
+    (define-key pdf-view-mode-map (kbd "i") #'pdf-view-midnight-minor-mode)
+    (define-key pdf-view-mode-map (kbd "m") #'pdf-view-midnight-minor-mode)
+    (define-key pdf-view-mode-map (kbd "o") #'pdf-outline)
+    (define-key pdf-view-mode-map (kbd "t") #'pdf-outline)
+    (define-key pdf-view-mode-map (kbd "g") #'pdf-view-goto-page)
+    (define-key pdf-view-mode-map (kbd "G") #'pdf-view-last-page)
+    (define-key pdf-view-mode-map (kbd "q") #'quit-window))
+
+  (with-eval-after-load 'evil
+    (when (fboundp 'evil-define-key*)
+      (evil-define-key* '(normal motion) pdf-view-mode-map
+        (kbd "j") #'pdf-view-next-line-or-next-page
+        (kbd "k") #'pdf-view-previous-line-or-previous-page
+        (kbd "<down>") #'pdf-view-next-line-or-next-page
+        (kbd "<up>") #'pdf-view-previous-line-or-previous-page
+        (kbd "n") #'pdf-view-next-page-command
+        (kbd "J") #'pdf-view-next-page-command
+        (kbd "<next>") #'pdf-view-next-page-command
+        (kbd "SPC") #'pdf-view-next-page-command
+        (kbd "p") #'pdf-view-previous-page-command
+        (kbd "K") #'pdf-view-previous-page-command
+        (kbd "<prior>") #'pdf-view-previous-page-command
+        (kbd "S-SPC") #'pdf-view-previous-page-command
+        (kbd "DEL") #'pdf-view-previous-page-command
+        (kbd "+") #'pdf-view-enlarge
+        (kbd "=") #'pdf-view-enlarge
+        (kbd "-") #'pdf-view-shrink
+        (kbd "0") #'pdf-view-scale-reset
+        (kbd "w") #'pdf-view-fit-width-to-window
+        (kbd "W") #'pdf-view-fit-width-to-window
+        (kbd "h") #'pdf-view-fit-height-to-window
+        (kbd "H") #'pdf-view-fit-height-to-window
+        (kbd "f") #'pdf-view-fit-page-to-window
+        (kbd "P") #'pdf-view-fit-page-to-window
+        (kbd "r") #'pdf-view-rotate
+        (kbd "R") #'pdf-view-rotate
+        (kbd "i") #'pdf-view-midnight-minor-mode
+        (kbd "m") #'pdf-view-midnight-minor-mode
+        (kbd "o") #'pdf-outline
+        (kbd "t") #'pdf-outline
+        (kbd "g") #'pdf-view-goto-page
+        (kbd "G") #'pdf-view-last-page
+        (kbd "q") #'quit-window))))
 
 (use-package djvu
   :defer t
@@ -95,6 +225,8 @@
     (visual-line-mode 1)
     (when (fboundp 'display-line-numbers-mode)
       (display-line-numbers-mode -1))
+    (when (fboundp 'hl-line-mode)
+      (hl-line-mode -1))
     (setq-local header-line-format nil))
 
   (defun apps/nov-window-size-change (frame)
@@ -109,13 +241,25 @@
   (with-eval-after-load 'nov
     (define-key nov-mode-map (kbd "j") #'scroll-up-line)
     (define-key nov-mode-map (kbd "k") #'scroll-down-line)
+    (define-key nov-mode-map (kbd "<down>") #'scroll-up-line)
+    (define-key nov-mode-map (kbd "<up>") #'scroll-down-line)
     (define-key nov-mode-map (kbd "n") #'nov-next-document)
+    (define-key nov-mode-map (kbd "J") #'nov-next-document)
+    (define-key nov-mode-map (kbd "<next>") #'nov-next-document)
+    (define-key nov-mode-map (kbd "SPC") #'nov-next-document)
     (define-key nov-mode-map (kbd "p") #'nov-previous-document)
-    (define-key nov-mode-map (kbd "t") #'nov-goto-toc)
+    (define-key nov-mode-map (kbd "K") #'nov-previous-document)
+    (define-key nov-mode-map (kbd "<prior>") #'nov-previous-document)
+    (define-key nov-mode-map (kbd "S-SPC") #'nov-previous-document)
+    (define-key nov-mode-map (kbd "DEL") #'nov-previous-document)
     (define-key nov-mode-map (kbd "+") #'text-scale-increase)
     (define-key nov-mode-map (kbd "=") #'text-scale-increase)
     (define-key nov-mode-map (kbd "-") #'text-scale-decrease)
     (define-key nov-mode-map (kbd "0") #'text-scale-adjust)
+    (define-key nov-mode-map (kbd "o") #'nov-goto-toc)
+    (define-key nov-mode-map (kbd "t") #'nov-goto-toc)
+    (define-key nov-mode-map (kbd "g") #'beginning-of-buffer)
+    (define-key nov-mode-map (kbd "G") #'end-of-buffer)
     (define-key nov-mode-map (kbd "q") #'quit-window))
 
   (with-eval-after-load 'evil
@@ -123,13 +267,25 @@
       (evil-define-key* '(normal motion) nov-mode-map
         (kbd "j") #'scroll-up-line
         (kbd "k") #'scroll-down-line
+        (kbd "<down>") #'scroll-up-line
+        (kbd "<up>") #'scroll-down-line
         (kbd "n") #'nov-next-document
+        (kbd "J") #'nov-next-document
+        (kbd "<next>") #'nov-next-document
+        (kbd "SPC") #'nov-next-document
         (kbd "p") #'nov-previous-document
-        (kbd "t") #'nov-goto-toc
+        (kbd "K") #'nov-previous-document
+        (kbd "<prior>") #'nov-previous-document
+        (kbd "S-SPC") #'nov-previous-document
+        (kbd "DEL") #'nov-previous-document
         (kbd "+") #'text-scale-increase
         (kbd "=") #'text-scale-increase
         (kbd "-") #'text-scale-decrease
         (kbd "0") #'text-scale-adjust
+        (kbd "o") #'nov-goto-toc
+        (kbd "t") #'nov-goto-toc
+        (kbd "g") #'beginning-of-buffer
+        (kbd "G") #'end-of-buffer
         (kbd "q") #'quit-window))))
 
 ;; ================================

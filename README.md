@@ -28,7 +28,7 @@ Este repositório contém a configuração pessoal do **GNU Emacs (versão 30+, 
 - **Correção Ortográfica Bilíngue Sem Processo Externo:** Eliminação definitiva de chamadas síncronas a `/usr/bin/look` (`text-mode-ispell-word-completion nil`, `ispell-look-p nil`) e suporte simultâneo a dicionários de Inglês e Português (`hunspell` com `en_US,pt_BR` via `ispell-hunspell-add-multi-dic`).
 - **Autodocumentação Integral em Elisp (GNU Emacs Self-Documenting Standard):** Honrando o pilar clássico do GNU Emacs como máquina Lisp viva e autodocumentada, 100% das definições (`defun`, `defmacro`, `defvar`, `defcustom`, `defface`) e comandos de sistema operacional (`firefox`, `libreoffice`, `apps`, etc.) possuem docstrings canônicas consultáveis em tempo real via `C-h f` (`describe-function`), `C-h v` (`describe-variable`), `C-h k` (`describe-key`), `M-x apropos`, ElDoc e `which-key`. O padrão estrito exige: primeira linha concisa ($\le 80$ colunas), argumentos formais em `MAIÚSCULAS` (ex: `ARGS`, `DIR`), referências a símbolos entre acento grave e apóstrofo (` `simbolo' `) para gerar links hipertextuais navegáveis no buffer `_Help_`, e zero comentários narrativos inline (`;;`).
 - **Ergonomia Híbrida Emacs + Evil (`C-z` & `ESC`) e Ciclo Unificado de Cursor (1200ms):** Inicia sempre em **Emacs state** nativo em todos os modos e alterna instantaneamente para **Evil Normal state** via `C-z` (e retorno do Insert/Visual/Replace ao Normal state via `ESC`). Padroniza o ciclo unificado de 1200ms (`blink-cursor-interval 0.6`, `blink-cursor-delay 0.6`, `blink-cursor-blinks 0`) em perfeita sincronia com GTK3/GTK4 (`1200ms`), XTerm, NeoVim e Vim em GUI (`box`, `bar`, `hbar`) e PTY (`\e[1 q`, `\e[3 q`, `\e[5 q`), ficando estático (`noblink`) apenas em consoles Linux Raw TTY (`\e[?2c` a `\e[?6c`, com auto-cura `\e%G\e[?16;238;0c`).
-- **Suíte Soberana de Documentos & Substitutos Nativos de Apps:** Leitor nativo acelerado para PDF/DjVu (192 DPI contínuo com MuPDF/Poppler/DjVuLibre e dark mode `i`), EPUB (`nov-mode`), banco de dados relacional (`sqlite-mode`), arquivos compactados (`arc-mode`, `tar-mode`), inspeção de processos (`proced`), comparação visual (`ediff`), calculadora avançada (`calc`), edição binária (`hexl-mode`) e edição de diretórios (`dired` + `wdired`), plenamente integrados ao despachante `$ o <arquivo>` / `$ open <arquivo>`.
+- **Suíte Soberana de Documentos & Substitutos Nativos de Apps:** Leitor nativo acelerado para PDF/DjVu (`pdf-tools` com binário servidor nativo `epdfinfo` e fallback `doc-view-mode` a 192 DPI contínuo com Poppler/MuPDF/DjVuLibre, abertura em cores naturais nítidas e modo escuro/Midnight opcional via `i` ou `m`), EPUB (`nov-mode`), banco de dados relacional (`sqlite-mode`), arquivos compactados (`arc-mode`, `tar-mode`), inspeção de processos (`proced`), comparação visual (`ediff`), calculadora avançada (`calc`), edição binária (`hexl-mode`) e edição de diretórios (`dired` + `wdired`), plenamente integrados ao despachante `$ o <arquivo>` / `$ open <arquivo>`.
 
 ---
 
@@ -38,11 +38,33 @@ O GNU Emacs substitui aplicações gráficas externas através de sua suíte int
 
 ### 1. Leitores Soberanos de Documentos
 
-| Formato  | Modo Emacs               | Recursos & Motor de Renderização                                                                                        | Atalhos Principais                                                                                 |
-| :------- | :----------------------- | :---------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------- |
-| **PDF**  | `doc-view-mode`          | Resolução nativa de 192 DPI contínua (`doc-view-continuous t`), aceleração com `mutool` (MuPDF) ou `pdftoppm` (Poppler) | `j`/`k` (scroll contínuo), `n`/`p` (página), `+`/`-` (zoom), `W`/`H`/`P` (ajuste), `i` (dark mode) |
-| **DjVu** | `doc-view-mode` / `djvu` | Renderização contínua a 192 DPI via motor nativo `ddjvu` (`graphics/djvulibre`), navegação fluida                       | `j`/`k` (scroll), `n`/`p` (página), `+`/`-` (zoom), `i` (modo escuro invertido)                    |
-| **EPUB** | `nov-mode`               | Leitor de e-books com reflow tipográfico dinâmico, largura calibrada (`nov-text-width t`), `visual-line-mode`           | `n`/`p` (capítulo/página), `SPC`/`S-SPC` (scroll), `t` (tabela de conteúdos)                       |
+A visualização de documentos adota o **`pdf-tools`** com o servidor nativo de alta performance **`epdfinfo`** (compilado sobre Poppler-GLib) como motor primário e o **`doc-view-mode`** contínuo (192 DPI) como motor de retaguarda para arquivos PDF, DjVu (`djvulibre` via `ddjvu`), PostScript e imagens, acompanhado do **`nov-mode`** para livros digitais EPUB:
+
+- **Renderização Cromática Fiel:** Todos os documentos abrem por padrão em suas cores naturais e nítidas originais (fundo claro original), preservando fidelidade tipográfica e vetorial. O modo escuro / Midnight Mode (`#e5e9f0` sobre `#1e1e22`) pode ser ativado e desativado sob demanda teclando `i` ou `m`.
+- **Enquadramento Automático na Abertura:** Ajuste inteligente imediato de página à janela (`fit-page`) logo após a carga do documento, sem requerer comandos manuais de escala.
+- **Ocultação de Cursor (`cursor-type nil`):** O cursor de texto piscante é suprimido durante a leitura tanto no Emacs nativo quanto nos estados Evil (Normal e Motion), eliminando poluição visual sobre as páginas renderizadas.
+- **Atalhos Unificados Padrão da Comunidade:**
+
+| Atalho                                         | Ação Operacional                                                       |
+| :--------------------------------------------- | :--------------------------------------------------------------------- |
+| `j` / `k` ou `<down>` / `<up>`                 | Rolar linhas para baixo / para cima (scroll contínuo suave)            |
+| `n` / `p` ou `SPC` / `S-SPC` (`J`/`K`, `PgDn`) | Avançar para a próxima página / retroceder para a anterior             |
+| `+` / `=` / `-` / `0`                          | Aumentar zoom, diminuir zoom e restaurar escala original (`100%`)      |
+| `w` / `W`                                      | Ajustar largura da página à largura da janela (`fit-width`)            |
+| `h` / `H`                                      | Ajustar altura da página à altura da janela (`fit-height`)             |
+| `f` / `P`                                      | Enquadrar página completa na janela (`fit-page`)                       |
+| `r` / `R`                                      | Girar página em 90 graus no sentido horário (`rotate`)                 |
+| `o` / `t`                                      | Exibir sumário / índice estruturado do documento (TOC / Outline)       |
+| `g` / `G`                                      | Ir para página específica (`goto-page`) / saltar para a última página  |
+| `i` / `m`                                      | Alternar modo escuro sob demanda (`pdf-view-midnight` / invert-colors) |
+| `q`                                            | Ocultar / fechar o visualizador de leitura (`quit-window`)             |
+
+| Formato  | Modo Emacs                    | Recursos & Motor de Renderização                                                                                                        |
+| :------- | :---------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| **PDF**  | `pdf-tools` (`pdf-view-mode`) | Servidor nativo C `epdfinfo` (Poppler GLib), renderização vetorial sub-pixel, seleção precisa de texto e anotações                      |
+| **PDF**  | `doc-view-mode` (Fallback)    | Resolução de 192 DPI contínua (`doc-view-continuous t`), aceleração com `pdftoppm` (Poppler) ou `mutool` (MuPDF) e escala interna       |
+| **DjVu** | `doc-view-mode` / `djvu`      | Renderização nativa a 192 DPI via motor `ddjvu` (`graphics/djvulibre`), navegação rápida e zoom contínuo                                |
+| **EPUB** | `nov-mode`                    | Leitor de e-books com reflow tipográfico dinâmico, largura calibrada (`nov-text-width t`), `visual-line-mode` e renderização de imagens |
 
 ### 2. Suíte de Substitutos Nativos de Aplicações
 
