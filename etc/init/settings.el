@@ -91,8 +91,6 @@
 (setq-default visible-bell nil)
 (setq-default ring-bell-function #'ignore)
 (setq use-short-answers t)
-(setq-default track-mouse t)
-(setq track-mouse t)
 (when (fboundp 'xterm-mouse-mode)
   (xterm-mouse-mode 1))
 (when (and (fboundp 'gpm-mouse-start) (string-equal (or (getenv "TERM") "") "linux"))

@@ -240,9 +240,6 @@ renders the graphical logo on GUI frames created by emacsclient."
 ;; MENU & TOOL BAR & TTY MOUSE
 ;; --------------------------------
 
-(setq-default track-mouse t)
-(setq track-mouse t)
-
 (when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
 (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
 (when (fboundp 'window-divider-mode)
@@ -304,7 +301,10 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
 (defun interface/pgtk-flush-mouse-hover (event)
   "Flush Cairo surface immediately on Wayland PGTK when hovering buttons."
   (interactive "e")
-  (when (and (featurep 'pgtk) (mouse-movement-p event))
+  (when (and (featurep 'pgtk)
+             (eq major-mode 'dashboard-mode)
+             (not (eq track-mouse 'drag-tracking))
+             (mouse-movement-p event))
     (let* ((posn (event-start event))
            (win (and posn (posn-window posn)))
            (pos (and (window-live-p win) (posn-point posn)))
@@ -323,12 +323,8 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
         (redisplay t)))))
 
 (when (featurep 'pgtk)
-  (with-eval-after-load 'simple
-    (when (boundp 'special-mode-map)
-      (define-key special-mode-map [mouse-movement] #'interface/pgtk-flush-mouse-hover)))
-  (when (boundp 'special-mode-map)
-    (define-key special-mode-map [mouse-movement] #'interface/pgtk-flush-mouse-hover))
-  (define-key global-map [mouse-movement] #'interface/pgtk-flush-mouse-hover))
+  (with-eval-after-load 'dashboard
+    (define-key dashboard-mode-map [mouse-movement] #'interface/pgtk-flush-mouse-hover)))
 
 (unless (display-graphic-p)
   (when (fboundp 'xterm-mouse-mode)
