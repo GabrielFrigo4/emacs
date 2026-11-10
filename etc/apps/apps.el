@@ -556,7 +556,7 @@ Returns a list (EXECUTABLE . PREFIX-ARGS) or nil."
          (all-bins (append cands f-ids)))
     (cond
      ((seq-some (lambda (bin)
-                  (when-let ((path (executable-find bin)))
+                  (when-let* ((path (executable-find bin)))
                     (list path)))
                 all-bins))
 
@@ -581,7 +581,7 @@ Returns a list (EXECUTABLE . PREFIX-ARGS) or nil."
                                             (when (file-directory-p d)
                                               (file-expand-wildcards (format "%s/*%s*.AppImage" d bin))))
                                           dirs)))
-                    (when-let ((appimage (car (seq-filter #'file-executable-p matches))))
+                    (when-let* ((appimage (car (seq-filter #'file-executable-p matches))))
                       (list appimage))))
                 cands))
 
@@ -590,7 +590,7 @@ Returns a list (EXECUTABLE . PREFIX-ARGS) or nil."
                                      (format "/opt/%s/bin/%s" bin bin)
                                      (format "/opt/%s" bin)
                                      "/opt/onlyoffice/desktopeditors/DesktopEditors")))
-                    (when-let ((opt-bin (car (seq-filter #'file-executable-p paths))))
+                    (when-let* ((opt-bin (car (seq-filter #'file-executable-p paths))))
                       (list opt-bin))))
                 cands))
 
@@ -599,7 +599,7 @@ Returns a list (EXECUTABLE . PREFIX-ARGS) or nil."
                        (let ((paths (list (format "/usr/local/bin/%s" bin)
                                           (format "/compat/linux/usr/bin/%s" bin)
                                           (format "/compat/linux/opt/%s/%s" bin bin))))
-                         (when-let ((bsd-bin (car (seq-filter #'file-executable-p paths))))
+                         (when-let* ((bsd-bin (car (seq-filter #'file-executable-p paths))))
                            (list bsd-bin))))
                      cands)))
 
@@ -610,7 +610,7 @@ Returns a list (EXECUTABLE . PREFIX-ARGS) or nil."
                           (list "open" "-a" app))))
                     m-apps)
           (seq-some (lambda (bin)
-                      (when-let ((m (car (file-expand-wildcards (format "/Applications/*.app/Contents/MacOS/%s" bin)))))
+                      (when-let* ((m (car (file-expand-wildcards (format "/Applications/*.app/Contents/MacOS/%s" bin)))))
                         (list m)))
                     cands)))
 
@@ -626,7 +626,7 @@ Returns a list (EXECUTABLE . PREFIX-ARGS) or nil."
                                          (format "C:/Program Files/%s/%s.exe" bin bin)
                                          (format "C:/Program Files (x86)/%s/%s.exe" bin bin)
                                          (expand-file-name (format "~/AppData/Local/Programs/%s/%s.exe" bin bin)))))
-                        (when-let ((w-bin (car (seq-filter #'file-executable-p paths))))
+                        (when-let* ((w-bin (car (seq-filter #'file-executable-p paths))))
                           (list w-bin))))
                     cands))))))
 

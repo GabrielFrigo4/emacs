@@ -35,7 +35,7 @@
 (add-hook 'after-make-frame-functions #'interface/ensure-dark-background)
 
 (use-package doom-themes
-  :ensure (:type git :host github :repo "emacsmirror/doom-themes" :branch "master")
+  :ensure (:type git :host github :repo "doomemacs/themes" :branch "master")
   :init
   (setq frame-background-mode 'dark)
   (interface/ensure-dark-background)
