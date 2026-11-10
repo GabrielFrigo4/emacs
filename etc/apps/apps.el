@@ -90,44 +90,45 @@
   (define-key doc-view-mode-map (kbd "G") #'doc-view-last-page)
   (define-key doc-view-mode-map (kbd "q") #'quit-window))
 
-(with-eval-after-load 'evil
-  (when (fboundp 'evil-define-key*)
-    (evil-define-key* '(normal motion) doc-view-mode-map
-      (kbd "j") #'doc-view-next-line-or-next-page
-      (kbd "k") #'doc-view-previous-line-or-previous-page
-      (kbd "<down>") #'doc-view-next-line-or-next-page
-      (kbd "<up>") #'doc-view-previous-line-or-previous-page
-      (kbd "n") #'doc-view-next-page
-      (kbd "J") #'doc-view-next-page
-      (kbd "<next>") #'doc-view-next-page
-      (kbd "SPC") #'doc-view-next-page
-      (kbd "p") #'doc-view-previous-page
-      (kbd "K") #'doc-view-previous-page
-      (kbd "<prior>") #'doc-view-previous-page
-      (kbd "S-SPC") #'doc-view-previous-page
-      (kbd "DEL") #'doc-view-previous-page
-      (kbd "+") #'doc-view-enlarge
-      (kbd "=") #'doc-view-enlarge
-      (kbd "-") #'doc-view-shrink
-      (kbd "0") #'doc-view-scale-reset
-      (kbd "w") #'doc-view-fit-width-to-window
-      (kbd "W") #'doc-view-fit-width-to-window
-      (kbd "h") #'doc-view-fit-height-to-window
-      (kbd "H") #'doc-view-fit-height-to-window
-      (kbd "f") #'doc-view-fit-page-to-window
-      (kbd "P") #'doc-view-fit-page-to-window
-      (kbd "r") #'doc-view-rotate-current-page
-      (kbd "R") #'doc-view-rotate-current-page
-      (kbd "i") #'doc-view-invert-colors
-      (kbd "m") #'doc-view-invert-colors
-      (kbd "o") #'imenu
-      (kbd "t") #'imenu
-      (kbd "g") #'doc-view-goto-page
-      (kbd "G") #'doc-view-last-page
-      (kbd "q") #'quit-window)))
+(with-eval-after-load 'doc-view
+  (with-eval-after-load 'evil
+    (when (fboundp 'evil-define-key*)
+      (evil-define-key* '(normal motion) doc-view-mode-map
+        (kbd "j") #'doc-view-next-line-or-next-page
+        (kbd "k") #'doc-view-previous-line-or-previous-page
+        (kbd "<down>") #'doc-view-next-line-or-next-page
+        (kbd "<up>") #'doc-view-previous-line-or-previous-page
+        (kbd "n") #'doc-view-next-page
+        (kbd "J") #'doc-view-next-page
+        (kbd "<next>") #'doc-view-next-page
+        (kbd "SPC") #'doc-view-next-page
+        (kbd "p") #'doc-view-previous-page
+        (kbd "K") #'doc-view-previous-page
+        (kbd "<prior>") #'doc-view-previous-page
+        (kbd "S-SPC") #'doc-view-previous-page
+        (kbd "DEL") #'doc-view-previous-page
+        (kbd "+") #'doc-view-enlarge
+        (kbd "=") #'doc-view-enlarge
+        (kbd "-") #'doc-view-shrink
+        (kbd "0") #'doc-view-scale-reset
+        (kbd "w") #'doc-view-fit-width-to-window
+        (kbd "W") #'doc-view-fit-width-to-window
+        (kbd "h") #'doc-view-fit-height-to-window
+        (kbd "H") #'doc-view-fit-height-to-window
+        (kbd "f") #'doc-view-fit-page-to-window
+        (kbd "P") #'doc-view-fit-page-to-window
+        (kbd "r") #'doc-view-rotate-current-page
+        (kbd "R") #'doc-view-rotate-current-page
+        (kbd "i") #'doc-view-invert-colors
+        (kbd "m") #'doc-view-invert-colors
+        (kbd "o") #'imenu
+        (kbd "t") #'imenu
+        (kbd "g") #'doc-view-goto-page
+        (kbd "G") #'doc-view-last-page
+        (kbd "q") #'quit-window))))
 
 (use-package pdf-tools
-  :ensure (:type git :host github :repo "vedang/pdf-tools" :branch "master")
+  :ensure (:type git :host github :repo "emacsmirror/pdf-tools" :branch "master")
   :mode ("\\.pdf\\'" . pdf-view-mode)
   :magic ("%PDF" . pdf-view-mode)
   :config
@@ -212,11 +213,11 @@
 
 (use-package djvu
   :defer t
-  :ensure t)
+  :ensure (:type git :host github :repo "emacsmirror/djvu" :branch "master"))
 
 (use-package nov
   :defer t
-  :ensure t
+  :ensure (:type git :host github :repo "emacsmirror/nov" :branch "master")
   :mode ("\\.epub\\'" . nov-mode)
   :config
   (setq-default nov-text-width t)
@@ -327,7 +328,10 @@
   (setq-default shrface-href-versatile t)
   (shrface-basic))
 
-(use-package w3m :defer t :ensure t :config (w3m-display-mode 'plain))
+(use-package w3m
+  :defer t
+  :ensure (:type git :host github :repo "emacsmirror/w3m" :branch "master")
+  :config (w3m-display-mode 'plain))
 
 (use-package eww
   :ensure nil

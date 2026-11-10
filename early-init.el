@@ -10,20 +10,46 @@
   (when file
     (setq user-emacs-directory (file-name-as-directory (file-truename (file-name-directory file))))))
 
-(setq package-enable-at-startup nil
-      package-user-dir (expand-file-name "var/lib/elpa" user-emacs-directory)
-      package-gnupghome-dir (expand-file-name "var/lib/elpa/gnupg" user-emacs-directory)
-      site-run-file nil
-      load-prefer-newer t
-      inhibit-startup-screen t
-      inhibit-startup-message t
-      inhibit-startup-echo-area-message user-login-name
-      inhibit-default-init t
-      gc-cons-threshold most-positive-fixnum
-      gc-cons-percentage 0.6
-      frame-resize-pixelwise t
-      window-resize-pixelwise t
-      frame-inhibit-implied-resize t)
+(defvar emacs/workbench-p
+  (or noninteractive
+      (and (getenv "EMACS_TEST_DIR") t)
+      (and user-emacs-directory
+           (string-match-p "/Documents/Environment/Editor/Emacs" (expand-file-name user-emacs-directory))))
+  "Non-nil when running in test, batch, or development workbench mode.")
+
+(defvar emacs/temp-storage-dir
+  (if emacs/workbench-p
+      (let* ((base (or (getenv "EMACS_TEST_DIR")
+                       (if noninteractive
+                           (make-temp-file (format "emacs-batch-%d-" (emacs-pid)) t)
+                         (expand-file-name (format "emacs-workbench-%s" (user-uid))
+                                           temporary-file-directory))))
+             (dir (file-name-as-directory base)))
+        (unless (file-directory-p dir)
+          (make-directory dir t))
+        (when (and noninteractive (not (getenv "EMACS_TEST_DIR")))
+          (add-hook 'kill-emacs-hook
+                    (lambda () (ignore-errors (delete-directory base t)))))
+        dir)
+    nil)
+  "Temporary storage directory used in workbench and batch modes.")
+
+(let ((storage (or emacs/temp-storage-dir user-emacs-directory)))
+  (setq package-enable-at-startup nil
+        package-user-dir (expand-file-name "var/lib/elpa" storage)
+        package-gnupghome-dir (expand-file-name "var/lib/elpa/gnupg" storage)
+        site-run-file nil
+        load-prefer-newer t
+        inhibit-startup-screen t
+        inhibit-startup-message t
+        inhibit-startup-echo-area-message user-login-name
+        inhibit-default-init t
+        gc-cons-threshold most-positive-fixnum
+        gc-cons-percentage 0.6
+        frame-resize-pixelwise t
+        window-resize-pixelwise t
+        frame-inhibit-implied-resize t
+        frame-background-mode 'dark))
 
 (defun emacs/external-file-p (&optional file)
   "Return non-nil if FILE belongs to external packages (var/, opt/) or system."
@@ -64,7 +90,7 @@
   (push '(bytecomp) warning-suppress-log-types)
   (push '(obsolete) warning-suppress-log-types))
 
-(dolist (param '((width . 81) (height . 27)))
+(dolist (param '((width . 81) (height . 27) (background-mode . dark)))
   (add-to-list 'default-frame-alist param)
   (add-to-list 'initial-frame-alist param))
 
@@ -84,7 +110,8 @@
 
 (when (featurep 'native-compile)
   (setq-default native-comp-async-report-warnings-errors 'silent)
-  (let ((eln-cache-dir (expand-file-name "var/cache/eln-cache/" user-emacs-directory)))
+  (let* ((storage (or (bound-and-true-p emacs/temp-storage-dir) user-emacs-directory))
+         (eln-cache-dir (expand-file-name "var/cache/eln-cache/" storage)))
     (unless (file-exists-p eln-cache-dir)
       (make-directory eln-cache-dir t))
     (when (fboundp 'startup-redirect-eln-cache)

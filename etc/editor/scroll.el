@@ -34,6 +34,6 @@
       (add-hook 'window-scroll-functions #'auto-scroll-bar-on-change)
       (add-hook 'window-configuration-change-hook #'auto-scroll-bar))
   (use-package yascroll
-    :ensure t
+    :ensure (:type git :host github :repo "emacsmirror/yascroll" :branch "master")
     :config
     (global-yascroll-bar-mode 1)))

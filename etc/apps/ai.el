@@ -124,7 +124,7 @@ With prefix ARG (C-u C-c RET), open `gptel-menu'."
 
 (use-package ellama
   :if ia/enable
-  :ensure t
+  :ensure (:type git :host github :repo "emacsmirror/ellama" :branch "master")
   :defer t
   :bind-keymap ("C-c A" . ellama-command-map)
   :init
@@ -142,7 +142,7 @@ With prefix ARG (C-u C-c RET), open `gptel-menu'."
 
 (use-package org-ai
   :if ia/enable
-  :ensure (:type git :host github :repo "rksm/org-ai" :branch "master")
+  :ensure (:type git :host github :repo "emacsmirror/org-ai" :branch "master")
   :after (org llm)
   :hook (org-mode . org-ai-mode)
   :config
@@ -156,7 +156,7 @@ With prefix ARG (C-u C-c RET), open `gptel-menu'."
 
 (use-package minuet
   :if minuet/enable
-  :ensure t
+  :ensure (:type git :host github :repo "emacsmirror/minuet" :branch "master")
   :defer t
   :bind
   (("M-TAB" . minuet-complete-with-minibuffer)

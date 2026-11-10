@@ -9,6 +9,39 @@
   :defer t
   :bind ("C-c v" . vterm))
 
+(use-package eat
+  :ensure (:type git
+           :host codeberg
+           :repo "akib/emacs-eat"
+           :branch "master"
+           :files ("*.el" "*.texi"
+                   "dir"
+                   "*.info" "*.texi"
+                   "*.ti" ("e" "e/*")
+                   ("term" "term/*.el")
+                   ("integration" "integration/*")
+                   ("terminfo" "terminfo/*/*")
+                   (:exclude ".dir-locals.el" "*-tests.el")))
+  :commands (eat eat-other-window eat-project)
+  :hook ((eshell-load . eat-eshell-mode)
+         (eshell-load . eat-eshell-visual-command-mode))
+  :init
+  (setq eat-kill-buffer-on-exit t
+        eat-enable-yank-to-terminal t
+        eat-enable-directory-tracking t
+        eat-enable-shell-prompt-annotation t)
+  :config
+  (setq eat-shell (or (executable-find "zsh")
+                      (executable-find "bash")
+                      (executable-find "sh")
+                      "/bin/sh")
+        eat-term-name "eat-truecolor")
+  (when (bound-and-true-p evil-mode)
+    (add-hook 'eat-mode-hook
+              (lambda ()
+                (add-hook 'evil-insert-state-entry-hook #'eat-semi-char-mode nil t)
+                (add-hook 'evil-normal-state-entry-hook #'eat-emacs-mode nil t)))))
+
 (use-package aweshell
   :ensure nil
   :commands (aweshell/new aweshell/toggle aweshell/dedicated-toggle aweshell/switch-buffer aweshell/next aweshell/prev aweshell/select-theme)
@@ -37,6 +70,63 @@
 ;; ================================
 ;; TERMINAL FEATURE
 ;; ================================
+
+(defun shell--agy-command (&rest args)
+  "Build the shell command string for executing agy with ARGS."
+  (let* ((arg-str (if args (mapconcat #'shell-quote-argument args " ") ""))
+         (cmd (if (string-empty-p arg-str) "agy" (concat "agy " arg-str))))
+    (if (and (fboundp 'system-is-freebsd-p) (system-is-freebsd-p))
+        (let ((dir (expand-file-name default-directory)))
+          (format "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -t gabriel@192.168.8.2 \"export PATH=\\\"\\$HOME/.local/bin:\\$HOME/.gemini/antigravity-cli/bin:\\$HOME/.cargo/bin:\\$PATH\\\"; cd %s 2> /dev/null || true; exec %s\""
+                  (shell-quote-argument dir)
+                  cmd))
+      cmd)))
+
+(defun shell--run-terminal-command (cmd-str buf-name)
+  "Execute CMD-STR in a dedicated terminal buffer named BUF-NAME via eat, vterm, or ansi-term."
+  (cond
+   ((and (fboundp 'eat) (fboundp 'eat-exec))
+    (eat cmd-str buf-name))
+   ((and (require 'vterm nil t) (fboundp 'vterm))
+    (let ((vterm-shell cmd-str))
+      (vterm buf-name)))
+   (t
+    (let ((term-buf (ansi-term (or (getenv "SHELL") "/bin/sh")
+                               (string-trim buf-name "\\*" "\\*"))))
+      (when-let* ((proc (get-buffer-process term-buf)))
+        (process-send-string proc (concat cmd-str "\n")))))))
+
+;;;###autoload
+(defun agy ()
+  "Launch Google Antigravity CLI session in a dedicated terminal buffer."
+  (interactive)
+  (shell--run-terminal-command (shell--agy-command) "*agy*"))
+
+;;;###autoload
+(defun agyc ()
+  "Resume or continue last Google Antigravity CLI session in a dedicated terminal buffer."
+  (interactive)
+  (shell--run-terminal-command (shell--agy-command "-c") "*agyc*"))
+
+;;;###autoload
+(defun agya ()
+  "Launch Google Antigravity CLI session with auto-permissions in a dedicated terminal buffer."
+  (interactive)
+  (shell--run-terminal-command (shell--agy-command "--dangerously-skip-permissions") "*agya*"))
+
+;;;###autoload
+(defun agyca ()
+  "Resume Google Antigravity CLI session with auto-permissions in a dedicated terminal buffer."
+  (interactive)
+  (shell--run-terminal-command (shell--agy-command "-c" "--dangerously-skip-permissions") "*agyca*"))
+
+(with-eval-after-load 'em-term
+  (dolist (cmd '("agy" "htop" "btop" "btm" "top" "vim" "nvim" "hx" "less" "more" "man"
+                 "tmux" "lazygit" "lazydocker" "yazi" "ranger" "ncdu" "alsamixer" "nmtui" "pulsemixer"))
+    (add-to-list 'eshell-visual-commands cmd))
+  (dolist (sub '(("git" "log" "diff" "show")
+                 ("systemctl" "status" "log")))
+    (add-to-list 'eshell-visual-subcommands sub)))
 
 (use-package eshell
   :ensure nil
@@ -72,9 +162,11 @@
                           process-environment))))))
 
 (add-hook 'vterm-mode-hook  #'shell/sanitize-tty-environment)
+(add-hook 'eat-mode-hook    #'shell/sanitize-tty-environment)
 (add-hook 'term-mode-hook   #'shell/sanitize-tty-environment)
 (add-hook 'eshell-mode-hook #'shell/sanitize-tty-environment)
 (advice-add 'vterm :before  #'shell/sanitize-tty-environment)
+(advice-add 'eat   :before  #'shell/sanitize-tty-environment)
 (advice-add 'term  :before  #'shell/sanitize-tty-environment)
 (advice-add 'eshell :before #'shell/sanitize-tty-environment)
 (with-eval-after-load 'aweshell

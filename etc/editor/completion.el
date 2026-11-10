@@ -4,7 +4,7 @@
 ;; ----------------------------------------------------------------
 
 (use-package vertico
-  :ensure (:type git :host github :repo "emacs-straight/vertico" :branch "master")
+  :ensure (:type git :host github :repo "emacsmirror/vertico" :branch "master")
   :custom
   (vertico-cycle t)
   (read-buffer-completion-ignore-case t)
@@ -19,7 +19,7 @@
     (vertico-multiform-mode 1)))
 
 (use-package company
-  :ensure (:type git :host github :repo "emacs-straight/company" :branch "master")
+  :ensure (:type git :host github :repo "emacsmirror/company" :branch "master")
   :hook (after-init . global-company-mode)
   :config
   (setq-default company-minimum-prefix-length 2)

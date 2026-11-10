@@ -5,9 +5,10 @@
 
 (when (and (string= (getenv "EMACS_OS_MODE") "x11")
            (not noninteractive))
-  (let ((builds-dir (expand-file-name "var/lib/elpaca/builds/"
-                                      (or (bound-and-true-p user-emacs-directory)
-                                          (expand-file-name "~/.emacs.d/")))))
+  (let ((builds-dir (expand-file-name "lib/elpaca/builds/"
+                                      (or (bound-and-true-p var-dir)
+                                          (expand-file-name "var/" (or (bound-and-true-p user-emacs-directory)
+                                                                       (expand-file-name "~/.emacs.d/")))))))
     (dolist (pkg '("xelb" "exwm"))
       (let ((pkg-dir (expand-file-name pkg builds-dir)))
         (when (file-directory-p pkg-dir)
@@ -29,6 +30,44 @@
     (setq select-enable-clipboard t
           select-enable-primary t
           save-interprogram-paste-before-kill t)
+
+    (defun emacs/x11-paste ()
+      "Get clipboard text from X11 via gui-backend, xclip or xsel."
+      (cond
+       ((fboundp 'gui-backend-get-selection)
+        (gui-backend-get-selection 'CLIPBOARD 'UTF8_STRING))
+       ((executable-find "xclip")
+        (with-temp-buffer
+          (when (zerop (call-process "xclip" nil t nil "-selection" "clipboard" "-o"))
+            (let ((str (buffer-string)))
+              (unless (string-empty-p str) str)))))
+       ((executable-find "xsel")
+        (with-temp-buffer
+          (when (zerop (call-process "xsel" nil t nil "--clipboard" "--output"))
+            (let ((str (buffer-string)))
+              (unless (string-empty-p str) str)))))))
+
+    (defun emacs/x11-copy (text)
+      "Send TEXT to X11 clipboard via gui-backend, xclip or xsel."
+      (cond
+       ((fboundp 'gui-backend-set-selection)
+        (gui-backend-set-selection 'CLIPBOARD text))
+       ((executable-find "xclip")
+        (let ((process-connection-type nil))
+          (let ((proc (start-process "xclip" nil "xclip" "-selection" "clipboard")))
+            (process-send-string proc text)
+            (process-send-eof proc))))
+       ((executable-find "xsel")
+        (let ((process-connection-type nil))
+          (let ((proc (start-process "xsel" nil "xsel" "--clipboard" "--input")))
+            (process-send-string proc text)
+            (process-send-eof proc))))))
+
+    (unless (display-graphic-p)
+      (when (or (executable-find "xclip") (executable-find "xsel"))
+        (setq interprogram-cut-function #'emacs/x11-copy
+              interprogram-paste-before-kill #'emacs/x11-paste)))
+
     (setq frame-resize-pixelwise t
           window-resize-pixelwise t
           frame-inhibit-implied-resize t)
@@ -152,6 +191,11 @@
             ?\C-\M-j))
 
     (when (boundp 'exwm-mode-map)
+      (define-key exwm-mode-map (kbd "C-c") nil)
+      (define-key exwm-mode-map (kbd "s-f") #'exwm-layout-toggle-fullscreen)
+      (define-key exwm-mode-map (kbd "s-k") #'exwm-input-release-keyboard)
+      (define-key exwm-mode-map (kbd "s-m") #'exwm-workspace-move-window)
+      (define-key exwm-mode-map (kbd "s-q") #'exwm-input-send-next-key)
       (define-key exwm-mode-map [?\C-q] #'exwm-input-send-next-key))
 
     (if (fboundp 'exwm-wm-mode)

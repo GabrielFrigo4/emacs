@@ -4,7 +4,7 @@
 ;; ----------------------------------------------------------------
 
 (use-package yasnippet
-  :ensure t
+  :ensure (:type git :host github :repo "emacsmirror/yasnippet" :branch "master")
   :custom
   (yas-verbosity 1)
   (yas-snippet-dirs (list (expand-file-name "snippets" usr-dir)))
@@ -16,7 +16,7 @@
     (yas-global-mode 1)))
 
 (use-package lsp-mode
-  :ensure (:type git :host github :repo "emacs-lsp/lsp-mode" :branch "master")
+  :ensure (:type git :host github :repo "emacsmirror/lsp-mode" :branch "master")
   :hook ((lsp-mode . lsp-enable-which-key-integration))
   :commands (lsp lsp-deferred)
   :custom
@@ -44,7 +44,7 @@
     (add-hook (intern (concat (symbol-name (treesit/get-mode 'go-mode)) "-hook")) #'lsp/go-install-save-hooks)))
 
 (use-package lsp-ui
-  :ensure (:type git :host github :repo "emacs-lsp/lsp-ui" :branch "master")
+  :ensure (:type git :host github :repo "emacsmirror/lsp-ui" :branch "master")
   :commands lsp-ui-mode)
 
 (use-package lsp-treemacs

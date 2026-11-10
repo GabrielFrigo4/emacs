@@ -30,8 +30,8 @@ jobs:
 
             - name: Validate Shell Scripts
               run: |
-                  find bin -name "*.sh" -exec sh -n {} +
-                  sh -n emacs.sh
+                  find . -name "*.sh" -not -path "./.git/*" -exec sh -n {} +
+                  find .githooks -type f -exec sh -n {} +
 
             - name: Test Emacs Batch Initialization
               run: |

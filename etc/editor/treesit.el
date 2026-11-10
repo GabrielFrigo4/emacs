@@ -72,7 +72,7 @@
 
     (json            . ("https://github.com/tree-sitter/tree-sitter-json"                "master"        "src"))
     (toml            . ("https://github.com/tree-sitter/tree-sitter-toml"                "master"        "src"))
-    (yaml            . ("https://github.com/ikatyang/tree-sitter-yaml"                   "master"        "src"))
+    (yaml            . ("https://github.com/tree-sitter-grammars/tree-sitter-yaml"       "master"        "src"))
 
     (phpdoc          . ("https://github.com/claytonrcarter/tree-sitter-phpdoc"           "master"        "src"))
     (luadoc          . ("https://github.com/tree-sitter-grammars/tree-sitter-luadoc"     "master"        "src"))
@@ -80,7 +80,7 @@
     (luap            . ("https://github.com/tree-sitter-grammars/tree-sitter-luap"       "master"        "src"))
 
     (haskell         . ("https://github.com/tree-sitter/tree-sitter-haskell"             "master"        "src"))
-    (zig             . ("https://github.com/maxxnino/tree-sitter-zig"                    "main"          "src"))
+    (zig             . ("https://github.com/tree-sitter-grammars/tree-sitter-zig"        "master"        "src"))
     (glsl            . ("https://github.com/tree-sitter-grammars/tree-sitter-glsl"       "master"        "src"))
     (markdown        . ("https://github.com/tree-sitter-grammars/tree-sitter-markdown"   "split_parser"  "tree-sitter-markdown/src"))
     (markdown-inline . ("https://github.com/tree-sitter-grammars/tree-sitter-markdown"   "split_parser"  "tree-sitter-markdown-inline/src"))
@@ -222,7 +222,7 @@
 
 (use-package treesit-fold
   :if treesit/enable
-  :ensure (:type git :host github :repo "emacs-tree-sitter/treesit-fold" :branch "master")
+  :ensure (:type git :host github :repo "emacsmirror/treesit-fold" :branch "master")
   :defer t
   :hook (prog-mode . (lambda ()
                        (when (and (fboundp 'treesit-parser-list)
@@ -236,7 +236,7 @@
 
 (use-package evil-textobj-tree-sitter
   :if treesit/enable
-  :ensure (:type git :host github :repo "meain/evil-textobj-tree-sitter"
+  :ensure (:type git :host github :repo "emacsmirror/evil-textobj-tree-sitter"
                  :branch "master"
                  :files (:defaults "queries" "treesit-queries"))
   :after evil

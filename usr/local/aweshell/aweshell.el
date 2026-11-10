@@ -674,6 +674,8 @@ Otherwise return nil."
   "Validate and highlight all commands in eshell input line."
   (aweshell/highlight-input-line))
 
+(defalias 'aweshell-validate-command #'aweshell/validate-command)
+
 (defvar aweshell/validate-timer nil
   "Idle timer for validating eshell command.")
 (make-variable-buffer-local 'aweshell/validate-timer)
@@ -1257,6 +1259,276 @@ suppressing minibuffer write messages."
     (message "Não é um repositório Git ou Work Tree Got."))))
 
 (defalias 'eshell/vcs-diff 'eshell/vd)
+(defalias 'eshell/gs 'eshell/vs)
+(defalias 'eshell/gd 'eshell/vd)
+
+(defun eshell/gst (&rest args)
+  "Run git status."
+  (apply #'eshell-named-command "git" "status" args))
+
+(defun eshell/gco (&rest args)
+  "Run git checkout."
+  (apply #'eshell-named-command "git" "checkout" args))
+
+(defun eshell/gcb (&rest args)
+  "Run git checkout -b."
+  (apply #'eshell-named-command "git" "checkout" "-b" args))
+
+(defun eshell/gsw (&rest args)
+  "Run git switch."
+  (apply #'eshell-named-command "git" "switch" args))
+
+(defun eshell/gswc (&rest args)
+  "Run git switch -c."
+  (apply #'eshell-named-command "git" "switch" "-c" args))
+
+(defun eshell/gcm (&rest args)
+  "Run git commit -m."
+  (apply #'eshell-named-command "git" "commit" "-m" args))
+
+(defun eshell/gaa (&rest args)
+  "Run git add --all."
+  (apply #'eshell-named-command "git" "add" "--all" args))
+
+(defun eshell/gl (&rest args)
+  "Run git pull."
+  (apply #'eshell-named-command "git" "pull" args))
+
+(defun eshell/gp (&rest args)
+  "Run git push."
+  (apply #'eshell-named-command "git" "push" args))
+
+(defun eshell/glog (&rest args)
+  "Run git log with compact graph format."
+  (apply #'eshell-named-command "git" "log" "--oneline" "--decorate" "--graph" "-n" "20" args))
+
+(defun eshell/extract (file)
+  "Extract archive FILE based on its file extension."
+  (if (not (file-exists-p file))
+      (message "Arquivo '%s' não encontrado." file)
+    (cond
+     ((string-match-p "\\.\\(tar\\.bz2\\|tbz2\\)\\'" file)
+      (eshell-named-command "tar" (list "-xjvf" file)))
+     ((string-match-p "\\.\\(tar\\.gz\\|tgz\\)\\'" file)
+      (eshell-named-command "tar" (list "-xzvf" file)))
+     ((string-match-p "\\.\\(tar\\.xz\\|txz\\)\\'" file)
+      (eshell-named-command "tar" (list "-xJvf" file)))
+     ((string-match-p "\\.tar\\.zst\\'" file)
+      (eshell-named-command "tar" (list "--zstd" "-xvf" file)))
+     ((string-match-p "\\.tar\\'" file)
+      (eshell-named-command "tar" (list "-xvf" file)))
+     ((string-match-p "\\.gz\\'" file)
+      (eshell-named-command "gunzip" (list file)))
+     ((string-match-p "\\.bz2\\'" file)
+      (eshell-named-command "bunzip2" (list file)))
+     ((string-match-p "\\.xz\\'" file)
+      (eshell-named-command "unxz" (list file)))
+     ((string-match-p "\\.zip\\'" file)
+      (eshell-named-command "unzip" (list file)))
+     ((string-match-p "\\.7z\\'" file)
+      (eshell-named-command "7z" (list "x" file)))
+     ((string-match-p "\\.rar\\'" file)
+      (eshell-named-command "unrar" (list "x" file)))
+     ((string-match-p "\\.Z\\'" file)
+      (eshell-named-command "uncompress" (list file)))
+     (t
+      (message "Formato não suportado para extração: '%s'" file)))))
+
+(defalias 'eshell/x 'eshell/extract)
+
+(defun eshell/u (&rest args)
+  "Update entire ecosystem and package managers."
+  (if (executable-find "update-all")
+      (apply #'eshell-named-command "update-all" args)
+    (apply #'eshell/upgit args)))
+
+(defun eshell/upsh (&rest args)
+  "Update Universal Shell repository."
+  (if (executable-find "update-shell")
+      (apply #'eshell-named-command "update-shell" args)
+    (message "Comando 'update-shell' não encontrado.")))
+
+(defun eshell/uprc (&rest args)
+  "Update Universal Profile repository."
+  (if (executable-find "update-profile")
+      (apply #'eshell-named-command "update-profile" args)
+    (message "Comando 'update-profile' não encontrado.")))
+
+(defun eshell/uped (&rest args)
+  "Update text editor configurations."
+  (if (executable-find "update-editors")
+      (apply #'eshell-named-command "update-editors" args)
+    (message "Comando 'update-editors' não encontrado.")))
+
+(defun eshell/upmodes (&rest args)
+  "Update Emacs submodules and local packages."
+  (if (executable-find "update-emacs-modes")
+      (apply #'eshell-named-command "update-emacs-modes" args)
+    (message "Comando 'update-emacs-modes' não encontrado.")))
+
+(defun eshell/upvt (&rest args)
+  "Update cryptographic Vault repository."
+  (if (executable-find "update-vault")
+      (apply #'eshell-named-command "update-vault" args)
+    (message "Comando 'update-vault' não encontrado.")))
+
+(defun eshell/uplx (&rest args)
+  "Update Linux system packages."
+  (if (executable-find "update-linux")
+      (apply #'eshell-named-command "update-linux" args)
+    (message "Comando 'update-linux' não encontrado.")))
+
+(defalias 'eshell/updeb 'eshell/uplx)
+
+(defun eshell/upfb (&rest args)
+  "Update FreeBSD system packages and ports."
+  (if (executable-find "update-freebsd")
+      (apply #'eshell-named-command "update-freebsd" args)
+    (message "Comando 'update-freebsd' não encontrado.")))
+
+(defun eshell/upob (&rest args)
+  "Update OpenBSD system packages and ports."
+  (if (executable-find "update-openbsd")
+      (apply #'eshell-named-command "update-openbsd" args)
+    (message "Comando 'update-openbsd' não encontrado.")))
+
+(defun eshell/upnb (&rest args)
+  "Update NetBSD system packages and pkgsrc."
+  (if (executable-find "update-netbsd")
+      (apply #'eshell-named-command "update-netbsd" args)
+    (message "Comando 'update-netbsd' não encontrado.")))
+
+(defun eshell/fb (&rest args)
+  "Dispatch FreeBSD hypervisor / VM command."
+  (if (executable-find "freebsd")
+      (apply #'eshell-named-command "freebsd" args)
+    (message "Comando 'freebsd' não disponível no sistema.")))
+
+(defalias 'eshell/freebsd 'eshell/fb)
+
+(defun eshell/ob (&rest args)
+  "Dispatch OpenBSD hypervisor / VM command."
+  (if (executable-find "openbsd")
+      (apply #'eshell-named-command "openbsd" args)
+    (message "Comando 'openbsd' não disponível no sistema.")))
+
+(defalias 'eshell/openbsd 'eshell/ob)
+
+(defun eshell/deb (&rest args)
+  "Dispatch Debian hypervisor / VM command."
+  (let ((cmd (cl-some #'executable-find '("debian" "linux-host" "linux" "lx"))))
+    (if cmd
+        (apply #'eshell-named-command cmd args)
+      (message "Comando 'debian' / 'linux-host' não disponível no sistema."))))
+
+(defalias 'eshell/debian 'eshell/deb)
+
+(defun eshell/resh (&rest args)
+  "Reinstall and re-bootstrap Universal Shell."
+  (if (executable-find "reinstall-shell")
+      (apply #'eshell-named-command "reinstall-shell" args)
+    (message "Comando 'reinstall-shell' não encontrado.")))
+
+(defun eshell/bsh (&rest args)
+  "Run shell benchmark suite."
+  (if (executable-find "bench-shell")
+      (apply #'eshell-named-command "bench-shell" args)
+    (message "Comando 'bench-shell' não encontrado.")))
+
+(defcustom aweshell-visual-commands
+  '("agy" "htop" "btop" "btm" "top" "vim" "nvim" "hx" "less" "more" "man"
+    "tmux" "lazygit" "lazydocker" "yazi" "ranger" "ncdu" "alsamixer" "nmtui" "pulsemixer")
+  "List of commands dispatched to visual terminal emulator."
+  :type '(repeat string)
+  :group 'aweshell)
+
+(defun aweshell/exec-in-term (cmd-str buf-name)
+  "Execute CMD-STR in terminal buffer BUF-NAME via eat, vterm, or ansi-term."
+  (cond
+   ((and (fboundp 'eat) (fboundp 'eat-exec))
+    (eat cmd-str buf-name))
+   ((and (require 'vterm nil t) (fboundp 'vterm))
+    (let ((vterm-shell cmd-str))
+      (vterm buf-name)))
+   ((fboundp 'ansi-term)
+    (let ((term-buf (ansi-term (or (getenv "SHELL") "/bin/sh")
+                               (string-trim buf-name "\\*" "\\*"))))
+      (when-let* ((proc (get-buffer-process term-buf)))
+        (process-send-string proc (concat cmd-str "\n")))))
+   (t
+    (message "Nenhum emulador de terminal disponível."))))
+
+(defun aweshell-exec-visual (&rest args)
+  "Execute visual command ARGS in a separate terminal emulator buffer."
+  (let* ((program (car args))
+         (cmd-name (file-name-nondirectory (or program "")))
+         (cmd-args (cdr args))
+         (full-cmd (mapconcat #'identity (cons program cmd-args) " ")))
+    (cond
+     ((and (require 'vterm nil t) (fboundp 'vterm))
+      (let* ((buf-name (format "*vterm: %s*" cmd-name))
+             (vterm-shell full-cmd))
+        (vterm buf-name)))
+     ((fboundp 'ansi-term)
+      (let* ((buf-name (format "term: %s" cmd-name))
+             (term-buf (ansi-term (or (getenv "SHELL") "/bin/sh") buf-name)))
+        (when-let* ((proc (get-buffer-process term-buf)))
+          (process-send-string proc (concat full-cmd "\n")))))
+     (t
+      (message "Nenhum emulador de terminal disponível para comando visual.")))))
+
+(defalias 'aweshell/exec-visual #'aweshell-exec-visual)
+
+(defun aweshell/dispatch-visual (orig-fn &rest args)
+  "Execute visual command ARGS via eat in-place or fallback to dedicated terminal."
+  (if (bound-and-true-p eat-eshell-mode)
+      (apply orig-fn args)
+    (apply #'aweshell-exec-visual args)))
+
+(with-eval-after-load 'em-term
+  (dolist (cmd aweshell-visual-commands)
+    (add-to-list 'eshell-visual-commands cmd))
+  (dolist (sub '(("git" "log" "diff" "show")))
+    (add-to-list 'eshell-visual-subcommands sub))
+  (advice-add 'eshell-exec-visual :around #'aweshell/dispatch-visual))
+
+(defun eshell/agy (&rest args)
+  "Execute Google Antigravity CLI in a visual terminal emulator."
+  (let ((cmd (if args (mapconcat #'shell-quote-argument args " ") "")))
+    (if (and (fboundp 'system-is-freebsd-p) (system-is-freebsd-p))
+        (let ((ssh-cmd (format "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -t gabriel@192.168.8.2 \"export PATH=\\\"\\$HOME/.local/bin:\\$HOME/.gemini/antigravity-cli/bin:\\$HOME/.cargo/bin:\\$PATH\\\"; cd %s 2> /dev/null || true; exec agy %s\""
+                               (shell-quote-argument (expand-file-name default-directory))
+                               cmd)))
+          (aweshell/exec-in-term ssh-cmd "*agy*"))
+      (aweshell/exec-in-term (if (string-empty-p cmd) "agy" (concat "agy " cmd)) "*agy*"))))
+
+(defalias 'eshell/a 'eshell/agy)
+
+(defun eshell/aa (&rest args)
+  "Alias for agy --dangerously-skip-permissions."
+  (apply #'eshell/agy "--dangerously-skip-permissions" args))
+
+(defalias 'eshell/ad 'eshell/aa)
+
+(defun eshell/agyc (&rest args)
+  "Alias for agy -c."
+  (apply #'eshell/agy "-c" args))
+
+(defalias 'eshell/agyr 'eshell/agyc)
+
+(defun eshell/agya (&rest args)
+  "Alias for agy --dangerously-skip-permissions."
+  (apply #'eshell/agy "--dangerously-skip-permissions" args))
+
+(defalias 'eshell/agyd 'eshell/agya)
+
+(defun eshell/agyca (&rest args)
+  "Alias for agy -c --dangerously-skip-permissions."
+  (apply #'eshell/agy "-c" "--dangerously-skip-permissions" args))
+
+(defalias 'eshell/agycd 'eshell/agyca)
+(defalias 'eshell/agyra 'eshell/agyca)
+(defalias 'eshell/agyrd 'eshell/agyca)
 
 (defun eshell/nb (&rest args)
   "Dispatch NetBSD hypervisor / VM command."

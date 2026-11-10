@@ -21,10 +21,14 @@ Este repositório contém a configuração pessoal do **GNU Emacs (versão 30+, 
 - **Controle Dinâmico:** Flags customizáveis via variáveis de ambiente (`EMACS_AI`, `EMACS_LSP`, `EMACS_TREESIT`).
 - **LSP Integrado:** lsp-mode de alta performance para linguagens compiladas e interpretadas.
 - **Gerenciador Elpaca:** Gestão assíncrona e declarativa de pacotes.
-- **Modos Pessoais Integrados:** Pacotes locais em `usr/local/` (`aweshell` com os 3 temas canônicos do Universal Shell — `multi`, `pill` e `micro` — adaptativos entre GUI/PTY e Raw TTY, além de `aweww` para leitura web dinâmica).
+- **Modos Elisp Vendor In-Tree:** Extensões locais versionadas diretamente no repositório em `usr/local/` (`aweshell` com os 3 temas canônicos do Universal Shell — `multi`, `pill` e `micro` — adaptativos entre GUI/PTY e Raw TTY, além de `aweww` para navegação web soberana).
 - **Tipografia Homologada:** Projetado e calibrado para **`JetBrainsMono NF`** (`:height 120`), proporcionando proporção equilibrada em Org-mode, mode-line e ícones de buffer, com geometria inicial centrada (`81x27`).
 - **Arquitetura de Interface & Estabilidade de Cursor:** Supressão incondicional da `tool-bar` (`interface/apply-tool-bar` configurando `tool-bar-lines 0` e `tool-bar-mode -1` em GUI, EWM e TTY bruto, preservando `menu-bar` exclusivamente em modos gráficos). Rastreamento contínuo de movimentação de mouse desativado em todos os buffers (inclusive no Dashboard), garantindo seleção e cliques com mouse 100% estáveis sem seleções indesejadas pós-clique.
-- **Terminal Aweshell & Biblioteca Semântica UI:** Integração do Eshell com a biblioteca nativa `_ui_*` (`_ui_banner`, `_ui_step`, `_ui_sub`, `_ui_ok`, `_ui_warn`, `_ui_err`, `_ui_info`) com total paridade semântica com o `Shell/library/ui.sh`. Isolamento do `eshell-mode` via desativação de `completion-preview-mode` no terminal (mantendo delay de `0.2s` e mínimo de `2` caracteres nos buffers convencionais de código/texto), operando com motor de sugestão histórica mais recente e parada em match exato.
+- **Arquitetura Quádrupla de Terminais (`aweshell`, `eat`, `vterm`, `term`):** Ecossistema integrado de 4 camadas para terminal e REPL:
+    - **`aweshell`:** Terminal primário baseado no Eshell com biblioteca semântica `_ui_*` (paridade 1:1 com `Shell/library/ui.sh`), 3 temas canônicos (`multi`, `pill`, `micro`), sugestões históricas Zsh-style ghost completion e isolamento de preview.
+    - **`eat` (`Emulate A Terminal`):** Emulador moderno acelerado em puro Elisp (upstream Codeberg) com TrueColor 24-bit, Sixel, rastreamento de mouse e cascata de interpretadores (`zsh -> bash -> /bin/sh`). Opera em modo dual: standalone (`M-x eat`) com integração modal Evil (`eat-semi-char-mode` em Evil Insert e `eat-emacs-mode` em Evil Normal) e acoplado ao `aweshell` via `eat-eshell-mode` e `eat-eshell-visual-command-mode`, executando comandos visuais e TUIs interativas (`agy`, `btop`, `nvim`, `yazi`, `lazygit`, `tmux`, etc.) _in-place_ dentro do próprio buffer do Eshell sem corrupção gráfica.
+    - **`vterm`:** Terminal nativo de alta performance compilado sobre a biblioteca C `libvterm` via `emacsmirror/vterm` (branch `master`).
+    - **`term` / `ansi-term`:** Emulador ANSI POSIX clássico embutido no core do Emacs, atuando como retaguarda universal.
 - **Correção Ortográfica Bilíngue Sem Processo Externo:** Eliminação definitiva de chamadas síncronas a `/usr/bin/look` (`text-mode-ispell-word-completion nil`, `ispell-look-p nil`) e suporte simultâneo a dicionários de Inglês e Português (`hunspell` com `en_US,pt_BR` via `ispell-hunspell-add-multi-dic`).
 - **Autodocumentação Integral em Elisp (GNU Emacs Self-Documenting Standard):** Honrando o pilar clássico do GNU Emacs como máquina Lisp viva e autodocumentada, 100% das definições (`defun`, `defmacro`, `defvar`, `defcustom`, `defface`) e comandos de sistema operacional (`firefox`, `libreoffice`, `apps`, etc.) possuem docstrings canônicas consultáveis em tempo real via `C-h f` (`describe-function`), `C-h v` (`describe-variable`), `C-h k` (`describe-key`), `M-x apropos`, ElDoc e `which-key`. O padrão estrito exige: primeira linha concisa ($\le 80$ colunas), argumentos formais em `MAIÚSCULAS` (ex: `ARGS`, `DIR`), referências a símbolos entre acento grave e apóstrofo (` `simbolo' `) para gerar links hipertextuais navegáveis no buffer `_Help_`, e zero comentários narrativos inline (`;;`).
 - **Ergonomia Híbrida Emacs + Evil (`C-z` & `ESC`) e Ciclo Unificado de Cursor (1200ms):** Inicia sempre em **Emacs state** nativo em todos os modos e alterna instantaneamente para **Evil Normal state** via `C-z` (e retorno do Insert/Visual/Replace ao Normal state via `ESC`). Padroniza o ciclo unificado de 1200ms (`blink-cursor-interval 0.6`, `blink-cursor-delay 0.6`, `blink-cursor-blinks 0`) em perfeita sincronia com GTK3/GTK4 (`1200ms`), XTerm, NeoVim e Vim em GUI (`box`, `bar`, `hbar`) e PTY (`\e[1 q`, `\e[3 q`, `\e[5 q`), ficando estático (`noblink`) apenas em consoles Linux Raw TTY (`\e[?2c` a `\e[?6c`, com auto-cura `\e%G\e[?16;238;0c`).
@@ -92,21 +96,21 @@ O Emacs alinha perfeitamente seu ciclo de cursor ao padrão do ecossistema:
 
 ## 📁 Catálogo da Estrutura
 
-| Arquivo / Diretório                      | Descrição                                                                   |
-| :--------------------------------------- | :-------------------------------------------------------------------------- |
-| [`TODO.md`](TODO.md)                     | Roadmap estratégico, matriz de status e backlog de evolução                 |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md)     | Guia de contribuição, configuração de ganchos Git e quality gates           |
-| [`emacs.sh`](emacs.sh)                   | Interface unificada de componente (CLI para test, doctor, indent)           |
-| [`init.el`](init.el)                     | Ponto de entrada, feature toggles e carregamento central                    |
-| [`early-init.el`](early-init.el)         | Otimizações de boot e caminhos do native-comp cache                         |
-| [`lib/core.el`](lib/core.el)             | Macros de detecção de SO e rotinas de auto-indentação                       |
-| [`etc/init/`](etc/init/)                 | Bootstrap do Elpaca, atalhos globais e interface visual                     |
-| [`etc/editor/`](etc/editor/)             | Módulos de LSP, scroll suave, tree-sitter e conclusão                       |
-| [`etc/apps/`](etc/apps/)                 | Extensões opcionais: Org-mode, IA (gptel/ellama), EAF                       |
-| [`etc/lang/`](etc/lang/)                 | Configurações específicas para LaTeX, Lisp, Markdown                        |
-| [`etc/tools/`](etc/tools/)               | Ferramentas de Git, GitHub, manpages e shell interativo                     |
-| [`usr/local/`](usr/local/)               | Modos Elisp pessoais integrados (`aweshell`, `aweww`, `emacs-lisp-ts-mode`) |
-| [`bin/indent-all.sh`](bin/indent-all.sh) | Script POSIX de auto-indentação de arquivos de configuração                 |
+| Arquivo / Diretório                      | Descrição                                                              |
+| :--------------------------------------- | :--------------------------------------------------------------------- |
+| [`TODO.md`](TODO.md)                     | Roadmap estratégico, matriz de status e backlog de evolução            |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md)     | Guia de contribuição, configuração de ganchos Git e quality gates      |
+| [`emacs.sh`](emacs.sh)                   | Interface unificada de componente (CLI para test, doctor, indent)      |
+| [`init.el`](init.el)                     | Ponto de entrada, feature toggles e carregamento central               |
+| [`early-init.el`](early-init.el)         | Otimizações de boot e caminhos do native-comp cache                    |
+| [`lib/core.el`](lib/core.el)             | Macros de detecção de SO e rotinas de auto-indentação                  |
+| [`etc/init/`](etc/init/)                 | Bootstrap do Elpaca, atalhos globais e interface visual                |
+| [`etc/editor/`](etc/editor/)             | Módulos de LSP, scroll suave, tree-sitter e conclusão                  |
+| [`etc/apps/`](etc/apps/)                 | Extensões opcionais: Org-mode, IA (gptel/ellama), EAF                  |
+| [`etc/lang/`](etc/lang/)                 | Configurações específicas para LaTeX, Lisp, Markdown                   |
+| [`etc/tools/`](etc/tools/)               | Ferramentas de Git, GitHub, manpages e shell interativo                |
+| [`usr/local/`](usr/local/)               | Modos Elisp vendor in-tree (`aweshell`, `aweww`, `emacs-lisp-ts-mode`) |
+| [`bin/indent-all.sh`](bin/indent-all.sh) | Script POSIX de auto-indentação de arquivos de configuração            |
 
 ---
 
@@ -264,7 +268,7 @@ EMACS_AI=1 emacs
 make treesit
 ```
 
-- **Atualizar os submódulos de modos Elisp federados (`usr/local/*`):**
+- **Atualizar os modos Elisp vendor in-tree (`usr/local/*`):**
 
 ```sh
 make upmodes

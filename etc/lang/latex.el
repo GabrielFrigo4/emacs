@@ -7,7 +7,7 @@
   "When non-nil, automatically enable inline LaTeX previews.")
 
 (use-package auctex
-  :ensure (:type git :host github :repo "emacsmirror/auctex" :branch "master")
+  :ensure t
   :hook ((LaTeX-mode . TeX-source-correlate-mode)
          (TeX-after-compilation-finished-functions . TeX-revert-document-buffer)
          (tex-mode . reftex-mode)

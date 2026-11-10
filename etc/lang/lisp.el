@@ -4,7 +4,7 @@
 ;; ----------------------------------------------------------------
 
 (use-package slime
-  :ensure t
+  :ensure (:type git :host github :repo "emacsmirror/slime" :branch "master")
   :defer t
   :init
   (setq inferior-lisp-program

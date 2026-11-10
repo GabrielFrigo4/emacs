@@ -20,12 +20,38 @@
 (setq home-dir  (expand-file-name "~/")
       emacs-dir (expand-file-name user-emacs-directory)
       etc-dir   (expand-file-name "etc/" emacs-dir)
-      var-dir   (expand-file-name "var/" emacs-dir)
       opt-dir   (expand-file-name "opt/" emacs-dir)
       lib-dir   (expand-file-name "lib/" emacs-dir)
-      tmp-dir   (expand-file-name "tmp/" emacs-dir)
-      usr-dir   (expand-file-name "usr/" emacs-dir)
-      temporary-file-directory tmp-dir)
+      usr-dir   (expand-file-name "usr/" emacs-dir))
+
+(defvar emacs/workbench-p
+  (or noninteractive
+      (and (getenv "EMACS_TEST_DIR") t)
+      (string-match-p "/Documents/Environment/Editor/Emacs" emacs-dir))
+  "Non-nil when running in test, batch, or development workbench mode.")
+
+(defvar emacs/temp-storage-dir
+  (if emacs/workbench-p
+      (let* ((base (or (bound-and-true-p emacs/temp-storage-dir)
+                       (getenv "EMACS_TEST_DIR")
+                       (if noninteractive
+                           (make-temp-file (format "emacs-batch-%d-" (emacs-pid)) t)
+                         (expand-file-name (format "emacs-workbench-%s" (user-uid))
+                                           temporary-file-directory))))
+             (dir (file-name-as-directory base)))
+        (unless (file-directory-p dir)
+          (make-directory dir t))
+        (when (and noninteractive (not (getenv "EMACS_TEST_DIR")))
+          (add-hook 'kill-emacs-hook
+                    (lambda () (ignore-errors (delete-directory base t)))))
+        dir)
+    nil)
+  "Temporary storage directory used in workbench and batch modes.")
+
+(let ((storage (or emacs/temp-storage-dir emacs-dir)))
+  (setq var-dir (expand-file-name "var/" storage)
+        tmp-dir (expand-file-name "tmp/" storage)
+        temporary-file-directory tmp-dir))
 
 (add-to-list 'load-path lib-dir)
 (condition-case err
@@ -238,9 +264,9 @@
 (require 'server)
 
 (defun emacs/sync-server-sockets ()
-  "Bidirectionally synchronize Emacs server sockets between standard XDG path and var/server/auth/server."
+  "Bidirectionally synchronize Emacs server sockets between standard XDG path and server/auth/server."
   (when-unix
-   (let* ((auth-dir (expand-file-name "var/server/auth" emacs-dir))
+   (let* ((auth-dir (expand-file-name "server/auth" var-dir))
           (auth-sock (expand-file-name "server" auth-dir))
           (run-dir (or (when-let* ((xdg-run (getenv "XDG_RUNTIME_DIR")))
                          (expand-file-name "emacs" xdg-run))

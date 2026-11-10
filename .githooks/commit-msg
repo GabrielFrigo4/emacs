@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
-### ================================
-### EMACS COMMIT-MESSAGE HOOK
-### ================================
+# ----------------------------------------------------------------
+# Universal Git Commit-Msg Hook — Conventional Commits Gate
+# ----------------------------------------------------------------
 
 set -e
 
@@ -10,6 +10,60 @@ if [ -z "${_msg_file}" ] || [ ! -f "${_msg_file}" ]; then
 	exit 0
 fi
 
+### --------------------------------
+### AUTO-CURA DE MENSAGEM
+### --------------------------------
+if command -v python3 > "/dev/null" 2>&1; then
+	python3 -c '
+import sys, re
+
+path = sys.argv[1]
+try:
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+except Exception:
+    sys.exit(0)
+
+if not content.strip():
+    sys.exit(0)
+
+lines = content.splitlines(keepends=True)
+if not lines:
+    sys.exit(0)
+
+first_line = lines[0].rstrip("\r\n")
+trimmed = first_line.strip()
+
+if trimmed.startswith("Merge ") or trimmed.startswith("Revert ") or trimmed.startswith("fixup!") or trimmed.startswith("squash!"):
+    sys.exit(0)
+
+valid_types = ("add", "update", "fix", "docs", "feat", "chore", "refactor", "style", "ci", "test", "sec", "init")
+
+pattern = re.compile(r"^([a-zA-Z]+)(\([a-zA-Z0-9_.-]+\))?:\s*(.*)$")
+m = pattern.match(trimmed)
+
+if m:
+    t = m.group(1).lower()
+    scope = m.group(2) or ""
+    rest = m.group(3).strip()
+    if t in valid_types:
+        new_first = f"{t}{scope}: {rest}"
+    else:
+        new_first = f"chore: {trimmed}"
+else:
+    new_first = f"chore: {trimmed}"
+
+if new_first != first_line:
+    nl = "\n" if (len(lines) > 1 or content.endswith("\n")) else ""
+    lines[0] = new_first + nl
+    with open(path, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+' "${_msg_file}"
+fi
+
+### --------------------------------
+### VALIDACAO DE SEMANTICA
+### --------------------------------
 _clean_msg=$(grep -v '^[[:space:]]*#' "${_msg_file}" | tr '\n' ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
 case "${_clean_msg}" in
@@ -29,14 +83,14 @@ if [ "${_char_count}" -lt 8 ]; then
 	exit 1
 fi
 
-_pattern='^(add|update|fix|docs|feat|chore|refactor|style|ci|test)(\([a-zA-Z0-9_-]+\))?:[[:space:]]+.+'
+_pattern='^(add|update|fix|docs|feat|chore|refactor|style|ci|test|sec|init)(\([a-zA-Z0-9_.-]+\))?:[[:space:]]+.+'
 if ! echo "${_clean_msg}" | grep -E -q "${_pattern}"; then
 	echo "❌ [commit-msg] Semantic prefix convention violated!" >&2
 	echo "   Allowed formats:" >&2
 	echo "     <type>: <description>" >&2
 	echo "     <type>(<scope>): <description>" >&2
-	echo "   Allowed types: add, update, fix, docs, feat, chore, refactor, style, ci, test" >&2
-	echo "   Example: 'feat(org): configure org-modern appearance'" >&2
+	echo "   Allowed types: add, update, fix, docs, feat, chore, refactor, style, ci, test, sec, init" >&2
+	echo "   Example: 'chore(submodules): update editor and environment pointers'" >&2
 	exit 1
 fi
 

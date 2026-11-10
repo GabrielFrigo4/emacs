@@ -21,14 +21,30 @@
 ;; THEMES
 ;; --------------------------------
 
+(setq frame-background-mode 'dark)
+
+(defun interface/ensure-dark-background (&optional frame)
+  "Ensure FRAME uses dark background mode for perfect contrast."
+  (let ((target (or frame (selected-frame))))
+    (when (frame-live-p target)
+      (set-frame-parameter target 'background-mode 'dark)
+      (when (fboundp 'frame-set-background-mode)
+        (frame-set-background-mode target)))))
+
+(add-hook 'tty-setup-hook #'interface/ensure-dark-background)
+(add-hook 'after-make-frame-functions #'interface/ensure-dark-background)
+
 (use-package doom-themes
-  :ensure (:type git :host github :repo "doomemacs/themes" :branch "master")
+  :ensure (:type git :host github :repo "emacsmirror/doom-themes" :branch "master")
   :init
+  (setq frame-background-mode 'dark)
+  (interface/ensure-dark-background)
   (with-eval-after-load 'doom-themes-base
     (when (boundp 'doom-themes-base-faces)
       (when-let* ((face-entry (assoc 'gnus-group-news-low-empty doom-themes-base-faces)))
         (setcdr face-entry '(:inherit 'gnus-group-mail-1-empty :weight 'normal)))))
   :config
+  (interface/ensure-dark-background)
   (require 'doom-themes-base nil t)
   (when (facep 'gnus-group-news-low)
     (set-face-attribute 'gnus-group-news-low nil :inherit nil))
@@ -312,6 +328,7 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
 (add-hook 'after-make-frame-functions
           (lambda (frame)
             (with-selected-frame frame
+              (interface/ensure-dark-background frame)
               (interface/apply-tool-bar frame)
               (interface/apply-menu-bar frame)
               (if (display-graphic-p frame)
@@ -503,10 +520,75 @@ Under Wayland (PGTK), positioning is managed exclusively by the compositor."
 
 (setq server-name "server")
 (when-windows
- (setq server-auth-dir (expand-file-name "var/server/auth/" emacs-dir)))
+ (setq server-auth-dir (expand-file-name "server/auth/" var-dir)))
 (when-unix
- (let ((auth-dir (expand-file-name "var/server/auth/" emacs-dir)))
+ (let ((auth-dir (expand-file-name "server/auth/" var-dir)))
    (unless (file-directory-p auth-dir)
      (make-directory auth-dir t))))
+
+;; --------------------------------
+;; PGTK HOVER POLLING
+;; --------------------------------
+
+(setq track-mouse nil)
+
+(when (boundp 'pgtk-wait-for-event-timeout)
+  (setq pgtk-wait-for-event-timeout 0.001))
+
+(defvar interface/pgtk--last-hover nil
+  "Cached hover target from the previous polling iteration.")
+
+(defun interface/pgtk-poll-mouse-hover ()
+  "Poll mouse position under PGTK to update button/mouse-face hover smoothly."
+  (when (and (featurep 'pgtk)
+             (not (input-pending-p))
+             (not (or (memq 'down (event-modifiers last-input-event))
+                      (memq 'drag (event-modifiers last-input-event)))))
+    (let* ((mpos (mouse-pixel-position))
+           (frame (car mpos))
+           (xy (cdr mpos)))
+      (when (and (frame-live-p frame)
+                 (numberp (car xy))
+                 (numberp (cdr xy)))
+        (let* ((posn (posn-at-x-y (car xy) (cdr xy) frame))
+               (win (and posn (posn-window posn)))
+               (target nil))
+          (when (and (window-live-p win) (frame-live-p (window-frame win)))
+            (let ((point (posn-point posn))
+                  (obj (posn-object posn)))
+              (cond
+               ((and (consp obj) (stringp (car obj)) (integerp (cdr obj)))
+                (let* ((str (car obj))
+                       (idx (cdr obj))
+                       (face (get-text-property idx 'mouse-face str))
+                       (btn (get-text-property idx 'button str)))
+                  (when (or face btn)
+                    (setq target (list win str idx face btn)))))
+               ((and (integerp point) (buffer-live-p (window-buffer win)))
+                (with-current-buffer (window-buffer win)
+                  (let* ((face-ov (get-char-property-and-overlay point 'mouse-face))
+                         (face (car face-ov))
+                         (btn-ov (get-char-property-and-overlay point 'button))
+                         (btn (car btn-ov)))
+                    (when (or face btn)
+                      (let* ((start (or (and (cdr face-ov) (overlay-start (cdr face-ov)))
+                                        (and (cdr btn-ov) (overlay-start (cdr btn-ov)))
+                                        (previous-single-char-property-change (min (point-max) (1+ point)) 'mouse-face)
+                                        (previous-single-char-property-change (min (point-max) (1+ point)) 'button)
+                                        point))
+                             (end (or (and (cdr face-ov) (overlay-end (cdr face-ov)))
+                                      (and (cdr btn-ov) (overlay-end (cdr btn-ov)))
+                                      (next-single-char-property-change point 'mouse-face)
+                                      (next-single-char-property-change point 'button)
+                                      point)))
+                        (setq target (list win start end face btn))))))))))
+          (unless (equal target interface/pgtk--last-hover)
+            (setq interface/pgtk--last-hover target)
+            (when (window-live-p win)
+              (force-window-update win))
+            (redisplay t)))))))
+
+(when (featurep 'pgtk)
+  (run-with-timer 0.03 0.03 #'interface/pgtk-poll-mouse-hover))
 
 (provide 'init-interface)

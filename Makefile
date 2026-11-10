@@ -7,7 +7,7 @@ MAKEFLAGS += --no-print-directory -s
 # Makefile: Emacs Lisp Suite
 # ----------------------------------------------------------------
 
-.PHONY: help hooks test batch indent format prettier ci upmodes treesit update
+.PHONY: help hooks test batch indent format prettier ci upmodes treesit update clean audit
 
 ### ================================
 ### HELP & DOCUMENTATION
@@ -23,6 +23,8 @@ help:
 	sec "Qualidade & Formatação:"; \
 	cmd "test"           "Valida inicialização limpa em modo batch"; \
 	cmd "batch"          "Executa boot limpo batch do Emacs"; \
+	cmd "audit"          "Audita conformidade estrutural e ausência de var/tmp"; \
+	cmd "clean"          "Remove resíduos de execução e higieniza bancada"; \
 	cmd "format"         "Formata arquivos Elisp e Markdown"; \
 	cmd "indent"         "Formata e indenta arquivos Elisp"; \
 	cmd "prettier"       "Formata documentações Markdown com Prettier"; \
@@ -79,6 +81,20 @@ batch:
 	else \
 		echo "ℹ️  emacs não encontrado no PATH; ignorando teste batch."; \
 	fi
+
+clean:
+	echo "🧹 Limpando artefatos temporários e de compilação..."
+	rm -rf var tmp eln-cache tree-sitter elpa auto-save-list tramp 2> "/dev/null" || true
+	find . -type f \( -name "*.elc" -o -name "*.eln" -o -name "*~" -o -name "#*#" -o -name "*.tmp" -o -name "*.log" \) -delete 2> "/dev/null" || true
+	echo "  ✅ Ambiente limpo e higienizado!"
+
+audit:
+	echo "🔍 Auditando conformidade estrutural do Emacs..."
+	if [ -d "var" ] || [ -d "tmp" ]; then \
+		echo "❌ Erro: Diretórios var/ ou tmp/ encontrados na bancada!"; \
+		exit 1; \
+	fi
+	echo "  ✅ Emacs: Auditoria aprovada sem inconformidades."
 
 format: indent prettier
 	echo "✅ Formatação concluída!"

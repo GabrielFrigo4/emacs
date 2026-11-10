@@ -1,287 +1,202 @@
 #!/usr/bin/env sh
+# ----------------------------------------------------------------
+# Universal Git Pre-Commit Hook — Total Self-Healing Gate
+# ----------------------------------------------------------------
 
-### ================================
-### EMACS PRE-COMMIT HOOK
-### ================================
+set -e
 
-set -eu
-
-_fail() {
-    echo "❌ [pre-commit] $*" >&2
-    exit 1
-}
-
-### --------------------------------
-### Repo sanity
-### --------------------------------
-git rev-parse --git-dir > "/dev/null" 2>&1 \
-    || _fail "Not inside a valid Git repository."
-
-_guard_bare() {
-    if [ "$(git config --get core.bare || true)" = "true" ] \
-        && git config --get core.worktree > "/dev/null" 2>&1; then
-        echo "⚠️  [pre-commit] core.bare=true com core.worktree definido (${1}); restaurando core.bare=false." >&2
-        git config core.bare false
-    fi
-}
-_guard_bare "início do hook"
-
-_repo_root="$(git rev-parse --show-toplevel)" \
-    || _fail "Could not resolve the work tree root."
+_repo_root="$(git rev-parse --show-toplevel 2> "/dev/null" || pwd)"
 cd "${_repo_root}"
-
-_tmp="$(mktemp -d "${TMPDIR:-/tmp}/emacs-precommit.XXXXXX")" \
-    || _fail "Could not create a temporary directory."
-trap 'rm -rf "${_tmp}"' EXIT
-trap 'exit 1' HUP INT TERM
-
-_tab="$(printf '\t')"
-
-echo "🔍 [pre-commit] Executing Emacs quality & syntax gates..."
+_repo_name="$(basename "${_repo_root}")"
 
 ### --------------------------------
-### Anything staged?
+### AUTO-CURA DE MODOS OCTAIS
 ### --------------------------------
-_rc=0
-git diff --cached --quiet || _rc=$?
-case "${_rc}" in
-    0)
-        echo "ℹ️  [pre-commit] Nothing staged, skipping gates."
-        exit 0
-        ;;
-    1) ;;
-    *)
-        _fail "'git diff --cached' failed (exit ${_rc}). Index or objects may be corrupted. Run: git fsck --full"
-        ;;
-esac
+_staged_d=$(git diff --cached --name-only --diff-filter=d 2> "/dev/null" || true)
+if [ -n "${_staged_d}" ]; then
+	for _f in ${_staged_d}; do
+		[ ! -f "${_f}" ] && continue
+		if [ "${_repo_name}" = "Vault" ]; then
+			case "${_f}" in
+				*.sh|.githooks/*|*.ps1|*.cmd|*.nu|*.fish)
+					chmod 0700 "${_f}" 2> "/dev/null" || true
+					git update-index --chmod=+x "${_f}" 2> "/dev/null" || true
+					;;
+				*)
+					chmod 0600 "${_f}" 2> "/dev/null" || true
+					git update-index --chmod=-x "${_f}" 2> "/dev/null" || true
+					;;
+			esac
+		else
+			_is_exec=0
+			case "${_f}" in
+				*.sh|.githooks/*|*.ps1|*.cmd|*.nu|*.fish) _is_exec=1 ;;
+			esac
+			if [ "${_is_exec}" -eq 0 ]; then
+				read -r _first_line < "${_f}" 2> "/dev/null" || _first_line=""
+				case "${_first_line}" in
+					"#!"*) _is_exec=1 ;;
+				esac
+			fi
 
-### --------------------------------
-### Index / Object Integrity
-### --------------------------------
-echo "  ↳ Checking index integrity (git write-tree)..."
-if ! git write-tree > "/dev/null"; then
-    _fail "Index is inconsistent, has conflicts, or references missing objects. Run: git fsck --full"
+			if [ "${_is_exec}" -eq 1 ]; then
+				chmod 0755 "${_f}" 2> "/dev/null" || true
+				git update-index --chmod=+x "${_f}" 2> "/dev/null" || true
+			else
+				case "${_f}" in
+					*.md|*.txt|*.json|*.yml|*.yaml|*.toml|*.ini|*.css|*.el|*.lua|*.vim|*.conf|*.c|*.h|*.cpp|*.hpp|*.rs|*.go|*.py|*.ts|*.js|*.svelte|*.html|*.svg|.gitignore|.gitmodules|.gitattributes|Makefile|LICENSE)
+						chmod 0644 "${_f}" 2> "/dev/null" || true
+						git update-index --chmod=-x "${_f}" 2> "/dev/null" || true
+						;;
+				esac
+			fi
+		fi
+	done
 fi
 
 ### --------------------------------
-### Whitespace & Formatting Check
+### AUTO-CURA DE FORMATACAO
 ### --------------------------------
-echo "  ↳ Checking whitespace and formatting (git diff --check)..."
+_staged_acm=$(git diff --cached --name-only --diff-filter=ACM 2> "/dev/null" || true)
+if [ -n "${_staged_acm}" ]; then
+	if command -v python3 > "/dev/null" 2>&1; then
+		python3 -c '
+import sys, os
+
+text_exts = {
+    ".sh", ".py", ".md", ".txt", ".json", ".yml", ".yaml", ".toml", ".ini",
+    ".css", ".el", ".lua", ".vim", ".conf", ".c", ".h", ".cpp", ".hpp",
+    ".rs", ".go", ".ts", ".js", ".svelte", ".html", ".svg", ".tex", ".env"
+}
+special_names = {".gitignore", ".gitmodules", ".gitattributes", "Makefile", "LICENSE"}
+
+for arg in sys.argv[1:]:
+    if not os.path.isfile(arg):
+        continue
+    _, ext = os.path.splitext(arg)
+    basename = os.path.basename(arg)
+    if ext.lower() not in text_exts and basename not in special_names and not arg.startswith(".githooks/"):
+        continue
+    try:
+        with open(arg, "rb") as fp:
+            raw = fp.read()
+        text = raw.decode("utf-8")
+    except Exception:
+        continue
+    lines = text.splitlines(keepends=True)
+    new_lines = []
+    changed = False
+    for line in lines:
+        stripped = line.rstrip("\r\n").rstrip(" \t")
+        nl = "\r\n" if line.endswith("\r\n") else ("\n" if line.endswith("\n") else "")
+        cleaned = stripped + nl
+        if cleaned != line:
+            changed = True
+        new_lines.append(cleaned)
+    if changed:
+        with open(arg, "w", encoding="utf-8") as fp:
+            fp.writelines(new_lines)
+' ${_staged_acm}
+	fi
+
+	if command -v prettier > "/dev/null" 2>&1; then
+		_docs=$(echo "${_staged_acm}" | tr ' ' '\n' | grep -E '\.(md|json|yml|yaml)$' || true)
+		if [ -n "${_docs}" ]; then
+			prettier --write ${_docs} > "/dev/null" 2>&1 || true
+		fi
+	elif command -v npx > "/dev/null" 2>&1; then
+		_docs=$(echo "${_staged_acm}" | tr ' ' '\n' | grep -E '\.(md|json|yml|yaml)$' || true)
+		if [ -n "${_docs}" ]; then
+			npx prettier --write ${_docs} > "/dev/null" 2>&1 || true
+		fi
+	fi
+
+	if [ -f ".scripts/audit/banners.py" ] && command -v python3 > "/dev/null" 2>&1; then
+		_sh_files=$(echo "${_staged_acm}" | tr ' ' '\n' | grep -E '\.sh$' || true)
+		if [ -n "${_sh_files}" ]; then
+			python3 .scripts/audit/banners.py --fix ${_sh_files} > "/dev/null" 2>&1 || true
+		fi
+	fi
+
+	for _f in ${_staged_acm}; do
+		if [ -f "${_f}" ]; then
+			_diff_status=$(git diff --name-only -- "${_f}" 2> "/dev/null" || true)
+			if [ -n "${_diff_status}" ]; then
+				git add "${_f}" 2> "/dev/null" || true
+			fi
+		fi
+	done
+fi
+
+### --------------------------------
+### WHITESPACE & CONFLICT CHECK
+### --------------------------------
 if ! git diff --check --cached; then
-    echo "❌ [pre-commit] Whitespace or EOF formatting error detected!" >&2
-    echo "    Run 'git diff --check --cached' to inspect issues." >&2
-    exit 1
+	echo "❌ [pre-commit] Whitespace or merge conflict error detected!" >&2
+	exit 1
 fi
 
 ### --------------------------------
-### Git Index File Modes Check
+### CHECAGEM DE SHEBANG PORTAVEL
 ### --------------------------------
-echo "  ↳ Validating Git Index file modes (0755 vs 0644)..."
-
-git -c core.quotepath=false diff --cached --raw --no-abbrev --no-renames \
-    --diff-filter=ACMRT > "${_tmp}/raw" \
-    || _fail "Could not list staged files."
-
-: > "${_tmp}/md.list"
-: > "${_tmp}/sh.list"
-
-_bad_modes=0
-
-_mode_error() {
-    echo "❌ [pre-commit] ${1}: ${2}" >&2
-    echo "    Execute: git update-index --chmod=${3} \"${2}\"" >&2
-    _bad_modes=$((_bad_modes + 1))
-}
-
-_has_shebang() {
-    git cat-file -e "${1}" \
-        || _fail "Missing object ${1} in the repository. Run: git fsck --full"
-    [ "$(git cat-file blob "${1}" 2> "/dev/null" \
-        | dd bs=1 count=2 2> "/dev/null" \
-        | tr -d '\000')" = "#!" ]
-}
-
-while IFS="${_tab}" read -r _meta _f; do
-    [ -n "${_f}" ] || continue
-    set -- ${_meta}
-    _mode="${2:-}"
-    _sha="${4:-}"
-
-    case "${_mode}" in
-        160000 | 120000) continue ;;
-    esac
-
-    _base="${_f##*/}"
-
-    case "${_base}" in
-        *.md) printf '%s\t%s\n' "${_sha}" "${_f}" >> "${_tmp}/md.list" ;;
-        *.sh) printf '%s\t%s\n' "${_sha}" "${_f}" >> "${_tmp}/sh.list" ;;
-    esac
-
-    case "${_f}" in
-        .githooks/*) _is_hook=1 ;;
-        *) _is_hook=0 ;;
-    esac
-
-    case "${_base}" in
-        *.md | *.txt | *.json | *.yaml | *.yml | *.toml | *.el | *.lua | *.vim | *.ini | *.conf | *.css | *.html | *.svg | *.png | *.jpg | *.sample | .gitignore | .gitmodules | .gitattributes)
-            _is_doc=1 ;;
-        *) _is_doc=0 ;;
-    esac
-
-    case "${_mode}" in
-        100755)
-            if [ "${_is_hook}" -eq 1 ]; then
-                continue
-            fi
-            case "${_base}" in
-                *.cmd | *.ps1 | *.nu | *.bat) continue ;;
-            esac
-            if ! _has_shebang "${_sha}"; then
-                if [ "${_is_doc}" -eq 1 ]; then
-                    _mode_error "Arquivo de documentação com bit executável" "${_f}" "-x"
-                else
-                    _mode_error "Arquivo sem shebang com bit executável" "${_f}" "-x"
-                fi
-            fi
-            ;;
-        100644)
-            if [ "${_is_hook}" -eq 1 ]; then
-                case "${_base}" in
-                    *.sample) ;;
-                    *) _mode_error "Gancho Git sem permissão de execução" "${_f}" "+x" ;;
-                esac
-                continue
-            fi
-            case "${_base}" in
-                *.png | *.jpg) continue ;;
-            esac
-            if _has_shebang "${_sha}"; then
-                _mode_error "Script com shebang sem permissão de execução" "${_f}" "+x"
-            fi
-            ;;
-    esac
-done < "${_tmp}/raw"
-
-if [ "${_bad_modes}" -gt 0 ]; then
-    _fail "${_bad_modes} file(s) with invalid mode in the Git Index."
+if [ -n "${_staged_acm}" ]; then
+	for _f in ${_staged_acm}; do
+		[ ! -f "${_f}" ] && continue
+		read -r _first_line < "${_f}" 2> "/dev/null" || _first_line=""
+		case "${_first_line}" in
+			"#!"*)
+				case "${_first_line}" in
+					"#!/usr/bin/env"*) ;;
+					*)
+						echo "❌ [pre-commit] Shebang não-portável em ${_f}: '${_first_line}' (esperado: '#!/usr/bin/env ...')" >&2
+						exit 1
+						;;
+				esac
+				;;
+		esac
+	done
 fi
 
 ### --------------------------------
-### Shell Scripts Syntax Check (staged *.sh)
+### PROIBICAO DE ESCAPES OCTAIS
 ### --------------------------------
-if [ -s "${_tmp}/sh.list" ]; then
-    echo "  ↳ Validating shell scripts syntax (sh -n)..."
-    _bad_sh=0
-    while IFS="${_tab}" read -r _sha _f; do
-        git cat-file blob "${_sha}" > "${_tmp}/script" \
-            || _fail "Could not read staged blob for ${_f}."
-
-        _shell="sh"
-        _first="$(sed -n '1p' "${_tmp}/script")"
-        case "${_first}" in
-            *bash*)
-                if command -v bash > "/dev/null" 2>&1; then
-                    _shell="bash"
-                fi
-                ;;
-        esac
-
-        if ! _out="$("${_shell}" -n "${_tmp}/script" 2>&1)"; then
-            echo "❌ [pre-commit] Syntax error in ${_f} (${_shell} -n):" >&2
-            printf '%s\n' "${_out}" | sed 's/^/    /' >&2
-            _bad_sh=$((_bad_sh + 1))
-        fi
-    done < "${_tmp}/sh.list"
-
-    if [ "${_bad_sh}" -gt 0 ]; then
-        _fail "${_bad_sh} shell script(s) with syntax errors."
-    fi
+_bad_octal=$(git diff --cached -S'\033' --name-only 2> "/dev/null" | grep -E '(\.sh$|Makefile$|\.py$)' || true)
+if [ -n "${_bad_octal}" ]; then
+	echo "❌ [pre-commit] Escape octal (\\033) detectado em: ${_bad_octal}. Use \$'\\e' ou \\x1b." >&2
+	exit 1
 fi
 
 ### --------------------------------
-### Markdown Prettier Validation (staged *.md)
+### QUOTED REDIRECTS CHECK
 ### --------------------------------
-if [ -s "${_tmp}/md.list" ]; then
-    if ! command -v prettier > "/dev/null" 2>&1; then
-        echo "  ↳ Skipping Markdown validation (prettier not found)."
-    else
-        echo "  ↳ Validating staged Markdown files with Prettier..."
-        _bad_md=0
-        while IFS="${_tab}" read -r _sha _f; do
-            git cat-file blob "${_sha}" > "${_tmp}/md.in" \
-                || _fail "Could not read staged blob for ${_f}."
-
-            if ! prettier --stdin-filepath "${_f}" \
-                < "${_tmp}/md.in" > "${_tmp}/md.out" 2> "${_tmp}/md.err"; then
-                echo "❌ [pre-commit] Prettier failed on ${_f}:" >&2
-                sed 's/^/    /' "${_tmp}/md.err" >&2
-                _bad_md=$((_bad_md + 1))
-            elif ! cmp -s "${_tmp}/md.in" "${_tmp}/md.out"; then
-                echo "❌ [pre-commit] Unformatted Markdown file: ${_f}" >&2
-                _bad_md=$((_bad_md + 1))
-            fi
-        done < "${_tmp}/md.list"
-
-        if [ "${_bad_md}" -gt 0 ]; then
-            echo "    Run 'prettier --write <file>' and stage it again (git add)." >&2
-            exit 1
-        fi
-    fi
+_unquoted_null=$(git diff --cached -S "> /dev/null" --name-only 2> "/dev/null" | grep -E '\.sh$' || true)
+if [ -n "${_unquoted_null}" ]; then
+	echo "❌ [pre-commit] Unquoted redirect '> /dev/null' detected in: ${_unquoted_null}" >&2
+	echo "   Use '> \"/dev/null\"' with quotes as required by PRINCIPLES.md." >&2
+	exit 1
 fi
 
 ### --------------------------------
-### Emacs Batch Startup Validation
+### SHELL SYNTAX CHECK
 ### --------------------------------
-if [ "${PRECOMMIT_SKIP_EMACS:-0}" = "1" ]; then
-    echo "  ↳ Skipping Emacs batch validation (PRECOMMIT_SKIP_EMACS=1)."
-elif ! command -v emacs > "/dev/null" 2>&1; then
-    echo "  ↳ Skipping Emacs batch validation (emacs not found)."
-elif [ ! -f "init.el" ]; then
-    echo "  ↳ Skipping Emacs batch validation (init.el not found)."
-else
-    echo "  ↳ Validating Emacs batch configuration load..."
-    mkdir "${_tmp}/emacs"
+_sh_bin="$(command -v bash 2> "/dev/null" || command -v zsh 2> "/dev/null" || echo sh)"
+find . -name "*.sh" -not -path "./.git/*" -not -path "*/node_modules/*" -not -path "*/.venv/*" -not -path "*/OSS/*" -exec "${_sh_bin}" -n {} +
 
-    _timeout_cmd=""
-    _secs="${PRECOMMIT_EMACS_TIMEOUT:-60}"
-    if command -v timeout > "/dev/null" 2>&1; then
-        _timeout_cmd="timeout ${_secs}"
-    elif command -v gtimeout > "/dev/null" 2>&1; then
-        _timeout_cmd="gtimeout ${_secs}"
-    fi
-
-    set -- -Q --batch \
-        --eval '(setq user-emacs-directory (getenv "PRECOMMIT_EMACS_DIR"))'
-    if [ -f "early-init.el" ]; then
-        set -- "$@" -l "${_repo_root}/early-init.el"
-    fi
-    set -- "$@" -l "${_repo_root}/init.el" \
-        --eval '(message "Emacs pre-commit batch OK")'
-
-    _rc=0
-    (
-        unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR \
-            GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
-        GIT_TERMINAL_PROMPT=0
-        PRECOMMIT_EMACS_DIR="${_tmp}/emacs/"
-        export GIT_TERMINAL_PROMPT PRECOMMIT_EMACS_DIR
-        exec ${_timeout_cmd} emacs "$@"
-    ) < "/dev/null" > "${_tmp}/emacs.log" 2>&1 || _rc=$?
-
-    _guard_bare "após carregar o Emacs"
-
-    if [ "${_rc}" -ne 0 ]; then
-        if [ "${_rc}" -eq 124 ]; then
-            echo "❌ [pre-commit] Emacs batch timed out after ${_secs}s!" >&2
-        else
-            echo "❌ [pre-commit] Emacs batch initialization failed (exit ${_rc})!" >&2
-        fi
-        echo "    Last lines of the Emacs log:" >&2
-        tail -n 40 "${_tmp}/emacs.log" | sed 's/^/    /' >&2
-        exit 1
-    fi
+### --------------------------------
+### TEMPORARY FILES CHECK
+### --------------------------------
+_leaked_files=$(git diff --cached --name-only | grep -E '(\.DS_Store|vault_env_.*\.bat|\.bak$|~$|\.tmp$)' 2> "/dev/null" || true)
+if [ -n "${_leaked_files}" ]; then
+	echo "❌ [pre-commit] Prohibited temporary/backup file detected in commit: ${_leaked_files}" >&2
+	exit 1
 fi
 
-echo "✅ [pre-commit] All Emacs quality gates passed cleanly!"
+### --------------------------------
+### ARCHITECTURE AUDIT SUITE
+### --------------------------------
+if [ -f ".scripts/audit/all.py" ] && command -v python3 > "/dev/null" 2>&1; then
+	python3 .scripts/audit/all.py
+fi
+
+echo "✅ [pre-commit] Quality gates passed cleanly!"
 exit 0

@@ -97,7 +97,7 @@
      (makefile . t) (org . t) (mermaid . t) (latex . t))))
 
 (use-package org-modern
-  :ensure (:type git :host github :repo "emacs-straight/org-modern" :branch "master")
+  :ensure (:type git :host github :repo "emacsmirror/org-modern" :branch "master")
   :hook (org-mode . org-modern-mode)
   :init
   (setq-default org-modern-fold-stars
