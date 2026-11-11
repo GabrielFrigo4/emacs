@@ -221,12 +221,17 @@
   (add-hook 'tty-setup-hook                 #'emacs/sync-evil-terminal-cursor)
   (add-hook 'after-make-frame-functions
             (lambda (frame)
-              (unless (display-graphic-p frame)
+              (if (display-graphic-p frame)
+                  (when (bound-and-true-p blink-cursor-mode)
+                    (with-selected-frame frame
+                      (blink-cursor-check)))
                 (with-selected-frame frame
                   (emacs/sync-evil-terminal-cursor)))))
   (add-hook 'server-after-make-frame-hook
             (lambda ()
-              (unless (display-graphic-p)
+              (if (display-graphic-p)
+                  (when (bound-and-true-p blink-cursor-mode)
+                    (blink-cursor-check))
                 (emacs/sync-evil-terminal-cursor))))
   (add-hook 'delete-frame-functions
             (lambda (frame)

@@ -687,7 +687,7 @@ Otherwise return nil."
   "Start idle timer for command validation in eshell."
   (unless (timerp aweshell/validate-timer)
     (setq aweshell/validate-timer
-          (run-with-idle-timer aweshell/validate-delay t
+          (run-with-idle-timer aweshell/validate-delay nil
                                (lambda ()
                                  (when (and aweshell/validate-executable
                                             (derived-mode-p 'eshell-mode))
@@ -817,13 +817,15 @@ Otherwise return nil."
   "Run full syntax highlighting pass on the active Eshell input line."
   (when (and (derived-mode-p 'eshell-mode)
              (aweshell/on-input-line-p))
-    (unless aweshell/valid-command-color
-      (aweshell/update-custom-color))
-    (aweshell/highlight-prompt)
-    (aweshell/highlight-command)
-    (aweshell/highlight-separator)
-    (aweshell/highlight-number)
-    (aweshell/highlight-string)))
+    (let ((inhibit-modification-hooks t)
+          (inhibit-read-only t))
+      (unless aweshell/valid-command-color
+        (aweshell/update-custom-color))
+      (aweshell/highlight-prompt)
+      (aweshell/highlight-command)
+      (aweshell/highlight-separator)
+      (aweshell/highlight-number)
+      (aweshell/highlight-string))))
 
 (defvar aweshell/highlight-timer nil
   "Idle timer for highlight eshell command.")
@@ -833,25 +835,21 @@ Otherwise return nil."
   "Idle timer delay for highlight eshell command.")
 
 (defun aweshell/start-highlight-timer ()
-  "Start idle timer and change hook for command highlight in eshell."
-  (add-hook 'after-change-functions #'aweshell/highlight-input-line nil t)
-  (unless (timerp aweshell/highlight-timer)
-    (setq aweshell/highlight-timer
-          (run-with-idle-timer aweshell/highlight-delay t #'aweshell/highlight-input-line))))
+  "Start change hook for command highlight in eshell."
+  (add-hook 'after-change-functions #'aweshell/highlight-input-line nil t))
 
 (defun aweshell/stop-highlight-timer ()
-  "Stop the idle timer used for command highlight."
+  "Stop change hook for command highlight."
+  (remove-hook 'after-change-functions #'aweshell/highlight-input-line t)
   (when (timerp aweshell/highlight-timer)
     (cancel-timer aweshell/highlight-timer)
     (setq aweshell/highlight-timer nil)))
 
 (defun aweshell/maybe-toggle-highlight-timer ()
-  "Start or stop the Eshell highlight timer based on current buffer."
+  "Start or stop the Eshell highlight change hook based on current buffer."
   (if (derived-mode-p 'eshell-mode)
-      (unless aweshell/highlight-timer
-        (aweshell/start-highlight-timer))
-    (when aweshell/highlight-timer
-      (aweshell/stop-highlight-timer))))
+      (aweshell/start-highlight-timer)
+    (aweshell/stop-highlight-timer)))
 
 (add-hook 'eshell-mode-hook #'aweshell/start-highlight-timer)
 (add-hook 'eshell-exit-hook #'aweshell/stop-highlight-timer)

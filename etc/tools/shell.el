@@ -25,11 +25,16 @@
   :commands (eat eat-other-window eat-project)
   :hook ((eshell-load . eat-eshell-mode)
          (eshell-load . eat-eshell-visual-command-mode))
+  :bind (("C-c E"   . eat)
+         ("C-c M-e" . eat))
   :init
   (setq eat-kill-buffer-on-exit t
         eat-enable-yank-to-terminal t
         eat-enable-directory-tracking t
-        eat-enable-shell-prompt-annotation t)
+        eat-enable-shell-prompt-annotation t
+        eat-very-visible-cursor-type `(,(default-value 'cursor-type) nil nil)
+        eat-very-visible-vertical-bar-cursor-type '(bar nil nil)
+        eat-very-visible-horizontal-bar-cursor-type '(hbar nil nil))
   :config
   (setq eat-shell (or (executable-find "zsh")
                       (executable-find "bash")

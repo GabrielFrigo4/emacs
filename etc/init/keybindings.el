@@ -141,7 +141,9 @@
 
 (global-set-key (kbd "C-c M-t")  'term)
 (global-set-key (kbd "C-c M-v")  'vterm)
+(global-set-key (kbd "C-c M-e")  'eat)
 (global-set-key (kbd "C-c e")    'eshell)
+(global-set-key (kbd "C-c E")    'eat)
 (global-set-key (kbd "C-c C-s")  'shell-command)
 (global-set-key (kbd "C-c C-a")  'aweshell/toggle)
 
@@ -155,6 +157,7 @@
 (global-set-key (kbd "C-c o d") 'emacs/open-file-manager)
 (global-set-key (kbd "C-c o t") 'emacs/open-terminal)
 (global-set-key (kbd "C-c o a") 'aweshell/new)
+(global-set-key (kbd "C-c o e") 'eat)
 
 (global-unset-key (kbd "M-<down-mouse-1>"))
 (global-set-key (kbd "M-<mouse-1>")    'mc/add-cursor-on-click)
