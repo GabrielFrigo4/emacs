@@ -10,7 +10,7 @@
 [![Windows](<https://img.shields.io/badge/Windows_(MSYS2)-Supported-purple?logo=gitforwindows&logoColor=white>)](https://msys2.org/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue?logo=gnu&logoColor=white)](https://www.gnu.org/licenses/gpl-3.0)
 [![Roadmap](https://img.shields.io/badge/🗺️_Roadmap-TODO.md-teal)](TODO.md)
-[![Contributing](https://img.shields.io/badge/🤝_Contributing-CONTRIBUTING.md-orange)](CONTRIBUTING.md)
+[![Contributing](https://img.shields.io/badge/🤝_Contributing-CONTRIBUTING.md-orange)](../../../CONTRIBUTING.md)
 
 ---
 

@@ -237,8 +237,8 @@ O código adota estritamente três categorias formais de comentários, com banim
 
 ### 7. Portabilidade POSIX em Scripts & Banimento de Octal em Escapes ANSI
 
-- Scripts portáveis de automação utilizam interpretador POSIX `/bin/sh` com shebang universal `#!/usr/bin/env sh`.
-- Bashismos (`[[ ]]`, `&>`, arrays, diretiva `source`) são banidos em scripts `/bin/sh`.
+- Scripts portáveis de automação utilizam interpretador POSIX `sh` com shebang universal `#!/usr/bin/env sh`.
+- Bashismos (`[[ ]]`, `&>`, arrays, diretiva `source`) são banidos em scripts `sh`.
 - **Banimento de Octais em Caracteres e Escapes ANSI:** Nunca utilize notação octal (`\033`, `\001`) para caracteres de escape de terminal. Utilize `$'\e'` ou notação hexadecimal (`\x1b`). A notação octal é reservada com exclusividade para permissões POSIX (`chmod 0755`, `chmod 0644`, `umask`).
 
 ### 8. Quoting Defensivo, Redirecionamentos Seguros & Elevação Antifrágil

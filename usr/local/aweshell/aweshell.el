@@ -1451,7 +1451,7 @@ suppressing minibuffer write messages."
     (let ((vterm-shell cmd-str))
       (vterm buf-name)))
    ((fboundp 'ansi-term)
-    (let ((term-buf (ansi-term (or (getenv "SHELL") "/bin/sh")
+    (let ((term-buf (ansi-term (or (getenv "SHELL") (executable-find "sh") "sh")
                                (string-trim buf-name "\\*" "\\*"))))
       (when-let* ((proc (get-buffer-process term-buf)))
         (process-send-string proc (concat cmd-str "\n")))))
@@ -1471,7 +1471,7 @@ suppressing minibuffer write messages."
         (vterm buf-name)))
      ((fboundp 'ansi-term)
       (let* ((buf-name (format "term: %s" cmd-name))
-             (term-buf (ansi-term (or (getenv "SHELL") "/bin/sh") buf-name)))
+             (term-buf (ansi-term (or (getenv "SHELL") (executable-find "sh") "sh") buf-name)))
         (when-let* ((proc (get-buffer-process term-buf)))
           (process-send-string proc (concat full-cmd "\n")))))
      (t

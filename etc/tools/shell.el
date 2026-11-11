@@ -11,17 +11,17 @@
 
 (use-package eat
   :ensure (:type git
-           :host codeberg
-           :repo "akib/emacs-eat"
-           :branch "master"
-           :files ("*.el" "*.texi"
-                   "dir"
-                   "*.info" "*.texi"
-                   "*.ti" ("e" "e/*")
-                   ("term" "term/*.el")
-                   ("integration" "integration/*")
-                   ("terminfo" "terminfo/*/*")
-                   (:exclude ".dir-locals.el" "*-tests.el")))
+                 :host codeberg
+                 :repo "akib/emacs-eat"
+                 :branch "master"
+                 :files ("*.el" "*.texi"
+                         "dir"
+                         "*.info" "*.texi"
+                         "*.ti" ("e" "e/*")
+                         ("term" "term/*.el")
+                         ("integration" "integration/*")
+                         ("terminfo" "terminfo/*/*")
+                         (:exclude ".dir-locals.el" "*-tests.el")))
   :commands (eat eat-other-window eat-project)
   :hook ((eshell-load . eat-eshell-mode)
          (eshell-load . eat-eshell-visual-command-mode))
@@ -34,7 +34,7 @@
   (setq eat-shell (or (executable-find "zsh")
                       (executable-find "bash")
                       (executable-find "sh")
-                      "/bin/sh")
+                      "sh")
         eat-term-name "eat-truecolor")
   (when (bound-and-true-p evil-mode)
     (add-hook 'eat-mode-hook
@@ -60,7 +60,7 @@
   (aweshell/set-theme 'multi))
 
 (when-unix
- (setq-default explicit-shell-file-name (or (executable-find "zsh") "/bin/sh"))
+ (setq-default explicit-shell-file-name (or (executable-find "zsh") (executable-find "bash") (executable-find "sh") "sh"))
  (setq-default shell-file-name "zsh")
  (setq-default shell-command-switch "-c"))
 
@@ -77,7 +77,7 @@
          (cmd (if (string-empty-p arg-str) "agy" (concat "agy " arg-str))))
     (if (and (fboundp 'system-is-freebsd-p) (system-is-freebsd-p))
         (let ((dir (expand-file-name default-directory)))
-          (format "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -t gabriel@192.168.8.2 \"export PATH=\\\"\\$HOME/.local/bin:\\$HOME/.gemini/antigravity-cli/bin:\\$HOME/.cargo/bin:\\$PATH\\\"; cd %s 2> /dev/null || true; exec %s\""
+          (format "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -t gabriel@192.168.8.2 \"export PATH=\\\"\\$HOME/.local/bin:\\$HOME/.gemini/antigravity-cli/bin:\\$HOME/.cargo/bin:\\$PATH\\\"; cd %s 2> \\\"/dev/null\\\" || true; exec %s\""
                   (shell-quote-argument dir)
                   cmd))
       cmd)))
@@ -91,7 +91,7 @@
     (let ((vterm-shell cmd-str))
       (vterm buf-name)))
    (t
-    (let ((term-buf (ansi-term (or (getenv "SHELL") "/bin/sh")
+    (let ((term-buf (ansi-term (or (getenv "SHELL") (executable-find "sh") "sh")
                                (string-trim buf-name "\\*" "\\*"))))
       (when-let* ((proc (get-buffer-process term-buf)))
         (process-send-string proc (concat cmd-str "\n")))))))

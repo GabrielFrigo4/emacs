@@ -16,9 +16,9 @@
 
 (use-package imenu-list
   :ensure (:type git :host github
-           :repo "emacsmirror/imenu-list"
-           :branch "master"
-           :main "imenu-list.el")
+                 :repo "emacsmirror/imenu-list"
+                 :branch "master"
+                 :main "imenu-list.el")
   :bind ("C-c m" . imenu-list-smart-toggle)
   :config
   (setq imenu-list-position 'right)

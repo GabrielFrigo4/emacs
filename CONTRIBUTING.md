@@ -56,7 +56,7 @@ Toda contribuição deve respeitar rigorosamente as diretrizes em [PRINCIPLES.md
     - Nenhum build, script de produção ou execução de aplicação pode depender de arquivos em `.agents/` ou `skills/`.
 
 4. **Portabilidade POSIX e Makefiles Silenciosos:**
-    - Scripts de automação devem adotar POSIX `/bin/sh` estrito, cabeçalho `#!/usr/bin/env sh` e redirecionamento seguro `> "/dev/null" 2>&1`.
+    - Scripts de automação devem adotar POSIX `sh` estrito, cabeçalho `#!/usr/bin/env sh` e redirecionamento seguro `> "/dev/null" 2>&1`.
     - Makefiles devem conter `.POSIX: .SILENT:` e flags de supressão de ruído.
 
 ---

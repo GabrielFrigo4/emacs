@@ -41,7 +41,7 @@ Subagentes de execução que identificarem qualquer dúvida de escopo, divergên
     - _Comentários Estruturais de 64/32 colunas:_ PERMITIDOS (cabeçalhos de 64 `-` `# ----------------------------------------------------------------`, seções de 32 colunas `### ================================` e `### --------------------------------` com títulos em MAIÚSCULO, réguas de 64 `=` em `.gitignore` `# ================================================================` com títulos em MAIÚSCULO, sem vazamento lateral).
     - _Comentários Explicativos/Narrativos:_ PROIBIDOS em código, arquivos de configuração e blocos de código dentro de Markdowns.
 6. **Portabilidade POSIX, Makefiles Silenciosos & Boy Scout Rule:**
-    - Sintaxe estrita POSIX `/bin/sh` (`#!/usr/bin/env sh`, sem bashismos).
+    - Sintaxe estrita POSIX `sh` (`#!/usr/bin/env sh`, sem bashismos).
     - Makefiles silenciosos com `.POSIX: .SILENT:`, `MAKEFLAGS += --no-print-directory -s`, subshells `(cd dir && $(MAKE))` e zero `@` redundante.
     - Sequências ANSI via `$'\e'` ou notação hexadecimal `\x1b` (nunca octal `\033`).
     - Redirecionamento seguro envolvendo destinos em aspas duplas (ex: `> "/dev/null" 2>&1`).

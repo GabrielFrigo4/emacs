@@ -655,13 +655,13 @@ Adapts dynamically to window width and content centering margins to prevent line
                                  "p-personal" "vector-user-links-main" "vector-user-links-dropdown"
                                  "vector-toc-pinned-container" "vector-page-titlebar-toc" "vector-sticky-header-toc"
                                  "mw-navigation" "mw-aria-live-region" "siteNotice"))
-            (wiki-clutter-classes '("vector-header-container" "vector-header"
-                                    "vector-page-toolbar" "vector-page-toolbar-container"
-                                    "vector-dropdown-content" "vector-pinnable-header"
-                                    "after-portlet-lang" "vector-sticky-header"
-                                    "vector-user-links-main" "vector-main-menu-landmark"
-                                    "vector-page-tools-landmark" "vector-appearance-landmark"
-                                    "vector-toc-landmark" "noprint")))
+             (wiki-clutter-classes '("vector-header-container" "vector-header"
+                                     "vector-page-toolbar" "vector-page-toolbar-container"
+                                     "vector-dropdown-content" "vector-pinnable-header"
+                                     "after-portlet-lang" "vector-sticky-header"
+                                     "vector-user-links-main" "vector-main-menu-landmark"
+                                     "vector-page-tools-landmark" "vector-appearance-landmark"
+                                     "vector-toc-landmark" "noprint")))
         ;; Preserve logo before header clutter is expunged
         (when logo
           (condition-case nil (dom-remove-node dom logo) (error nil)))

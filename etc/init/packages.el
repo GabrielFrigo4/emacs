@@ -48,6 +48,18 @@
               (ignore-errors (delete-directory build-dir t))
               (ignore-errors (delete-directory src-dir t))))))))))
 
+(when (file-directory-p elpaca-builds-directory)
+  (dolist (build-dir (directory-files elpaca-builds-directory t "^[^.]"))
+    (when (and (file-directory-p build-dir)
+               (not (string= (file-name-nondirectory build-dir) "elpaca")))
+      (let* ((build-el (directory-files build-dir t "\\.el$"))
+             (broken-link (seq-some (lambda (f)
+                                      (and (file-symlink-p f)
+                                           (not (file-exists-p (file-truename f)))))
+                                    build-el)))
+        (when (or (null build-el) broken-link)
+          (ignore-errors (delete-directory build-dir t)))))))
+
 (defvar elpaca-order
   '(elpaca :repo "https://github.com/progfolio/elpaca.git"
            :ref nil
@@ -84,6 +96,45 @@
     (require 'elpaca)
     (elpaca-generate-autoloads "elpaca" repo)
     (let ((load-source-file-function nil)) (load "./elpaca-autoloads"))))
+
+(require 'elpaca)
+
+(with-no-warnings
+  (defun emacs/elpaca-verify-build-advice (e)
+    "Verify that `elpaca<-build-dir' in E matches `elpaca<-source-dir'."
+    (when (and e (elpaca<-builtp e))
+      (let* ((src-dir (elpaca<-source-dir e))
+             (build-dir (elpaca<-build-dir e))
+             (valid-src (and src-dir (file-directory-p src-dir)))
+             (src-true (and valid-src (file-name-as-directory (file-truename src-dir))))
+             (build-el (and build-dir (file-directory-p build-dir)
+                            (directory-files build-dir t "\\.el$")))
+             (valid-links (and src-true build-el
+                               (seq-every-p
+                                (lambda (f)
+                                  (if (file-symlink-p f)
+                                      (let ((target (file-truename f)))
+                                        (and (file-exists-p target)
+                                             (string-prefix-p src-true target)))
+                                    (file-exists-p f)))
+                                build-el))))
+        (unless (and valid-src valid-links)
+          (when (and build-dir (file-directory-p build-dir))
+            (ignore-errors (delete-directory build-dir t)))
+          (setf (elpaca<-builtp e) nil
+                (elpaca<-build-steps e) (elpaca-build-steps e)))))
+    e)
+
+  (defun emacs/elpaca-safe-call-advice (orig-fun &rest args)
+    "Execute ORIG-FUN with ARGS catching unhandled errors safely."
+    (condition-case err
+        (apply orig-fun args)
+      (error (message "[Elpaca] Ignored error in %S: %S" orig-fun err) nil)))
+
+  (advice-add 'elpaca<-create :filter-return #'emacs/elpaca-verify-build-advice)
+  (advice-add 'elpaca--fail :around #'emacs/elpaca-safe-call-advice)
+  (advice-add 'elpaca-continue :around #'emacs/elpaca-safe-call-advice)
+  (advice-add 'elpaca-process-queues :around #'emacs/elpaca-safe-call-advice))
 
 (add-hook 'after-init-hook #'elpaca-process-queues)
 (elpaca `(,@elpaca-order))
