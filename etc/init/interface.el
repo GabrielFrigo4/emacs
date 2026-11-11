@@ -34,6 +34,28 @@
 (add-hook 'tty-setup-hook #'interface/ensure-dark-background)
 (add-hook 'after-make-frame-functions #'interface/ensure-dark-background)
 
+(defun interface/menu-face-colors ()
+  "Return (BACKGROUND . FOREGROUND) cons for menu and tool-bar based on desktop flavor."
+  (let ((flv (if (fboundp 'emacs/detect-desktop-environment)
+                 (emacs/detect-desktop-environment)
+               "adwaita"))
+        (theme (or (getenv "GTK_THEME") "")))
+    (cond
+     ((or (string-match-p "breeze" (downcase theme)) (member flv '("kde" "lxqt")))
+      '("#232629" . "#eff0f1"))
+     ((or (string-match-p "greybird" (downcase theme)) (equal flv "xfce"))
+      '("#393f3f" . "#e0e0e0"))
+     ((or (string-match-p "mint" (downcase theme)) (equal flv "cinnamon"))
+      '("#2f2f2f" . "#f0f0f0"))
+     ((or (string-match-p "mate\\|blackmate" (downcase theme)) (equal flv "mate"))
+      '("#2d2d2d" . "#dfdfdf"))
+     ((or (string-match-p "cosmic" (downcase theme)) (equal flv "cosmic"))
+      '("#22242b" . "#fbfbfe"))
+     ((or (string-match-p "deepin" (downcase theme)) (equal flv "deepin"))
+      '("#252525" . "#e8e8e8"))
+     (t
+      '("#242424" . "#ffffff")))))
+
 (use-package doom-themes
   :ensure (:type git :host github :repo "doomemacs/themes" :branch "master")
   :init
@@ -53,10 +75,11 @@
   (setq doom-themes-enable-bold t
         doom-themes-enable-italic t)
   (load-theme 'doom-dark+ t)
-  (when (facep 'tool-bar)
-    (set-face-attribute 'tool-bar nil :background "#232629" :foreground "#eff0f1" :box nil))
-  (when (facep 'menu)
-    (set-face-attribute 'menu nil :background "#232629" :foreground "#eff0f1"))
+  (let ((colors (interface/menu-face-colors)))
+    (when (facep 'tool-bar)
+      (set-face-attribute 'tool-bar nil :background (car colors) :foreground (cdr colors) :box nil))
+    (when (facep 'menu)
+      (set-face-attribute 'menu nil :background (car colors) :foreground (cdr colors))))
   (add-hook 'org-mode-hook #'doom-themes-org-config))
 
 (use-package doom-modeline

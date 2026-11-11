@@ -52,8 +52,118 @@
         frame-background-mode 'dark))
 
 (setenv "GTK_APPLICATION_PREFER_DARK_THEME" "1")
+(setenv "ADW_DEBUG_COLOR_SCHEME" "prefer-dark")
+
+;; --------------------------------
+;; DESKTOP & GTK ENVIRONMENT
+;; --------------------------------
+
+(require 'seq)
+(require 'subr-x)
+
+(defun emacs/detect-desktop-environment ()
+  "Detect current desktop environment flavor following the Shell ecosystem."
+  (let ((de (downcase (or (getenv "XDG_CURRENT_DESKTOP")
+                          (getenv "XDG_SESSION_DESKTOP")
+                          (getenv "DESKTOP_SESSION")
+                          ""))))
+    (cond
+     ((string-match-p "kde\\|plasma" de) "kde")
+     ((string-match-p "gnome" de) "gnome")
+     ((string-match-p "mate" de) "mate")
+     ((string-match-p "cinnamon" de) "cinnamon")
+     ((string-match-p "xfce" de) "xfce")
+     ((string-match-p "lxqt" de) "lxqt")
+     ((string-match-p "lxde" de) "lxde")
+     ((string-match-p "budgie" de) "budgie")
+     ((string-match-p "pantheon" de) "pantheon")
+     ((string-match-p "deepin\\|dde" de) "deepin")
+     ((string-match-p "cosmic" de) "cosmic")
+     ((or (executable-find "plasmashell")
+          (file-directory-p "/usr/share/plasma")
+          (file-directory-p "/usr/local/share/plasma")) "kde")
+     ((or (executable-find "gnome-shell")
+          (file-directory-p "/usr/share/gnome-shell")
+          (file-directory-p "/usr/local/share/gnome-shell")) "gnome")
+     ((or (executable-find "cinnamon")
+          (file-directory-p "/usr/share/cinnamon")
+          (file-directory-p "/usr/local/share/cinnamon")) "cinnamon")
+     ((or (executable-find "mate-session")
+          (file-directory-p "/usr/share/mate")
+          (file-directory-p "/usr/local/share/mate")) "mate")
+     ((or (executable-find "xfce4-session")
+          (file-directory-p "/usr/share/xfce4")
+          (file-directory-p "/usr/local/share/xfce4")) "xfce")
+     ((or (executable-find "lxqt-session")
+          (file-directory-p "/usr/share/lxqt")
+          (file-directory-p "/usr/local/share/lxqt")) "lxqt")
+     ((or (executable-find "lxsession")
+          (file-directory-p "/usr/share/lxde")
+          (file-directory-p "/usr/local/share/lxde")) "lxde")
+     ((or (executable-find "cosmic-session")
+          (file-directory-p "/usr/share/cosmic")
+          (file-directory-p "/usr/local/share/cosmic")) "cosmic")
+     (t "adwaita"))))
+
+(defun emacs/gtk-theme-exists-p (theme)
+  "Return non-nil if THEME exists in standard system or user theme directories."
+  (let* ((base-theme (if (string-suffix-p ":dark" theme)
+                         (substring theme 0 -5)
+                       theme))
+         (theme-dirs (list "/usr/share/themes"
+                           "/usr/local/share/themes"
+                           (expand-file-name ".themes" (or (getenv "HOME") "~"))
+                           (expand-file-name "themes" (or (getenv "XDG_DATA_HOME")
+                                                          (expand-file-name ".local/share" (or (getenv "HOME") "~")))))))
+    (seq-some (lambda (dir)
+                (file-directory-p (expand-file-name base-theme dir)))
+              theme-dirs)))
+
+(defun emacs/gtk-settings-theme ()
+  "Read `gtk-theme-name' from ~/.config/gtk-3.0/settings.ini if present."
+  (let ((ini (expand-file-name ".config/gtk-3.0/settings.ini" (or (getenv "HOME") "~"))))
+    (when (file-readable-p ini)
+      (with-temp-buffer
+        (insert-file-contents ini)
+        (goto-char (point-min))
+        (when (re-search-forward "^[ \t]*gtk-theme-name[ \t]*=[ \t]*\\([^\r\n\"]+\\)" nil t)
+          (let ((val (string-trim (match-string 1))))
+            (unless (string-empty-p val)
+              val)))))))
+
+(defun emacs/resolve-gtk-theme (&optional flavor)
+  "Resolve best dark GTK theme for FLAVOR matching Shell ecosystem logic."
+  (let* ((ini-theme (emacs/gtk-settings-theme))
+         (flv (or flavor (emacs/detect-desktop-environment)))
+         (candidates
+          (pcase flv
+            ("kde"      '("Breeze-Dark" "Breeze:dark" "Breeze" "adw-gtk3-dark" "Adwaita-dark" "Adwaita:dark"))
+            ("gnome"    '("adw-gtk3-dark" "Yaru-dark" "Adwaita-dark" "Adwaita:dark" "Breeze-Dark"))
+            ("xfce"     '("Greybird-dark" "Greybird" "adw-gtk3-dark" "Adwaita-dark" "Adwaita:dark"))
+            ("cinnamon" '("Mint-Y-Dark" "adw-gtk3-dark" "Adwaita-dark" "Adwaita:dark"))
+            ("mate"     '("Yaru-MATE-dark" "BlackMATE" "adw-gtk3-dark" "Adwaita-dark" "Adwaita:dark"))
+            ("lxqt"     '("Breeze-Dark" "Breeze:dark" "adw-gtk3-dark" "Adwaita-dark" "Adwaita:dark" "Arc-Dark"))
+            ("lxde"     '("Clearlooks-Phenix" "Arc-Dark" "adw-gtk3-dark" "Adwaita-dark" "Adwaita:dark" "Numix"))
+            ("budgie"   '("Materia-dark" "Arc-Dark" "Yaru-dark" "adw-gtk3-dark" "Adwaita-dark" "Adwaita:dark"))
+            ("pantheon" '("io.elementary.stylesheet.blueberry-dark" "io.elementary.stylesheet.blueberry" "adw-gtk3-dark" "Adwaita-dark" "Adwaita:dark"))
+            ("deepin"   '("deepin-dark" "deepin" "adw-gtk3-dark" "Adwaita-dark" "Adwaita:dark"))
+            ("cosmic"   '("cosmic-dark" "cosmic" "adw-gtk3-dark" "Adwaita-dark" "Adwaita:dark"))
+            (_          '("adw-gtk3-dark" "Yaru-dark" "Adwaita-dark" "Adwaita:dark" "Breeze-Dark" "Greybird-dark"))))
+         (resolved nil))
+    (if (and ini-theme (emacs/gtk-theme-exists-p ini-theme))
+        ini-theme
+      (let ((cands candidates))
+        (while (and cands (null resolved))
+          (let ((cand (car cands)))
+            (when (emacs/gtk-theme-exists-p cand)
+              (setq resolved cand))
+            (setq cands (cdr cands)))))
+      (or resolved
+          (car candidates)
+          "adw-gtk3-dark"))))
+
 (unless (getenv "GTK_THEME")
-  (setenv "GTK_THEME" "Breeze-Dark"))
+  (setenv "GTK_THEME" (emacs/resolve-gtk-theme)))
 
 (defun emacs/external-file-p (&optional file)
   "Return non-nil if FILE belongs to external packages (var/, opt/) or system."
