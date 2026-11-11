@@ -8,7 +8,7 @@
 [![Elisp](https://img.shields.io/badge/Lisp-Emacs_Lisp-blueviolet?logo=commonlisp&logoColor=white)](emacs-lisp-ts-mode.el)
 [![License](https://img.shields.io/badge/License-MIT-green?logo=open-source-initiative&logoColor=white)](LICENSE)
 [![Roadmap](https://img.shields.io/badge/🗺️_Roadmap-TODO.md-teal)](TODO.md)
-[![Contributing](https://img.shields.io/badge/🤝_Contributing-CONTRIBUTING.md-orange)](CONTRIBUTING.md)
+[![Contributing](https://img.shields.io/badge/🤝_Contributing-CONTRIBUTING.md-orange)](../../../CONTRIBUTING.md)
 
 ---
 
@@ -69,10 +69,9 @@ M-x treesit-install-language-grammar RET elisp RET
 
 ### Modo Local / Git Submodule (Recomendado no Ecossistema)
 
-Se você utiliza o **Universal Environment** ou o **GNU Emacs Hub**:
+Se você utiliza o **Universal Environment** ou o **GNU Emacs Hub**, dentro do diretório `~/.emacs.d/usr/local/`:
 
 ```sh
-# Dentro do diretório ~/.emacs.d/usr/local/
 git submodule add https://github.com/GabrielFrigo4/emacs-lisp-ts-mode.git usr/local/emacs-lisp-ts-mode
 ```
 
@@ -139,7 +138,7 @@ Se você utiliza `major-mode-remap-alist`:
 
 ## 🚀 Setup do Projeto & Ganchos Git
 
-> 🤝 **Guia de Contribuição:** [CONTRIBUTING.md](CONTRIBUTING.md)
+> 🤝 **Guia de Contribuição:** [CONTRIBUTING.md](../../../CONTRIBUTING.md)
 
 Após clonar o repositório, execute o comando abaixo para ativar os quality gates locais (pre-commit, commit-msg):
 

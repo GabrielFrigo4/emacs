@@ -59,10 +59,10 @@ flowchart TD
 
 ## 🏛️ O Embaixador do Universal Shell no Emacs
 
-O **Aweshell** atua como a camada de projeção e interoperabilidade do [Universal Shell](../../../../Shell) dentro do ecossistema GNU Emacs. O objetivo do módulo é garantir paridade de fluxo de trabalho entre o terminal de sistema e os buffers do Emacs:
+O **Aweshell** atua como a camada de projeção e interoperabilidade do [Universal Shell](../../../../../Shell) dentro do ecossistema GNU Emacs. O objetivo do módulo é garantir paridade de fluxo de trabalho entre o terminal de sistema e os buffers do Emacs:
 
 - **Paridade Cromática e Tipográfica:** Os temas de prompt (`multi`, `pill`, `micro`) compartilham a mesma geometria de delimitadores e cálculo de largura do Shell UNIX.
-- **Ecossistema de Aliases:** Todos os atalhos ergonômicos do [Dicionário de Aliases do Shell](../../../../Shell/docs/ALIASES.md) operam nativamente no Aweshell.
+- **Ecossistema de Aliases:** Todos os atalhos ergonômicos do [Dicionário de Aliases do Shell](../../../../../Shell/docs/ALIASES.md) operam nativamente no Aweshell.
 - **Ergonomia Híbrida Lisp:** Comandos de arquivo integram-se diretamente ao ambiente do Emacs (`e` abre em buffer, `ee` em outra janela, `d` abre Dired e `gs`/`magit` gerenciam Git).
 
 ### Dicionário de Paridade de Aliases
@@ -188,10 +188,9 @@ Para definir seu tema favorito:
 
 ### Modo Local / Git Submodule (Recomendado no Ecossistema)
 
-Se você utiliza o **Universal Environment** ou o **GNU Emacs Hub**:
+Se você utiliza o **Universal Environment** ou o **GNU Emacs Hub**, dentro do diretório `~/.emacs.d/usr/local/`:
 
 ```sh
-# Dentro do diretório ~/.emacs.d/usr/local/
 git submodule add https://github.com/GabrielFrigo4/aweshell.git usr/local/aweshell
 ```
 
@@ -246,19 +245,23 @@ No seu `init.el`:
 
 O repositório possui uma interface de compilação e teste estrita compatível com GNU e BSD Make:
 
+Validar sintaxe e integridade em modo batch do Emacs:
+
 ```sh
-# Validar sintaxe e integridade em modo batch do Emacs
 make test
-# ou via script unificado:
 ./aweshell.sh test
+```
 
-# Compilar bytecode (.elc)
+Compilar bytecode (.elc) e limpar artefatos gerados:
+
+```sh
 make compile
-
-# Limpar artefatos gerados
 make clean
+```
 
-# Diagnóstico de ambiente e utilitários
+Diagnóstico de ambiente e utilitários:
+
+```sh
 ./aweshell.sh doctor
 ```
 
@@ -266,7 +269,7 @@ make clean
 
 ## 🚀 Setup do Projeto & Ganchos Git
 
-> 🤝 **Guia de Contribuição:** [CONTRIBUTING.md](CONTRIBUTING.md)
+> 🤝 **Guia de Contribuição:** [CONTRIBUTING.md](../../../CONTRIBUTING.md)
 
 Após clonar o repositório, execute o comando abaixo para ativar os quality gates locais (pre-commit, commit-msg):
 
