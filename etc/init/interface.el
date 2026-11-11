@@ -54,9 +54,9 @@
         doom-themes-enable-italic t)
   (load-theme 'doom-dark+ t)
   (when (facep 'tool-bar)
-    (set-face-attribute 'tool-bar nil :background "#1e1e1e" :foreground "#d4d4d4" :box nil))
+    (set-face-attribute 'tool-bar nil :background "#232629" :foreground "#eff0f1" :box nil))
   (when (facep 'menu)
-    (set-face-attribute 'menu nil :background "#1e1e1e" :foreground "#d4d4d4"))
+    (set-face-attribute 'menu nil :background "#232629" :foreground "#eff0f1"))
   (add-hook 'org-mode-hook #'doom-themes-org-config))
 
 (use-package doom-modeline
@@ -324,6 +324,8 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
 
 (add-hook 'tty-setup-hook #'interface/apply-tool-bar)
 (add-hook 'window-setup-hook #'interface/apply-tool-bar)
+(add-hook 'server-after-make-frame-hook #'interface/apply-tool-bar)
+(add-hook 'server-after-make-frame-hook #'interface/apply-menu-bar)
 
 (add-hook 'after-make-frame-functions
           (lambda (frame)

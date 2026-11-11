@@ -49,6 +49,11 @@ Subagentes de execução que identificarem qualquer dúvida de escopo, divergên
     - Simetria de escopo e não-assimetria de subgrupo na documentação.
     - Emissão semântica de UI via rotinas canônicas `_ui_*`.
     - **Boy Scout Rule:** Ao identificar qualquer inconformidade com os padrões estabelecidos, notifique concisamente o usuário e aplique a correção de forma proativa.
+7. **Governança Multi-Agente Argos & Invariante de Modelo Explícito:**
+    - _Gatilho Semântico do Argos:_ Ao identificar menção a "Argos", "GM Argos", "gerenciador de agentes", "orquestrador" ou requisições de delegação em subagentes, carregue e siga obrigatoriamente a skill global `argos-multi-agent-orchestrator` (ou a respectiva skill da família Argos) ANTES de invocar qualquer tool de delegação.
+    - _Bloqueio de `native_swarm` e Polling via Cron:_ É vedado invocar a tool `swarm` por iniciativa própria (restrita a pedidos com a palavra literal `"swarm"`). É proibido utilizar `schedule` (cron) para monitoramento periódico de agentes.
+    - _Invariante de Modelo Explícito:_ Em qualquer chamada de criação ou invocação de subagentes (`invoke_subagent`, `swarm`), é mandatório preencher explicitamente o parâmetro de modelo (`Model: 'flash'` ou `Model: 'flash_lite'`), sendo vedado omiti-lo para evitar herança cega (`inherit`).
+    - _Escalação Invertida Cirúrgica:_ A alocação de Worker em modelo pesado (`Model: 'pro'`) é restrita a casos de borda comprovados (provas matemáticas, raciocínio simbólico denso), com teto rígido de 1 Worker avançado simultâneo por lote e encerramento imediato pós-entrega.
 
 ---
 

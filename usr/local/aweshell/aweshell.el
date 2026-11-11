@@ -1444,7 +1444,17 @@ suppressing minibuffer write messages."
   "Execute CMD-STR in terminal buffer BUF-NAME via eat, vterm, or ansi-term."
   (cond
    ((and (fboundp 'eat) (fboundp 'eat-exec))
-    (eat cmd-str buf-name))
+    (let ((buf (get-buffer-create buf-name)))
+      (with-current-buffer buf
+        (unless (eq major-mode #'eat-mode)
+          (eat-mode))
+        (pop-to-buffer-same-window buf)
+        (eat-exec buf buf-name "/usr/bin/env" nil (list "sh" "-c" cmd-str))
+        (when (fboundp 'eat-semi-char-mode)
+          (eat-semi-char-mode))
+        (when (bound-and-true-p evil-mode)
+          (evil-insert-state)))
+      buf))
    ((and (require 'vterm nil t) (fboundp 'vterm))
     (let ((vterm-shell cmd-str))
       (vterm buf-name)))
@@ -1452,7 +1462,8 @@ suppressing minibuffer write messages."
     (let ((term-buf (ansi-term (or (getenv "SHELL") (executable-find "sh") "sh")
                                (string-trim buf-name "\\*" "\\*"))))
       (when-let* ((proc (get-buffer-process term-buf)))
-        (process-send-string proc (concat cmd-str "\n")))))
+        (process-send-string proc (concat cmd-str "\n")))
+      term-buf))
    (t
     (message "Nenhum emulador de terminal disponível."))))
 
@@ -1494,7 +1505,7 @@ suppressing minibuffer write messages."
   "Execute Google Antigravity CLI in a visual terminal emulator."
   (let ((cmd (if args (mapconcat #'shell-quote-argument args " ") "")))
     (if (and (fboundp 'system-is-freebsd-p) (system-is-freebsd-p))
-        (let ((ssh-cmd (format "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -t gabriel@192.168.8.2 \"export PATH=\\\"\\$HOME/.local/bin:\\$HOME/.gemini/antigravity-cli/bin:\\$HOME/.cargo/bin:\\$PATH\\\"; cd %s 2> /dev/null || true; exec agy %s\""
+        (let ((ssh-cmd (format "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -t gabriel@192.168.8.2 \"export TERM=xterm-256color COLORTERM=truecolor; export PATH=\\\"\\$HOME/.local/bin:\\$HOME/.gemini/antigravity-cli/bin:\\$HOME/.cargo/bin:\\$PATH\\\"; cd %s 2> /dev/null || true; exec agy %s\""
                                (shell-quote-argument (expand-file-name default-directory))
                                cmd)))
           (aweshell/exec-in-term ssh-cmd "*agy*"))

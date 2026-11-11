@@ -51,6 +51,10 @@
         frame-inhibit-implied-resize t
         frame-background-mode 'dark))
 
+(setenv "GTK_APPLICATION_PREFER_DARK_THEME" "1")
+(unless (getenv "GTK_THEME")
+  (setenv "GTK_THEME" "Breeze-Dark"))
+
 (defun emacs/external-file-p (&optional file)
   "Return non-nil if FILE belongs to external packages (var/, opt/) or system."
   (let* ((target (or file

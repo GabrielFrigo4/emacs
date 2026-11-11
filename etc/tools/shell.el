@@ -40,7 +40,7 @@
                       (executable-find "bash")
                       (executable-find "sh")
                       "sh")
-        eat-term-name "eat-truecolor")
+        eat-term-name "xterm-256color")
   (when (bound-and-true-p evil-mode)
     (add-hook 'eat-mode-hook
               (lambda ()
@@ -82,7 +82,7 @@
          (cmd (if (string-empty-p arg-str) "agy" (concat "agy " arg-str))))
     (if (and (fboundp 'system-is-freebsd-p) (system-is-freebsd-p))
         (let ((dir (expand-file-name default-directory)))
-          (format "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -t gabriel@192.168.8.2 \"export PATH=\\\"\\$HOME/.local/bin:\\$HOME/.gemini/antigravity-cli/bin:\\$HOME/.cargo/bin:\\$PATH\\\"; cd %s 2> \\\"/dev/null\\\" || true; exec %s\""
+          (format "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -t gabriel@192.168.8.2 \"export TERM=xterm-256color COLORTERM=truecolor; export PATH=\\\"\\$HOME/.local/bin:\\$HOME/.gemini/antigravity-cli/bin:\\$HOME/.cargo/bin:\\$PATH\\\"; cd %s 2> \\\"/dev/null\\\" || true; exec %s\""
                   (shell-quote-argument dir)
                   cmd))
       cmd)))
@@ -91,7 +91,17 @@
   "Execute CMD-STR in a dedicated terminal buffer named BUF-NAME via eat, vterm, or ansi-term."
   (cond
    ((and (fboundp 'eat) (fboundp 'eat-exec))
-    (eat cmd-str buf-name))
+    (let ((buf (get-buffer-create buf-name)))
+      (with-current-buffer buf
+        (unless (eq major-mode #'eat-mode)
+          (eat-mode))
+        (pop-to-buffer-same-window buf)
+        (eat-exec buf buf-name "/usr/bin/env" nil (list "sh" "-c" cmd-str))
+        (when (fboundp 'eat-semi-char-mode)
+          (eat-semi-char-mode))
+        (when (bound-and-true-p evil-mode)
+          (evil-insert-state)))
+      buf))
    ((and (require 'vterm nil t) (fboundp 'vterm))
     (let ((vterm-shell cmd-str))
       (vterm buf-name)))
@@ -99,7 +109,8 @@
     (let ((term-buf (ansi-term (or (getenv "SHELL") (executable-find "sh") "sh")
                                (string-trim buf-name "\\*" "\\*"))))
       (when-let* ((proc (get-buffer-process term-buf)))
-        (process-send-string proc (concat cmd-str "\n")))))))
+        (process-send-string proc (concat cmd-str "\n")))
+      term-buf))))
 
 ;;;###autoload
 (defun agy ()
