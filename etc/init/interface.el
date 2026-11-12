@@ -81,7 +81,9 @@
     (when (facep 'tool-bar)
       (set-face-attribute 'tool-bar nil :background (car colors) :foreground (cdr colors) :box nil))
     (when (facep 'menu)
-      (set-face-attribute 'menu nil :background (car colors) :foreground (cdr colors))))
+      (set-face-attribute 'menu nil :background (car colors) :foreground (cdr colors)))
+    (when (facep 'scroll-bar)
+      (set-face-attribute 'scroll-bar nil :background "#1f1f28" :foreground "#363646")))
   (add-hook 'org-mode-hook #'doom-themes-org-config))
 
 (defun interface/apply-theme (&optional frame)
@@ -96,7 +98,9 @@
           (when (facep 'tool-bar)
             (set-face-attribute 'tool-bar target :background (car colors) :foreground (cdr colors) :box nil))
           (when (facep 'menu)
-            (set-face-attribute 'menu target :background (car colors) :foreground (cdr colors))))))))
+            (set-face-attribute 'menu target :background (car colors) :foreground (cdr colors)))
+          (when (facep 'scroll-bar)
+            (set-face-attribute 'scroll-bar target :background "#1f1f28" :foreground "#363646"))))))))
 
 (use-package doom-modeline
   :ensure (:type git :host github :repo "emacsmirror/doom-modeline" :branch "master")
@@ -316,9 +320,15 @@ renders the graphical logo on GUI frames created by emacsclient."
 ;; --------------------------------
 
 (when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
-(when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
 (when (fboundp 'horizontal-scroll-bar-mode) (horizontal-scroll-bar-mode -1))
-(when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
+(if (display-graphic-p)
+    (progn
+      (when (fboundp 'menu-bar-mode) (menu-bar-mode 1))
+      (when (fboundp 'scroll-bar-mode) (scroll-bar-mode 1)))
+  (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
+  (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1)))
+(when (facep 'scroll-bar)
+  (set-face-attribute 'scroll-bar nil :background "#1f1f28" :foreground "#363646"))
 (when (fboundp 'window-divider-mode)
   (setq window-divider-default-places t)
   (setq window-divider-default-bottom-width 4)
@@ -345,7 +355,7 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
          (term (or (and (fboundp 'tty-type) (tty-type target))
                    (getenv "TERM") "")))
     (cond
-     (is-graphic 0)
+     (is-graphic 1)
      ((or (and is-linux raw-tty) (string-equal term "linux")) 0)
      (interface/enable-tty-menu-bar 1)
      (t 0))))
@@ -366,16 +376,28 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
       (set-frame-parameter target 'menu-bar-lines lines)
       (if (> lines 0)
           (when (fboundp 'menu-bar-mode) (menu-bar-mode 1))
-        (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))))))
+        (unless (display-graphic-p)
+          (when (fboundp 'menu-bar-mode) (menu-bar-mode -1)))))))
 
 (defun interface/apply-scroll-bar (&optional frame)
-  "Ensure scroll-bars are disabled on FRAME."
+  "Apply scroll-bar state and colors to FRAME."
   (let ((target (or frame (selected-frame))))
     (when (frame-live-p target)
-      (set-frame-parameter target 'vertical-scroll-bars nil)
-      (set-frame-parameter target 'horizontal-scroll-bars nil)))
-  (when (fboundp 'scroll-bar-mode)
-    (scroll-bar-mode -1))
+      (if (display-graphic-p target)
+          (progn
+            (set-frame-parameter target 'vertical-scroll-bars 'right)
+            (set-frame-parameter target 'horizontal-scroll-bars nil)
+            (set-frame-parameter target 'scroll-bar-background "#1f1f28")
+            (set-frame-parameter target 'scroll-bar-foreground "#363646")
+            (when (facep 'scroll-bar)
+              (set-face-attribute 'scroll-bar target :background "#1f1f28" :foreground "#363646"))
+            (when (fboundp 'scroll-bar-mode)
+              (scroll-bar-mode 1)))
+        (set-frame-parameter target 'vertical-scroll-bars nil)
+        (set-frame-parameter target 'horizontal-scroll-bars nil)
+        (unless (display-graphic-p)
+          (when (fboundp 'scroll-bar-mode)
+            (scroll-bar-mode -1))))))
   (when (fboundp 'horizontal-scroll-bar-mode)
     (horizontal-scroll-bar-mode -1)))
 
@@ -406,6 +428,14 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
         (interface/apply-scroll-bar target)
         (if (display-graphic-p target)
             (progn
+              (when (fboundp 'menu-bar-mode) (menu-bar-mode 1))
+              (when (fboundp 'scroll-bar-mode) (scroll-bar-mode 1))
+              (set-frame-parameter target 'menu-bar-lines 1)
+              (set-frame-parameter target 'vertical-scroll-bars 'right)
+              (set-frame-parameter target 'scroll-bar-background "#1f1f28")
+              (set-frame-parameter target 'scroll-bar-foreground "#363646")
+              (when (facep 'scroll-bar)
+                (set-face-attribute 'scroll-bar target :background "#1f1f28" :foreground "#363646"))
               (interface/apply-theme target)
               (interface/apply-modeline target))
           (when (fboundp 'xterm-mouse-mode)

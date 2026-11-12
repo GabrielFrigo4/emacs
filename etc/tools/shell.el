@@ -41,9 +41,14 @@
                       (executable-find "sh")
                       "sh")
         eat-term-name "xterm-256color")
-  (when (bound-and-true-p evil-mode)
-    (add-hook 'eat-mode-hook
-              (lambda ()
+  (add-hook 'eat-mode-hook
+            (lambda ()
+              (when (fboundp 'display-line-numbers-mode)
+                (display-line-numbers-mode -1))
+              (setq-local display-line-numbers nil)
+              (auto-composition-mode -1)
+              (setq-local bidi-display-reordering nil)
+              (when (bound-and-true-p evil-mode)
                 (add-hook 'evil-insert-state-entry-hook #'eat-semi-char-mode nil t)
                 (add-hook 'evil-normal-state-entry-hook #'eat-emacs-mode nil t)))))
 
