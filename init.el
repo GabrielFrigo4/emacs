@@ -53,10 +53,15 @@
         tmp-dir (expand-file-name "tmp/" storage)
         temporary-file-directory tmp-dir))
 
+(defvar emacs/init-has-errors nil
+  "Non-nil if any module failed to load.")
+
 (add-to-list 'load-path lib-dir)
 (condition-case err
     (require 'core)
-  (error (message "[ERRO] Falha ao carregar core: %s" (error-message-string err))))
+  (error
+   (setq emacs/init-has-errors t)
+   (message "[ERRO] Falha ao carregar core: %s" (error-message-string err))))
 
 (setq eshell-directory-name (expand-file-name "eshell/" var-dir))
 (setq eshell-aliases-file (expand-file-name "eshell/alias" usr-dir))
@@ -213,9 +218,11 @@
       (dolist (file files)
         (condition-case err
             (load file nil t)
-          (error (message "[ERRO] Falha ao carregar modulo %s: %s"
-                          (file-name-nondirectory file)
-                          (error-message-string err))))))))
+          (error
+           (setq emacs/init-has-errors t)
+           (message "[ERRO] Falha ao carregar modulo %s: %s"
+                    (file-name-nondirectory file)
+                    (error-message-string err))))))))
 
 ;; --------------------------------
 ;; Core Initialization
@@ -225,9 +232,11 @@
     (condition-case err
         (when (file-exists-p file)
           (load file nil t))
-      (error (message "[ERRO] Falha ao carregar modulo init/%s: %s"
-                      module
-                      (error-message-string err))))))
+      (error
+       (setq emacs/init-has-errors t)
+       (message "[ERRO] Falha ao carregar modulo init/%s: %s"
+                module
+                (error-message-string err))))))
 
 ;; --------------------------------
 ;; Feature Modules
@@ -244,19 +253,25 @@
    ((file-exists-p user-init)
     (condition-case err
         (load user-init nil t)
-      (error (message "[ERRO] Falha ao carregar user init.el: %s" (error-message-string err)))))
+      (error
+       (setq emacs/init-has-errors t)
+       (message "[ERRO] Falha ao carregar user init.el: %s" (error-message-string err)))))
    ((file-exists-p user-config)
     (condition-case err
         (load user-config nil t)
-      (error (message "[ERRO] Falha ao carregar user config.el: %s" (error-message-string err)))))
+      (error
+       (setq emacs/init-has-errors t)
+       (message "[ERRO] Falha ao carregar user config.el: %s" (error-message-string err)))))
    (t
     (dolist (file (directory-files usr-dir t "^[^.].*\\.el$"))
       (unless (file-directory-p file)
         (condition-case err
             (load file nil t)
-          (error (message "[ERRO] Falha ao carregar %s: %s"
-                          (file-name-nondirectory file)
-                          (error-message-string err)))))))))
+          (error
+           (setq emacs/init-has-errors t)
+           (message "[ERRO] Falha ao carregar %s: %s"
+                    (file-name-nondirectory file)
+                    (error-message-string err)))))))))
 
 ;; ================================
 ;; EMACS SERVER & SOCKET INTEGRATION

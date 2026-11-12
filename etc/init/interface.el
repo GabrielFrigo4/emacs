@@ -100,7 +100,7 @@
           (when (facep 'menu)
             (set-face-attribute 'menu target :background (car colors) :foreground (cdr colors)))
           (when (facep 'scroll-bar)
-            (set-face-attribute 'scroll-bar target :background "#1f1f28" :foreground "#363646"))))))))
+            (set-face-attribute 'scroll-bar target :background "#1f1f28" :foreground "#363646")))))))
 
 (use-package doom-modeline
   :ensure (:type git :host github :repo "emacsmirror/doom-modeline" :branch "master")

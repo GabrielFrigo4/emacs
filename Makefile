@@ -75,9 +75,13 @@ upmodes:
 test: batch
 
 batch:
-	echo "🧪 Validando inicialização batch do Emacs..."
+	echo "🧪 Validando sintaxe e balanceamento de parênteses (.el)..."
 	if command -v emacs > "/dev/null" 2>&1; then \
-		emacs -Q --batch -l early-init.el -l init.el --eval '(message "Emacs batch OK")' > "/dev/null" 2>&1 && echo "  ✅ Emacs: batch OK"; \
+		emacs -Q --batch --eval '(let ((failed nil)) (dolist (f (directory-files-recursively "." "\\.el$$")) (condition-case err (with-temp-buffer (insert-file-contents f) (emacs-lisp-mode) (check-parens)) (error (message "Erro em %s: %s" f (error-message-string err)) (setq failed t)))) (when failed (kill-emacs 1)))' || exit 1; \
+		echo "  ✅ Sintaxe Elisp íntegra em todos os arquivos."; \
+		echo "🧪 Validando inicialização batch do Emacs..."; \
+		emacs -Q --batch -l early-init.el -l init.el --eval '(when emacs/init-has-errors (kill-emacs 1))' > "/dev/null" 2>&1 || { echo "❌ Falha na inicialização batch do Emacs."; exit 1; }; \
+		echo "  ✅ Emacs: batch OK"; \
 	else \
 		echo "ℹ️  emacs não encontrado no PATH; ignorando teste batch."; \
 	fi

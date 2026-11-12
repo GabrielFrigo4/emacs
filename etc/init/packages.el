@@ -136,6 +136,33 @@
   (advice-add 'elpaca-continue :around #'emacs/elpaca-safe-call-advice)
   (advice-add 'elpaca-process-queues :around #'emacs/elpaca-safe-call-advice))
 
+(with-eval-after-load 'elpaca-menu-melpa
+  (defun elpaca-menu-melpa--clone (path)
+    "Clone MELPA recipes repo to PATH."
+    (let ((default-directory path))
+      (make-directory path t)
+      (make-directory (expand-file-name ".git/info/" path) t)
+      (message "Downloading MELPA recipes...")
+      (let* ((process-environment (append '("GIT_CONFIG_SYSTEM=/dev/null"
+                                            "GIT_CONFIG_GLOBAL=/dev/null")
+                                          process-environment))
+             (branch (or (getenv "MELPA_BRANCH") "main"))
+             (processes
+              (list
+               (elpaca-process-call "git" "init")
+               (elpaca-process-call "git" "config" "core.sparseCheckout" "true")
+               (with-temp-buffer
+                 (insert "recipes")
+                 (append-to-file (point-min) (point-max)
+                                 (expand-file-name ".git/info/sparse-checkout" path)))
+               (elpaca-process-call "git" "remote" "add" "origin" "https://github.com/melpa/melpa.git")
+               (elpaca-process-call "git" "pull" "--depth=1" "origin" branch)
+               (elpaca-process-call "git" "checkout" branch)
+               (elpaca-process-call "git" "branch" "--set-upstream-to" (format "origin/%s" branch) branch)))
+             (err (car (cl-remove-if #'zerop (delq nil processes) :key #'car))))
+        (when err (error "Unable to clone MELPA: %S" err))
+        (message "Downloading MELPA recipes...100%%")))))
+
 (add-hook 'after-init-hook #'elpaca-process-queues)
 (elpaca `(,@elpaca-order))
 
