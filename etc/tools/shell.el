@@ -57,7 +57,7 @@
     "Go to the next line preserving column, scrolling if necessary."
     (eat--t-index))
   (define-advice eat--t-handle-output (:filter-args (args) preserve-crlf)
-    (list (replace-regexp-in-string "\r\n" "\r\e[0m\n" (car args) t t))))
+    (list (replace-regexp-in-string "\r\n" "\r\0\n" (car args) t t))))
 
 (use-package aweshell
   :ensure nil
@@ -88,15 +88,23 @@
 ;; TERMINAL FEATURE
 ;; ================================
 
+(defun shell--freebsd-script (name)
+  "Locate FreeBSD target script NAME in XDG data or Environment/Shell."
+  (let ((xdg (expand-file-name (concat "shell/target/freebsd/" name)
+                               (or (getenv "XDG_DATA_HOME") (expand-file-name "~/.local/share"))))
+        (dev (expand-file-name (concat "~/Documents/Environment/Shell/target/freebsd/" name))))
+    (cond ((file-exists-p xdg) xdg) ((file-exists-p dev) dev))))
+
 (defun shell--agy-command (&rest args)
   "Build the shell command string for executing agy with ARGS."
   (let* ((arg-str (if args (mapconcat #'shell-quote-argument args " ") ""))
          (cmd (if (string-empty-p arg-str) "agy" (concat "agy " arg-str))))
-    (if (and (fboundp 'system-is-freebsd-p) (system-is-freebsd-p))
-        (let ((dir (expand-file-name default-directory)))
-          (format "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -t gabriel@192.168.8.2 \"export TERM=xterm-256color COLORTERM=truecolor; export PATH=\\\"\\$HOME/.local/bin:\\$HOME/.gemini/antigravity-cli/bin:\\$HOME/.cargo/bin:\\$PATH\\\"; cd %s 2> \\\"/dev/null\\\" || true; exec %s\""
-                  (shell-quote-argument dir)
-                  cmd))
+    (if-let* (((or (eq system-type 'berkeley-unix)
+                   (and (fboundp 'system-is-freebsd-p) (system-is-freebsd-p))))
+              (bhyve (shell--freebsd-script "bhyve.sh")))
+        (format "sh -c %s" (shell-quote-argument
+                            (format ". %s && agy-lx%s" (shell-quote-argument bhyve)
+                                    (if (string-empty-p arg-str) "" (concat " " arg-str)))))
       cmd)))
 
 (defun shell--run-terminal-command (cmd-str buf-name)
@@ -149,7 +157,7 @@
   (shell--run-terminal-command (shell--agy-command "-c" "--dangerously-skip-permissions") "*agyca*"))
 
 (with-eval-after-load 'em-term
-  (dolist (cmd '("a" "agy" "htop" "btop" "btm" "top" "vim" "nvim" "hx" "less" "more" "man"
+  (dolist (cmd '("a" "agy" "antigravity" "agy-lx" "agy-compat" "agy-cp" "htop" "btop" "btm" "top" "vim" "nvim" "hx" "less" "more" "man"
                  "tmux" "lazygit" "lazydocker" "yazi" "ranger" "ncdu" "alsamixer" "nmtui" "pulsemixer"))
     (add-to-list 'eshell-visual-commands cmd))
   (dolist (sub '(("git" "log" "diff" "show")

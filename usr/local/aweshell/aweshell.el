@@ -1056,6 +1056,10 @@ suppressing minibuffer write messages."
                    ("agyra" "agy -c --dangerously-skip-permissions $@*")
                    ("agyrd" "agy -c --dangerously-skip-permissions $@*")
                    ("agy-continue-auto" "agy -c --dangerously-skip-permissions $@*")
+                   ("antigravity" "agy $@*")
+                   ("agy-lx" "agy-lx $@*")
+                   ("agy-compat" "agy-compat $@*")
+                   ("agy-cp" "agy-compat $@*")
                    ("upall" "update-all $@*")
                    ("upsh" "update-shell $@*")
                    ("uprc" "update-profile $@*")
@@ -1440,7 +1444,8 @@ suppressing minibuffer write messages."
     (message "Comando 'bench-shell' não encontrado.")))
 
 (defcustom aweshell-visual-commands
-  '("a" "agy" "htop" "btop" "btm" "top" "vim" "nvim" "hx" "less" "more" "man"
+  '("a" "agy" "antigravity" "agy-lx" "agy-compat" "agy-cp"
+    "htop" "btop" "btm" "top" "vim" "nvim" "hx" "less" "more" "man"
     "tmux" "lazygit" "lazydocker" "yazi" "ranger" "ncdu" "alsamixer" "nmtui" "pulsemixer")
   "List of commands dispatched to visual terminal emulator."
   :type '(repeat string)
@@ -1478,7 +1483,7 @@ suppressing minibuffer write messages."
   (let* ((program (car args))
          (cmd-name (file-name-nondirectory (or program "")))
          (cmd-args (cdr args))
-         (full-cmd (mapconcat #'identity (cons program cmd-args) " ")))
+         (full-cmd (mapconcat #'shell-quote-argument (cons program cmd-args) " ")))
     (cond
      ((and (require 'eat nil t) (fboundp 'eat-exec))
       (let* ((buf-name (format "*eat: %s*" cmd-name))
@@ -1507,18 +1512,49 @@ suppressing minibuffer write messages."
 
 (defalias 'aweshell/exec-visual #'aweshell-exec-visual)
 
+(defun aweshell--freebsd-script (name)
+  "Locate FreeBSD target script NAME in XDG data or Environment/Shell."
+  (let ((xdg (expand-file-name
+              (concat "shell/target/freebsd/" name)
+              (or (getenv "XDG_DATA_HOME") (expand-file-name "~/.local/share"))))
+        (dev (expand-file-name
+              (concat "~/Documents/Environment/Shell/target/freebsd/" name))))
+    (cond ((file-exists-p xdg) xdg)
+          ((file-exists-p dev) dev))))
+
+(defun aweshell--rewrite-visual-args (args)
+  "Rewrite visual command ARGS for FreeBSD Bhyve or Linux compat when needed."
+  (let* ((prog (car args))
+         (cmd (and (stringp prog) (file-name-nondirectory prog)))
+         (spec (pcase cmd
+                 ((or "a" "agy" "antigravity" "agy-lx") '("bhyve.sh" . "agy-lx"))
+                 ((or "agy-compat" "agy-cp") '("compat.sh" . "agy-compat")))))
+    (if-let* (((eq system-type 'berkeley-unix))
+              (spec)
+              (script (aweshell--freebsd-script (car spec))))
+        (let* ((flat-args (mapcar (lambda (x) (shell-quote-argument (format "%s" x)))
+                                  (flatten-tree (cdr args))))
+               (arg-str (mapconcat #'identity flat-args " "))
+               (shell-cmd (format ". %s && %s%s"
+                                  (shell-quote-argument script)
+                                  (cdr spec)
+                                  (if (string-empty-p arg-str) "" (concat " " arg-str)))))
+          (list "sh" "-c" shell-cmd))
+      args)))
+
 (defun aweshell/dispatch-visual (orig-fn &rest args)
   "Execute visual command ARGS via eat in-place or fallback to dedicated terminal."
   (when (not (fboundp 'eat--eshell-exec-visual))
     (require 'eat nil t))
-  (cond
-   ((fboundp 'eat--eshell-exec-visual)
-    (apply #'eat--eshell-exec-visual args))
-   ((or (bound-and-true-p eat-eshell-mode)
-        (bound-and-true-p eat-eshell-visual-command-mode))
-    (apply orig-fn args))
-   (t
-    (apply #'aweshell-exec-visual args))))
+  (let ((args (aweshell--rewrite-visual-args args)))
+    (cond
+     ((fboundp 'eat--eshell-exec-visual)
+      (apply #'eat--eshell-exec-visual args))
+     ((or (bound-and-true-p eat-eshell-mode)
+          (bound-and-true-p eat-eshell-visual-command-mode))
+      (apply orig-fn args))
+     (t
+      (apply #'aweshell-exec-visual args)))))
 
 (with-eval-after-load 'em-term
   (dolist (cmd aweshell-visual-commands)
