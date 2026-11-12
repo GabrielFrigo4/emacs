@@ -7,7 +7,7 @@ MAKEFLAGS += --no-print-directory -s
 # Makefile: Emacs Lisp Suite
 # ----------------------------------------------------------------
 
-.PHONY: help hooks test batch indent format prettier ci upmodes treesit update clean audit
+.PHONY: help hooks test batch test-filter indent format prettier ci upmodes treesit update clean audit
 
 ### ================================
 ### HELP & DOCUMENTATION
@@ -21,7 +21,8 @@ help:
 	sec "Setup & Ganchos:"; \
 	cmd "hooks"          "Configura e aplica permissões canônicas em .githooks"; \
 	sec "Qualidade & Formatação:"; \
-	cmd "test"           "Valida inicialização limpa em modo batch"; \
+	cmd "test"           "Valida inicialização limpa e filtros de avisos"; \
+	cmd "test-filter"    "Valida filtro de avisos obsoletos (Elpaca vs Config)"; \
 	cmd "batch"          "Executa boot limpo batch do Emacs"; \
 	cmd "audit"          "Audita conformidade estrutural e ausência de var/tmp"; \
 	cmd "clean"          "Remove resíduos de execução e higieniza bancada"; \
@@ -72,7 +73,16 @@ upmodes:
 ### ================================
 ### TESTING & FORMATTING
 ### ================================
-test: batch
+test: batch test-filter
+
+test-filter:
+	echo "🧪 Validando filtro seletivo de avisos obsoletos (Elpaca vs Config)..."
+	if command -v emacs > "/dev/null" 2>&1; then \
+		emacs -Q --batch -l early-init.el -l test/test-obsolete-filter.el > "/dev/null" 2>&1 || { echo "❌ Falha no teste de filtro de avisos obsoletos."; exit 1; }; \
+		echo "  ✅ Filtro seletivo de avisos obsoletos íntegro."; \
+	else \
+		echo "ℹ️  emacs não encontrado no PATH; ignorando teste de filtro."; \
+	fi
 
 batch:
 	echo "🧪 Validando sintaxe e balanceamento de parênteses (.el)..."

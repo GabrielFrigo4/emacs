@@ -1042,13 +1042,19 @@ suppressing minibuffer write messages."
                    ("gl" "git pull $@*")
                    ("gd" "git diff $@*")
                    ("glog" "git log --oneline --graph --decorate $@*")
+                   ("a" "agy $@*")
+                   ("aa" "agy --dangerously-skip-permissions $@*")
+                   ("ad" "agy --dangerously-skip-permissions $@*")
                    ("agyc" "agy -c $@*")
+                   ("agyr" "agy -c $@*")
                    ("agy-continue" "agy -c $@*")
                    ("agya" "agy --dangerously-skip-permissions $@*")
                    ("agyd" "agy --dangerously-skip-permissions $@*")
                    ("agy-auto" "agy --dangerously-skip-permissions $@*")
                    ("agyca" "agy -c --dangerously-skip-permissions $@*")
                    ("agycd" "agy -c --dangerously-skip-permissions $@*")
+                   ("agyra" "agy -c --dangerously-skip-permissions $@*")
+                   ("agyrd" "agy -c --dangerously-skip-permissions $@*")
                    ("agy-continue-auto" "agy -c --dangerously-skip-permissions $@*")
                    ("upall" "update-all $@*")
                    ("upsh" "update-shell $@*")
@@ -1434,7 +1440,7 @@ suppressing minibuffer write messages."
     (message "Comando 'bench-shell' não encontrado.")))
 
 (defcustom aweshell-visual-commands
-  '("agy" "htop" "btop" "btm" "top" "vim" "nvim" "hx" "less" "more" "man"
+  '("a" "agy" "htop" "btop" "btm" "top" "vim" "nvim" "hx" "less" "more" "man"
     "tmux" "lazygit" "lazydocker" "yazi" "ranger" "ncdu" "alsamixer" "nmtui" "pulsemixer")
   "List of commands dispatched to visual terminal emulator."
   :type '(repeat string)
@@ -1443,7 +1449,7 @@ suppressing minibuffer write messages."
 (defun aweshell/exec-in-term (cmd-str buf-name)
   "Execute CMD-STR in terminal buffer BUF-NAME via eat, vterm, or ansi-term."
   (cond
-   ((and (fboundp 'eat) (fboundp 'eat-exec))
+   ((and (require 'eat nil t) (fboundp 'eat-exec))
     (let ((buf (get-buffer-create buf-name)))
       (with-current-buffer buf
         (unless (eq major-mode #'eat-mode)
@@ -1474,6 +1480,19 @@ suppressing minibuffer write messages."
          (cmd-args (cdr args))
          (full-cmd (mapconcat #'identity (cons program cmd-args) " ")))
     (cond
+     ((and (require 'eat nil t) (fboundp 'eat-exec))
+      (let* ((buf-name (format "*eat: %s*" cmd-name))
+             (buf (get-buffer-create buf-name)))
+        (with-current-buffer buf
+          (unless (eq major-mode #'eat-mode)
+            (eat-mode))
+          (pop-to-buffer-same-window buf)
+          (eat-exec buf buf-name "/usr/bin/env" nil (list "sh" "-c" full-cmd))
+          (when (fboundp 'eat-semi-char-mode)
+            (eat-semi-char-mode))
+          (when (bound-and-true-p evil-mode)
+            (evil-insert-state)))
+        buf))
      ((and (require 'vterm nil t) (fboundp 'vterm))
       (let* ((buf-name (format "*vterm: %s*" cmd-name))
              (vterm-shell full-cmd))
@@ -1490,9 +1509,16 @@ suppressing minibuffer write messages."
 
 (defun aweshell/dispatch-visual (orig-fn &rest args)
   "Execute visual command ARGS via eat in-place or fallback to dedicated terminal."
-  (if (bound-and-true-p eat-eshell-mode)
-      (apply orig-fn args)
-    (apply #'aweshell-exec-visual args)))
+  (when (not (fboundp 'eat--eshell-exec-visual))
+    (require 'eat nil t))
+  (cond
+   ((fboundp 'eat--eshell-exec-visual)
+    (apply #'eat--eshell-exec-visual args))
+   ((or (bound-and-true-p eat-eshell-mode)
+        (bound-and-true-p eat-eshell-visual-command-mode))
+    (apply orig-fn args))
+   (t
+    (apply #'aweshell-exec-visual args))))
 
 (with-eval-after-load 'em-term
   (dolist (cmd aweshell-visual-commands)
@@ -1500,44 +1526,6 @@ suppressing minibuffer write messages."
   (dolist (sub '(("git" "log" "diff" "show")))
     (add-to-list 'eshell-visual-subcommands sub))
   (advice-add 'eshell-exec-visual :around #'aweshell/dispatch-visual))
-
-(defun eshell/agy (&rest args)
-  "Execute Google Antigravity CLI in a visual terminal emulator."
-  (let ((cmd (if args (mapconcat #'shell-quote-argument args " ") "")))
-    (if (and (fboundp 'system-is-freebsd-p) (system-is-freebsd-p))
-        (let ((ssh-cmd (format "ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new -t gabriel@192.168.8.2 \"export TERM=xterm-256color COLORTERM=truecolor; export PATH=\\\"\\$HOME/.local/bin:\\$HOME/.gemini/antigravity-cli/bin:\\$HOME/.cargo/bin:\\$PATH\\\"; cd %s 2> /dev/null || true; exec agy %s\""
-                               (shell-quote-argument (expand-file-name default-directory))
-                               cmd)))
-          (aweshell/exec-in-term ssh-cmd "*agy*"))
-      (aweshell/exec-in-term (if (string-empty-p cmd) "agy" (concat "agy " cmd)) "*agy*"))))
-
-(defalias 'eshell/a 'eshell/agy)
-
-(defun eshell/aa (&rest args)
-  "Alias for agy --dangerously-skip-permissions."
-  (apply #'eshell/agy "--dangerously-skip-permissions" args))
-
-(defalias 'eshell/ad 'eshell/aa)
-
-(defun eshell/agyc (&rest args)
-  "Alias for agy -c."
-  (apply #'eshell/agy "-c" args))
-
-(defalias 'eshell/agyr 'eshell/agyc)
-
-(defun eshell/agya (&rest args)
-  "Alias for agy --dangerously-skip-permissions."
-  (apply #'eshell/agy "--dangerously-skip-permissions" args))
-
-(defalias 'eshell/agyd 'eshell/agya)
-
-(defun eshell/agyca (&rest args)
-  "Alias for agy -c --dangerously-skip-permissions."
-  (apply #'eshell/agy "-c" "--dangerously-skip-permissions" args))
-
-(defalias 'eshell/agycd 'eshell/agyca)
-(defalias 'eshell/agyra 'eshell/agyca)
-(defalias 'eshell/agyrd 'eshell/agyca)
 
 (defun eshell/nb (&rest args)
   "Dispatch NetBSD hypervisor / VM command."
@@ -1655,8 +1643,6 @@ files (office documents, media) dispatch to system default applications."
 (defun eshell/procs (&rest _)
   "Open system process manager buffer."
   (proced))
-
-(defalias 'eshell/htop #'eshell/procs)
 
 (defun eshell/ediff (file-a file-b)
   "Open Ediff comparing FILE-A and FILE-B."
