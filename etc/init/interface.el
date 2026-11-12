@@ -28,6 +28,8 @@
   (let ((target (or frame (selected-frame))))
     (when (frame-live-p target)
       (set-frame-parameter target 'background-mode 'dark)
+      (set-frame-parameter target 'background-color "#1f1f28")
+      (set-frame-parameter target 'foreground-color "#dcd7ba")
       (when (fboundp 'frame-set-background-mode)
         (frame-set-background-mode target)))))
 
@@ -82,6 +84,20 @@
       (set-face-attribute 'menu nil :background (car colors) :foreground (cdr colors))))
   (add-hook 'org-mode-hook #'doom-themes-org-config))
 
+(defun interface/apply-theme (&optional frame)
+  "Apply dark theme and face attributes to FRAME."
+  (let ((target (or frame (selected-frame))))
+    (when (frame-live-p target)
+      (with-selected-frame target
+        (interface/ensure-dark-background target)
+        (when (custom-theme-p 'doom-dark+)
+          (enable-theme 'doom-dark+))
+        (let ((colors (interface/menu-face-colors)))
+          (when (facep 'tool-bar)
+            (set-face-attribute 'tool-bar target :background (car colors) :foreground (cdr colors) :box nil))
+          (when (facep 'menu)
+            (set-face-attribute 'menu target :background (car colors) :foreground (cdr colors))))))))
+
 (use-package doom-modeline
   :ensure (:type git :host github :repo "emacsmirror/doom-modeline" :branch "master")
   :init (doom-modeline-mode 1)
@@ -103,9 +119,25 @@
     (display-time-mode 1)
     (ignore-errors (display-battery-mode 1))))
 
+(defun interface/apply-modeline (&optional frame)
+  "Ensure doom-modeline is properly initialized on FRAME."
+  (let ((target (or frame (selected-frame))))
+    (when (frame-live-p target)
+      (with-selected-frame target
+        (when (fboundp 'doom-modeline-mode)
+          (doom-modeline-mode 1))
+        (when (fboundp 'force-mode-line-update)
+          (force-mode-line-update t))))))
+
 ;; --------------------------------
 ;; DASHBOARD FRAME ADAPTER
 ;; --------------------------------
+
+(defvar dashboard-startup-banner 'logo)
+(defvar dashboard-display-icons-p t)
+(defvar dashboard-icon-type 'nerd-icons)
+(defvar dashboard-set-heading-icons t)
+(defvar dashboard-set-file-icons t)
 
 (defun interface/has-file-arg-p ()
   "Return non-nil if `command-line-args' contains a target file argument."
@@ -133,39 +165,44 @@
   "Adapt dashboard banner and icons to FRAME (GUI logo vs. terminal ASCII).
 Evaluated per client frame so a daemon started without a display still
 renders the graphical logo on GUI frames created by emacsclient."
-  (let ((raw-tty (display-raw-tty-p frame)))
-    (setq dashboard-startup-banner (if (display-graphic-p frame) 'logo 2)
+  (let* ((target (or frame (selected-frame)))
+         (raw-tty (display-raw-tty-p target)))
+    (setq dashboard-startup-banner (if (display-graphic-p target) 'logo 2)
           dashboard-display-icons-p (not raw-tty)
           dashboard-icon-type (if raw-tty 'text 'nerd-icons)
           dashboard-set-heading-icons (not raw-tty)
           dashboard-set-file-icons (not raw-tty))))
 
-(defun interface/dashboard-buffer-for-frame ()
-  "Return the *dashboard* buffer rendered for the selected frame."
-  (let ((previous-banner dashboard-startup-banner)
-        (previous-icons dashboard-display-icons-p))
-    (interface/dashboard-adapt-to-frame (selected-frame))
+(defun interface/dashboard-buffer-for-frame (&optional frame)
+  "Return the *dashboard* buffer rendered for FRAME."
+  (let* ((target (or frame (selected-frame)))
+         (previous-banner (bound-and-true-p dashboard-startup-banner))
+         (previous-icons (bound-and-true-p dashboard-display-icons-p)))
+    (interface/dashboard-adapt-to-frame target)
     (when (and (fboundp 'dashboard-insert-startupify-lists)
                (or (daemonp)
                    (not (get-buffer "*dashboard*"))
-                   (not (equal previous-banner dashboard-startup-banner))
-                   (not (eq previous-icons dashboard-display-icons-p))))
-      (dashboard-insert-startupify-lists t)))
-  (get-buffer-create "*dashboard*"))
+                   (not (equal previous-banner (bound-and-true-p dashboard-startup-banner)))
+                   (not (eq previous-icons (bound-and-true-p dashboard-display-icons-p)))))
+      (with-current-buffer (get-buffer-create "*dashboard*")
+        (when (fboundp 'dashboard-mode)
+          (dashboard-mode))
+        (dashboard-insert-startupify-lists t)))
+    (get-buffer-create "*dashboard*")))
 
 (defun interface/show-dashboard (&optional frame)
   "Display the *dashboard* buffer on FRAME when sitting on *scratch*."
   (interactive)
   (let ((target (or frame (selected-frame))))
-    (when (and (frame-live-p target)
-               (not (interface/has-file-arg-p)))
+    (when (frame-live-p target)
       (with-selected-frame target
-        (let ((buf (interface/dashboard-buffer-for-frame)))
-          (when (and (buffer-live-p buf)
-                     (or (called-interactively-p 'any)
-                         (member (buffer-name (window-buffer (selected-window)))
-                                 '("*scratch*" "*Messages*"))))
-            (switch-to-buffer buf)))))))
+        (unless (interface/has-file-arg-p)
+          (let ((cur-buf (window-buffer (selected-window))))
+            (when (or (called-interactively-p 'any)
+                      (member (buffer-name cur-buf) '("*scratch*" "*Messages*")))
+              (let ((buf (interface/dashboard-buffer-for-frame target)))
+                (when (buffer-live-p buf)
+                  (set-window-buffer (selected-window) buf))))))))))
 
 (defalias 'dashboard-open 'interface/show-dashboard)
 
@@ -280,6 +317,8 @@ renders the graphical logo on GUI frames created by emacsclient."
 
 (when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
 (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
+(when (fboundp 'horizontal-scroll-bar-mode) (horizontal-scroll-bar-mode -1))
+(when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
 (when (fboundp 'window-divider-mode)
   (setq window-divider-default-places t)
   (setq window-divider-default-bottom-width 4)
@@ -306,7 +345,7 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
          (term (or (and (fboundp 'tty-type) (tty-type target))
                    (getenv "TERM") "")))
     (cond
-     (is-graphic 1)
+     (is-graphic 0)
      ((or (and is-linux raw-tty) (string-equal term "linux")) 0)
      (interface/enable-tty-menu-bar 1)
      (t 0))))
@@ -325,13 +364,24 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
     (interface/apply-tool-bar target)
     (let ((lines (interface/menu-bar-lines-for-frame target)))
       (set-frame-parameter target 'menu-bar-lines lines)
-      (if (display-graphic-p target)
+      (if (> lines 0)
           (when (fboundp 'menu-bar-mode) (menu-bar-mode 1))
-        (when (= lines 0)
-          (when (fboundp 'menu-bar-mode) (menu-bar-mode -1)))))))
+        (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))))))
+
+(defun interface/apply-scroll-bar (&optional frame)
+  "Ensure scroll-bars are disabled on FRAME."
+  (let ((target (or frame (selected-frame))))
+    (when (frame-live-p target)
+      (set-frame-parameter target 'vertical-scroll-bars nil)
+      (set-frame-parameter target 'horizontal-scroll-bars nil)))
+  (when (fboundp 'scroll-bar-mode)
+    (scroll-bar-mode -1))
+  (when (fboundp 'horizontal-scroll-bar-mode)
+    (horizontal-scroll-bar-mode -1)))
 
 (interface/apply-tool-bar)
 (interface/apply-menu-bar)
+(interface/apply-scroll-bar)
 
 (unless (display-graphic-p)
   (when (fboundp 'xterm-mouse-mode)
@@ -345,27 +395,33 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
     (ignore-errors (gpm-mouse-mode 1)))
   (interface/apply-tty-faces))
 
+(defun interface/setup-frame (&optional frame)
+  "Apply complete visual state to newly created FRAME."
+  (let ((target (or frame (selected-frame))))
+    (when (frame-live-p target)
+      (with-selected-frame target
+        (interface/ensure-dark-background target)
+        (interface/apply-tool-bar target)
+        (interface/apply-menu-bar target)
+        (interface/apply-scroll-bar target)
+        (if (display-graphic-p target)
+            (progn
+              (interface/apply-theme target)
+              (interface/apply-modeline target))
+          (when (fboundp 'xterm-mouse-mode)
+            (xterm-mouse-mode 1)
+            (ignore-errors (send-string-to-terminal "\e[?1003l" target)))
+          (let ((term (or (and (fboundp 'tty-type) (tty-type target))
+                          (getenv "TERM") "")))
+            (when (and (fboundp 'gpm-mouse-start) (string-equal term "linux"))
+              (ignore-errors (gpm-mouse-mode 1))))
+          (interface/apply-tty-faces target))
+        (interface/show-dashboard target)))))
+
 (add-hook 'tty-setup-hook #'interface/apply-tool-bar)
 (add-hook 'window-setup-hook #'interface/apply-tool-bar)
-(add-hook 'server-after-make-frame-hook #'interface/apply-tool-bar)
-(add-hook 'server-after-make-frame-hook #'interface/apply-menu-bar)
-
-(add-hook 'after-make-frame-functions
-          (lambda (frame)
-            (with-selected-frame frame
-              (interface/ensure-dark-background frame)
-              (interface/apply-tool-bar frame)
-              (interface/apply-menu-bar frame)
-              (if (display-graphic-p frame)
-                  nil
-                (when (fboundp 'xterm-mouse-mode)
-                  (xterm-mouse-mode 1)
-                  (ignore-errors (send-string-to-terminal "\e[?1003l" frame)))
-                (let ((term (or (and (fboundp 'tty-type) (tty-type frame))
-                                (getenv "TERM") "")))
-                  (when (and (fboundp 'gpm-mouse-start) (string-equal term "linux"))
-                    (ignore-errors (gpm-mouse-mode 1))))
-                (interface/apply-tty-faces frame)))))
+(add-hook 'server-after-make-frame-hook #'interface/setup-frame)
+(add-hook 'after-make-frame-functions #'interface/setup-frame)
 
 ;; --------------------------------
 ;; FRAME MANAGEMENT

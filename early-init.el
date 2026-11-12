@@ -204,18 +204,50 @@
   (push '(bytecomp) warning-suppress-log-types)
   (push '(obsolete) warning-suppress-log-types))
 
-(dolist (param '((width . 81) (height . 27) (background-mode . dark)))
+(dolist (param '((width . 81)
+                 (height . 27)
+                 (background-mode . dark)
+                 (background-color . "#1f1f28")
+                 (foreground-color . "#dcd7ba")
+                 (vertical-scroll-bars . nil)
+                 (horizontal-scroll-bars . nil)
+                 (menu-bar-lines . 0)
+                 (tool-bar-lines . 0)))
   (add-to-list 'default-frame-alist param)
   (add-to-list 'initial-frame-alist param))
 
+(push '(menu-bar-lines . 0) default-frame-alist)
+(push '(menu-bar-lines . 0) initial-frame-alist)
 (push '(tool-bar-lines . 0) default-frame-alist)
 (push '(tool-bar-lines . 0) initial-frame-alist)
+(push '(vertical-scroll-bars . nil) default-frame-alist)
+(push '(vertical-scroll-bars . nil) initial-frame-alist)
+(push '(background-color . "#1f1f28") default-frame-alist)
+(push '(background-color . "#1f1f28") initial-frame-alist)
+(push '(foreground-color . "#dcd7ba") default-frame-alist)
+(push '(foreground-color . "#dcd7ba") initial-frame-alist)
 
-(unless (display-graphic-p)
-  (push '(vertical-scroll-bars . nil) default-frame-alist)
-  (push '(vertical-scroll-bars . nil) initial-frame-alist)
-  (push '(menu-bar-lines . 0) default-frame-alist)
-  (push '(menu-bar-lines . 0) initial-frame-alist)
+(when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
+(when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
+(when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1))
+(when (fboundp 'horizontal-scroll-bar-mode) (horizontal-scroll-bar-mode -1))
+
+(defun emacs/abort-active-popups (&optional _frame)
+  (ignore-errors
+    (when (and (fboundp 'minibuffer-window-active-p)
+               (minibuffer-window-active-p (minibuffer-window)))
+      (abort-recursive-edit)))
+  (ignore-errors
+    (when (> (recursion-depth) 0)
+      (top-level)))
+  (ignore-errors
+    (keyboard-escape-quit))
+  t)
+
+(add-hook 'delete-frame-functions #'emacs/abort-active-popups)
+(add-hook 'kill-emacs-query-functions #'emacs/abort-active-popups)
+
+(unless (or (display-graphic-p) noninteractive)
   (setq inhibit-message t)
   (add-hook 'emacs-startup-hook
             (lambda ()
