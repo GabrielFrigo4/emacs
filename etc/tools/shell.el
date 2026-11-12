@@ -41,16 +41,7 @@
                       (executable-find "sh")
                       "sh")
         eat-term-name "xterm-256color")
-  (add-hook 'eat-mode-hook
-            (lambda ()
-              (when (fboundp 'display-line-numbers-mode)
-                (display-line-numbers-mode -1))
-              (setq-local display-line-numbers nil)
-              (auto-composition-mode -1)
-              (setq-local bidi-display-reordering nil)
-              (when (bound-and-true-p evil-mode)
-                (add-hook 'evil-insert-state-entry-hook #'eat-semi-char-mode nil t)
-                (add-hook 'evil-normal-state-entry-hook #'eat-emacs-mode nil t)))))
+  (add-hook 'eat-mode-hook #'shell/configure-eat-mode))
 
 (use-package aweshell
   :ensure nil
@@ -182,6 +173,52 @@
               (seq-filter (lambda (env) (not (string-prefix-p prefix env)))
                           process-environment))))))
 
+(defun shell/disable-line-numbers ()
+  "Disable line numbers unconditionally in terminal and REPL buffers."
+  (when (fboundp 'display-line-numbers-mode)
+    (display-line-numbers-mode -1))
+  (setq-local display-line-numbers nil))
+
+(defun shell/configure-eat-mode ()
+  "Harden `eat-mode' buffer against visual corruption in terminal TUIs."
+  (when (fboundp 'display-line-numbers-mode)
+    (display-line-numbers-mode -1))
+  (setq-local display-line-numbers nil)
+  (setq-local scroll-margin 0)
+  (setq-local scroll-conservatively 101)
+  (setq-local scroll-step 1)
+  (setq-local auto-window-vscroll nil)
+  (setq-local tab-width 8)
+  (setq-local indent-tabs-mode nil)
+  (setq-local truncate-lines t)
+  (setq-local word-wrap nil)
+  (setq-local left-margin-width 0)
+  (setq-local right-margin-width 0)
+  (setq-local bidi-display-reordering nil)
+  (setq-local bidi-paragraph-direction 'left-to-right)
+  (auto-composition-mode -1)
+  (when (fboundp 'hl-line-mode)
+    (hl-line-mode -1))
+  (when (fboundp 'whitespace-mode)
+    (whitespace-mode -1))
+  (when (fboundp 'electric-indent-local-mode)
+    (electric-indent-local-mode -1))
+  (let ((table (copy-sequence char-width-table)))
+    (dolist (char '(?█ ?▀ ?▄ ?▌ ?▐ ?─))
+      (aset table char 1))
+    (setq-local char-width-table table))
+  (when (bound-and-true-p evil-mode)
+    (add-hook 'evil-insert-state-entry-hook #'eat-semi-char-mode nil t)
+    (add-hook 'evil-normal-state-entry-hook #'eat-emacs-mode nil t)))
+
+(dolist (hook '(vterm-mode-hook
+                eshell-mode-hook
+                term-mode-hook
+                shell-mode-hook
+                comint-mode-hook))
+  (add-hook hook #'shell/disable-line-numbers))
+
+(add-hook 'eat-mode-hook #'shell/configure-eat-mode)
 (add-hook 'vterm-mode-hook  #'shell/sanitize-tty-environment)
 (add-hook 'eat-mode-hook    #'shell/sanitize-tty-environment)
 (add-hook 'term-mode-hook   #'shell/sanitize-tty-environment)

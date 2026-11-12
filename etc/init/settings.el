@@ -72,6 +72,12 @@
 (global-font-lock-mode 1)
 (column-number-mode 1)
 (size-indication-mode 1)
+(setq global-display-line-numbers-modes
+      '((not eat-mode vterm-mode eshell-mode term-mode shell-mode comint-mode
+             dired-mode image-mode pdf-view-mode doc-view-mode
+             minibuffer-mode minibuffer-inactive-mode
+             help-mode helpful-mode info-mode special-mode)
+        t))
 (global-display-line-numbers-mode 1)
 (setq-default display-line-numbers-type 'relative)
 (when (fboundp 'blink-cursor-mode)

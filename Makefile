@@ -79,9 +79,9 @@ batch:
 	if command -v emacs > "/dev/null" 2>&1; then \
 		emacs -Q --batch --eval '(let ((failed nil)) (dolist (f (directory-files-recursively "." "\\.el$$")) (condition-case err (with-temp-buffer (insert-file-contents f) (emacs-lisp-mode) (check-parens)) (error (message "Erro em %s: %s" f (error-message-string err)) (setq failed t)))) (when failed (kill-emacs 1)))' || exit 1; \
 		echo "  ✅ Sintaxe Elisp íntegra em todos os arquivos."; \
-		echo "🧪 Validando inicialização batch do Emacs..."; \
-		emacs -Q --batch -l early-init.el -l init.el --eval '(when emacs/init-has-errors (kill-emacs 1))' > "/dev/null" 2>&1 || { echo "❌ Falha na inicialização batch do Emacs."; exit 1; }; \
-		echo "  ✅ Emacs: batch OK"; \
+		echo "🧪 Validando inicialização batch do Emacs e emulação TUI eat..."; \
+		emacs -Q --batch -l early-init.el -l init.el --eval '(progn (when emacs/init-has-errors (kill-emacs 1)) (dolist (dir (list "/home/gabrielf/.emacs.d/var/lib/elpaca/builds/eat" (expand-file-name "var/lib/elpaca/builds/eat" user-emacs-directory))) (when (file-directory-p dir) (add-to-list (quote load-path) dir))) (when (require (quote eat) nil t) (with-temp-buffer (eat-mode) (unless (null display-line-numbers) (error "display-line-numbers is not nil")) (unless (eq truncate-lines t) (error "truncate-lines is not t")) (unless (null word-wrap) (error "word-wrap is not nil")) (unless (= scroll-margin 0) (error "scroll-margin is not 0")) (unless (= (char-width ?█) 1) (error "char-width of block is not 1")) (let ((term (eat-term-make (current-buffer) (point)))) (eat-term-resize term 80 24) (let ((inhibit-read-only t)) (eat-term-process-output term (format "Line 1\r\nLine 2")) (eat-term-redisplay term) (eat-term-process-output term (format "\r\e[2K\e[1A\e[2KLine 1 Updated\r\nLine 2 Updated")) (eat-term-redisplay term)) (let ((lines (split-string (buffer-string) "\n" t))) (unless (string-prefix-p "Line 1 Updated" (car lines)) (error "Line 1 mismatch: %s" (car lines))) (unless (string-prefix-p "Line 2 Updated" (cadr lines)) (error "Line 2 mismatch: %s" (cadr lines))) (when (string-match-p "Line 1\n" (buffer-string)) (error "Old line 1 leaked")))))))' > "/dev/null" 2>&1 || { echo "❌ Falha na inicialização batch ou teste eat do Emacs."; exit 1; }; \
+		echo "  ✅ Emacs: batch & eat TUI OK"; \
 	else \
 		echo "ℹ️  emacs não encontrado no PATH; ignorando teste batch."; \
 	fi

@@ -28,8 +28,8 @@
   (let ((target (or frame (selected-frame))))
     (when (frame-live-p target)
       (set-frame-parameter target 'background-mode 'dark)
-      (set-frame-parameter target 'background-color "#1f1f28")
-      (set-frame-parameter target 'foreground-color "#dcd7ba")
+      (set-frame-parameter target 'background-color "#1e1e1e")
+      (set-frame-parameter target 'foreground-color "#d4d4d4")
       (when (fboundp 'frame-set-background-mode)
         (frame-set-background-mode target)))))
 
@@ -43,6 +43,9 @@
                "adwaita"))
         (theme (or (getenv "GTK_THEME") "")))
     (cond
+     ((or (string-match-p "emacs-doom-dark" (downcase theme))
+          (string-match-p "doom-dark" (downcase theme)))
+      '("#1e1e1e" . "#d4d4d4"))
      ((or (string-match-p "breeze" (downcase theme)) (member flv '("kde" "lxqt")))
       '("#232629" . "#eff0f1"))
      ((or (string-match-p "greybird" (downcase theme)) (equal flv "xfce"))
@@ -56,7 +59,7 @@
      ((or (string-match-p "deepin" (downcase theme)) (equal flv "deepin"))
       '("#252525" . "#e8e8e8"))
      (t
-      '("#242424" . "#ffffff")))))
+      '("#1e1e1e" . "#d4d4d4")))))
 
 (use-package doom-themes
   :ensure (:type git :host github :repo "doomemacs/themes" :branch "master")
@@ -83,7 +86,7 @@
     (when (facep 'menu)
       (set-face-attribute 'menu nil :background (car colors) :foreground (cdr colors)))
     (when (facep 'scroll-bar)
-      (set-face-attribute 'scroll-bar nil :background "#1f1f28" :foreground "#363646")))
+      (set-face-attribute 'scroll-bar nil :background "#1e1e1e" :foreground "#333333")))
   (add-hook 'org-mode-hook #'doom-themes-org-config))
 
 (defun interface/apply-theme (&optional frame)
@@ -100,7 +103,7 @@
           (when (facep 'menu)
             (set-face-attribute 'menu target :background (car colors) :foreground (cdr colors)))
           (when (facep 'scroll-bar)
-            (set-face-attribute 'scroll-bar target :background "#1f1f28" :foreground "#363646")))))))
+            (set-face-attribute 'scroll-bar target :background "#1e1e1e" :foreground "#333333")))))))
 
 (use-package doom-modeline
   :ensure (:type git :host github :repo "emacsmirror/doom-modeline" :branch "master")
@@ -328,7 +331,7 @@ renders the graphical logo on GUI frames created by emacsclient."
   (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
   (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1)))
 (when (facep 'scroll-bar)
-  (set-face-attribute 'scroll-bar nil :background "#1f1f28" :foreground "#363646"))
+  (set-face-attribute 'scroll-bar nil :background "#1e1e1e" :foreground "#333333"))
 (when (fboundp 'window-divider-mode)
   (setq window-divider-default-places t)
   (setq window-divider-default-bottom-width 4)
@@ -387,10 +390,10 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
           (progn
             (set-frame-parameter target 'vertical-scroll-bars 'right)
             (set-frame-parameter target 'horizontal-scroll-bars nil)
-            (set-frame-parameter target 'scroll-bar-background "#1f1f28")
-            (set-frame-parameter target 'scroll-bar-foreground "#363646")
+            (set-frame-parameter target 'scroll-bar-background "#1e1e1e")
+            (set-frame-parameter target 'scroll-bar-foreground "#333333")
             (when (facep 'scroll-bar)
-              (set-face-attribute 'scroll-bar target :background "#1f1f28" :foreground "#363646"))
+              (set-face-attribute 'scroll-bar target :background "#1e1e1e" :foreground "#333333"))
             (when (fboundp 'scroll-bar-mode)
               (scroll-bar-mode 1)))
         (set-frame-parameter target 'vertical-scroll-bars nil)
@@ -432,10 +435,10 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
               (when (fboundp 'scroll-bar-mode) (scroll-bar-mode 1))
               (set-frame-parameter target 'menu-bar-lines 1)
               (set-frame-parameter target 'vertical-scroll-bars 'right)
-              (set-frame-parameter target 'scroll-bar-background "#1f1f28")
-              (set-frame-parameter target 'scroll-bar-foreground "#363646")
+              (set-frame-parameter target 'scroll-bar-background "#1e1e1e")
+              (set-frame-parameter target 'scroll-bar-foreground "#333333")
               (when (facep 'scroll-bar)
-                (set-face-attribute 'scroll-bar target :background "#1f1f28" :foreground "#363646"))
+                (set-face-attribute 'scroll-bar target :background "#1e1e1e" :foreground "#333333"))
               (interface/apply-theme target)
               (interface/apply-modeline target))
           (when (fboundp 'xterm-mouse-mode)
