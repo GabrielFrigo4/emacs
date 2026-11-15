@@ -295,7 +295,7 @@ jobs:
 
             - name: Validate Formatting (Prettier)
               run: |
-                  npm install -g prettier
+                  npm install -g prettier@3.9.6
                   python3 -c '
                   import os, subprocess, sys
                   out = subprocess.check_output(["git", "-c", "core.quotePath=false", "ls-files", "-z"]).split(b"\0")
