@@ -79,14 +79,31 @@
                     ("lxsession" "lxde" "lxde") ("cosmic-session" "cosmic" "cosmic")))
         "adwaita")))
 
+(defun emacs/legacy-gtk-theme-p (theme)
+  "Return non-nil if THEME is a deprecated custom dark GTK theme."
+  (when (stringp theme)
+    (let* ((lower (downcase (string-trim theme)))
+           (base (if (string-suffix-p ":dark" lower)
+                     (substring lower 0 -5)
+                   lower)))
+      (member base '("emacs-doom-dark" "emacs-kanagawa-dark" "doom-dark")))))
+
 (defun emacs/gtk-theme-exists-p (theme)
-  "Return non-nil if THEME exists in standard system or user theme directories."
-  (let* ((base-theme (if (string-suffix-p ":dark" theme) (substring theme 0 -5) theme))
-         (theme-dirs (list "/usr/share/themes" "/usr/local/share/themes"
-                           (expand-file-name ".themes" (or (getenv "HOME") "~"))
-                           (expand-file-name "themes" (or (getenv "XDG_DATA_HOME")
-                                                          (expand-file-name ".local/share" (or (getenv "HOME") "~")))))))
-    (seq-some (lambda (dir) (file-directory-p (expand-file-name base-theme dir))) theme-dirs)))
+  "Return non-nil if THEME exists in system or user theme directories."
+  (unless (or (not (stringp theme))
+              (string-empty-p theme)
+              (emacs/legacy-gtk-theme-p theme))
+    (let* ((base-theme (if (string-suffix-p ":dark" theme)
+                           (substring theme 0 -5)
+                         theme))
+           (theme-dirs (list "/usr/share/themes" "/usr/local/share/themes"
+                             (expand-file-name ".themes" (or (getenv "HOME") "~"))
+                             (expand-file-name "themes"
+                                               (or (getenv "XDG_DATA_HOME")
+                                                   (expand-file-name ".local/share" (or (getenv "HOME") "~")))))))
+      (or (string= (downcase base-theme) "adwaita")
+          (seq-some (lambda (dir) (file-directory-p (expand-file-name base-theme dir)))
+                    theme-dirs)))))
 
 (defun emacs/gtk-settings-theme ()
   "Read `gtk-theme-name' from ~/.config/gtk-3.0/settings.ini if present."
@@ -97,32 +114,74 @@
         (goto-char (point-min))
         (when (re-search-forward "^[ \t]*gtk-theme-name[ \t]*=[ \t]*\\([^\r\n\"]+\\)" nil t)
           (let ((val (string-trim (match-string 1))))
-            (unless (string-empty-p val) val)))))))
+            (unless (or (string-empty-p val) (emacs/legacy-gtk-theme-p val))
+              val)))))))
+
+(defun emacs/desktop-color-scheme (&optional flavor)
+  "Detect active desktop color scheme (`dark' or `light') for FLAVOR."
+  (let ((flv (or flavor (emacs/detect-desktop-environment)))
+        (scheme nil))
+    (cond
+     ((member flv '("kde" "lxqt"))
+      (let ((kcfg (expand-file-name ".config/kdeglobals" (or (getenv "HOME") "~"))))
+        (when (file-readable-p kcfg)
+          (with-temp-buffer
+            (insert-file-contents kcfg)
+            (goto-char (point-min))
+            (when (re-search-forward "^[ \t]*ColorScheme[ \t]*=[ \t]*\\([^\r\n]+\\)" nil t)
+              (let ((cs (downcase (string-trim (match-string 1)))))
+                (setq scheme (if (string-match-p "dark\\|night\\|black" cs) 'dark 'light))))))))
+     ((and (member flv '("gnome" "budgie" "pantheon" "adwaita"))
+           (executable-find "gsettings"))
+      (let* ((default-directory "/")
+             (out (ignore-errors
+                    (with-temp-buffer
+                      (when (zerop (call-process "gsettings" nil t nil
+                                                 "get" "org.gnome.desktop.interface" "color-scheme"))
+                        (downcase (string-trim (buffer-string))))))))
+        (when out
+          (cond
+           ((string-match-p "prefer-dark" out) (setq scheme 'dark))
+           ((string-match-p "prefer-light\\|default" out) (setq scheme 'light)))))))
+    (or scheme 'dark)))
 
 (defun emacs/resolve-gtk-theme (&optional flavor)
-  "Resolve best dark GTK theme for FLAVOR matching Shell ecosystem logic."
+  "Resolve best adaptive GTK theme for FLAVOR matching Shell ecosystem logic."
   (let* ((ini-theme (emacs/gtk-settings-theme))
          (flv (or flavor (emacs/detect-desktop-environment)))
-         (table '(("kde"      "Breeze-Dark" "Breeze:dark" "Breeze" "adw-gtk3-dark" "Adwaita-dark")
-                  ("gnome"    "adw-gtk3-dark" "Yaru-dark" "Adwaita-dark" "Adwaita:dark")
-                  ("xfce"     "Greybird-dark" "Greybird" "adw-gtk3-dark" "Adwaita-dark")
-                  ("cinnamon" "Mint-Y-Dark" "adw-gtk3-dark" "Adwaita-dark")
-                  ("mate"     "Yaru-MATE-dark" "BlackMATE" "adw-gtk3-dark" "Adwaita-dark")
-                  ("lxqt"     "Breeze-Dark" "Breeze:dark" "adw-gtk3-dark" "Arc-Dark")
-                  ("lxde"     "Clearlooks-Phenix" "Arc-Dark" "adw-gtk3-dark" "Numix")
-                  ("budgie"   "Materia-dark" "Arc-Dark" "Yaru-dark" "adw-gtk3-dark")
-                  ("pantheon" "io.elementary.stylesheet.blueberry-dark" "adw-gtk3-dark")
-                  ("deepin"   "deepin-dark" "deepin" "adw-gtk3-dark" "Adwaita-dark")
-                  ("cosmic"   "cosmic-dark" "cosmic" "adw-gtk3-dark" "Adwaita-dark")))
-         (candidates (or (cdr (assoc flv table))
-                         '("adw-gtk3-dark" "Yaru-dark" "Adwaita-dark" "Breeze-Dark"))))
+         (light-p (eq (emacs/desktop-color-scheme flv) 'light))
+         (dark-table '(("kde"      "Breeze-Dark" "Breeze:dark" "Breeze" "adw-gtk3-dark" "adw-gtk3:dark" "adw-gtk3" "Adwaita:dark" "Adwaita-dark")
+                       ("gnome"    "adw-gtk3-dark" "adw-gtk3:dark" "adw-gtk3" "Yaru-dark" "Adwaita:dark" "Adwaita-dark")
+                       ("xfce"     "Greybird-dark" "Greybird" "adw-gtk3-dark" "Adwaita:dark" "Adwaita-dark")
+                       ("cinnamon" "Mint-Y-Dark" "adw-gtk3-dark" "Adwaita:dark" "Adwaita-dark")
+                       ("mate"     "Yaru-MATE-dark" "BlackMATE" "adw-gtk3-dark" "Adwaita:dark" "Adwaita-dark")
+                       ("lxqt"     "Breeze-Dark" "Breeze:dark" "adw-gtk3-dark" "Arc-Dark")
+                       ("lxde"     "Clearlooks-Phenix" "Arc-Dark" "adw-gtk3-dark" "Numix")
+                       ("budgie"   "Materia-dark" "Arc-Dark" "Yaru-dark" "adw-gtk3-dark")
+                       ("pantheon" "io.elementary.stylesheet.blueberry-dark" "adw-gtk3-dark")
+                       ("deepin"   "deepin-dark" "deepin" "adw-gtk3-dark" "Adwaita:dark")
+                       ("cosmic"   "cosmic-dark" "cosmic" "adw-gtk3-dark" "Adwaita:dark")))
+         (light-table '(("kde"      "Breeze" "adw-gtk3" "Adwaita")
+                        ("gnome"    "adw-gtk3" "Yaru" "Adwaita")
+                        ("xfce"     "Greybird" "adw-gtk3" "Adwaita")
+                        ("cinnamon" "Mint-Y" "adw-gtk3" "Adwaita")
+                        ("mate"     "Yaru-MATE" "adw-gtk3" "Adwaita")
+                        ("lxqt"     "Breeze" "adw-gtk3" "Adwaita")
+                        ("cosmic"   "cosmic" "adw-gtk3" "Adwaita")))
+         (candidates (or (cdr (assoc flv (if light-p light-table dark-table)))
+                         (if light-p
+                             '("adw-gtk3" "Yaru" "Breeze" "Adwaita")
+                           '("adw-gtk3-dark" "adw-gtk3:dark" "adw-gtk3" "Yaru-dark" "Breeze-Dark" "Adwaita:dark" "Adwaita-dark")))))
     (or (and ini-theme (emacs/gtk-theme-exists-p ini-theme) ini-theme)
         (seq-find #'emacs/gtk-theme-exists-p candidates)
         (car candidates)
-        "adw-gtk3-dark")))
+        (if light-p "adw-gtk3" "adw-gtk3-dark"))))
 
-(unless (getenv "GTK_THEME")
-  (setenv "GTK_THEME" (emacs/resolve-gtk-theme)))
+(let ((env-theme (getenv "GTK_THEME")))
+  (when (or (null env-theme)
+            (string-empty-p env-theme)
+            (emacs/legacy-gtk-theme-p env-theme))
+    (setenv "GTK_THEME" (emacs/resolve-gtk-theme))))
 
 ;;; ================================
 ;;; WARNINGS & OBSOLESCENCE FILTER

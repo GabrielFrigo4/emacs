@@ -7,7 +7,7 @@ MAKEFLAGS += --no-print-directory -s
 # Makefile: Emacs Lisp Suite
 # ----------------------------------------------------------------
 
-.PHONY: help hooks test batch test-filter indent format prettier ci upmodes treesit update clean audit
+.PHONY: help hooks test batch test-filter test-guards indent format prettier ci upmodes treesit update clean audit
 
 ### ================================
 ### HELP & DOCUMENTATION
@@ -23,6 +23,7 @@ help:
 	sec "Qualidade & Formatação:"; \
 	cmd "test"           "Valida inicialização limpa e filtros de avisos"; \
 	cmd "test-filter"    "Valida filtro de avisos obsoletos (Elpaca vs Config)"; \
+	cmd "test-guards"    "Valida guardas de PGTK, GTK3 e sockets do daemon"; \
 	cmd "batch"          "Executa boot limpo batch do Emacs"; \
 	cmd "audit"          "Audita conformidade estrutural e ausência de var/tmp"; \
 	cmd "clean"          "Remove resíduos de execução e higieniza bancada"; \
@@ -73,7 +74,7 @@ upmodes:
 ### ================================
 ### TESTING & FORMATTING
 ### ================================
-test: batch test-filter
+test: batch test-filter test-guards
 
 test-filter:
 	echo "🧪 Validando filtro seletivo de avisos obsoletos (Elpaca vs Config)..."
@@ -82,6 +83,15 @@ test-filter:
 		echo "  ✅ Filtro seletivo de avisos obsoletos íntegro."; \
 	else \
 		echo "ℹ️  emacs não encontrado no PATH; ignorando teste de filtro."; \
+	fi
+
+test-guards:
+	echo "🧪 Validando guardas de PGTK, temas GTK3 e sockets do daemon..."
+	if command -v emacs > "/dev/null" 2>&1; then \
+		GTK_THEME="Emacs-Doom-Dark" emacs -Q --batch -l early-init.el -l init.el -l test/test-runtime-guards.el --eval '(when (emacs/legacy-gtk-theme-p (getenv "GTK_THEME")) (error "GTK_THEME legacy não sanitizado: %s" (getenv "GTK_THEME")))' > "/dev/null" 2>&1 || { echo "❌ Falha nos testes de guarda de runtime do Emacs."; exit 1; }; \
+		echo "  ✅ Guardas de PGTK, GTK3 e sockets íntegros."; \
+	else \
+		echo "ℹ️  emacs não encontrado no PATH; ignorando teste de guardas."; \
 	fi
 
 batch:

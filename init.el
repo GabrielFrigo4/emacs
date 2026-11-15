@@ -278,35 +278,120 @@
 ;; ================================
 (require 'server)
 
-(defun emacs/sync-server-sockets ()
-  "Bidirectionally synchronize Emacs server sockets between standard XDG path and server/auth/server."
-  (when-unix
-   (let* ((auth-dir (expand-file-name "server/auth" var-dir))
-          (auth-sock (expand-file-name "server" auth-dir))
-          (run-dir (or (when-let* ((xdg-run (getenv "XDG_RUNTIME_DIR")))
-                         (expand-file-name "emacs" xdg-run))
-                       (expand-file-name (format "emacs%d" (user-uid)) temporary-file-directory)))
-          (std-sock (expand-file-name "server" run-dir)))
-     (ignore-errors
-       (unless (file-directory-p auth-dir)
-         (make-directory auth-dir t))
-       (unless (file-directory-p run-dir)
-         (make-directory run-dir t)
-         (set-file-modes run-dir #o700))
-       (cond
-        ((and (file-exists-p auth-sock) (not (file-symlink-p auth-sock)))
-         (unless (and (file-symlink-p std-sock) (string= (file-truename std-sock) (file-truename auth-sock)))
-           (delete-file std-sock)
-           (make-symbolic-link auth-sock std-sock t)))
-        ((and (file-exists-p std-sock) (not (file-symlink-p std-sock)))
-         (unless (and (file-symlink-p auth-sock) (string= (file-truename auth-sock) (file-truename std-sock)))
-           (delete-file auth-sock)
-           (make-symbolic-link std-sock auth-sock t))))))))
+(defun emacs/server-socket-name ()
+  "Return active Emacs server socket filename."
+  (let ((d (daemonp)))
+    (cond
+     ((and (stringp d) (not (string-empty-p d)))
+      (file-name-nondirectory d))
+     ((and (boundp 'server-name) (stringp server-name)
+           (not (string-empty-p server-name)))
+      server-name)
+     (t "server"))))
 
-(unless (server-running-p)
-  (server-start))
-(emacs/sync-server-sockets)
-(add-hook 'server-after-make-frame-hook #'emacs/sync-server-sockets)
+(defun emacs/server-run-dir ()
+  "Return canonical per-user runtime directory for Emacs server sockets."
+  (let ((d (daemonp)))
+    (or (when (and (stringp d) (file-name-directory d))
+          (directory-file-name (file-name-directory d)))
+        (when-let* ((xdg-run (getenv "XDG_RUNTIME_DIR")))
+          (unless (string-empty-p xdg-run)
+            (expand-file-name "emacs" xdg-run)))
+        (let ((tmp (or (getenv "TMPDIR") "/tmp")))
+          (expand-file-name (format "emacs%d" (user-uid))
+                            (if (string-empty-p tmp) "/tmp" tmp))))))
+
+(defun emacs/server-socket-alive-p (path)
+  "Return non-nil if Unix socket at PATH accepts local connections."
+  (when (and (stringp path) (file-exists-p path) (not (file-directory-p path)))
+    (let ((proc nil))
+      (unwind-protect
+          (condition-case nil
+              (progn
+                (setq proc (make-network-process
+                            :name "emacs-socket-probe"
+                            :family 'local
+                            :service path
+                            :noquery t))
+                t)
+            (error nil))
+        (when (process-live-p proc)
+          (delete-process proc))))))
+
+(defun emacs/clean-stale-server-sockets (&optional run-dir auth-dir sock-name)
+  "Remove dangling symlinks and dead sockets in RUN-DIR and AUTH-DIR.
+SOCK-NAME overrides the default server socket filename."
+  (when-unix
+   (let* ((sname (or sock-name (emacs/server-socket-name)))
+          (rdir (or run-dir (emacs/server-run-dir)))
+          (adir (or auth-dir (expand-file-name "server/auth" var-dir)))
+          (std-sock (expand-file-name sname rdir))
+          (auth-sock (expand-file-name sname adir)))
+     (dolist (path (list std-sock auth-sock))
+       (ignore-errors
+         (cond
+          ((file-symlink-p path)
+           (when (or (not (file-exists-p path))
+                     (and (not (file-directory-p path))
+                          (not (emacs/server-socket-alive-p path))))
+             (delete-file path)))
+          ((and (file-attributes path)
+                (not (file-directory-p path))
+                (not (emacs/server-socket-alive-p path)))
+           (delete-file path))))))))
+
+(defun emacs/sync-server-sockets (&optional run-dir auth-dir sock-name)
+  "Synchronize Emacs server sockets between RUN-DIR and AUTH-DIR.
+SOCK-NAME overrides the default server socket filename."
+  (when-unix
+   (let* ((sname (or sock-name (emacs/server-socket-name)))
+          (adir (or auth-dir (expand-file-name "server/auth" var-dir)))
+          (rdir (or run-dir (emacs/server-run-dir)))
+          (auth-sock (expand-file-name sname adir))
+          (std-sock (expand-file-name sname rdir)))
+     (ignore-errors
+       (unless (file-directory-p adir)
+         (make-directory adir t))
+       (set-file-modes adir #o700)
+       (unless (file-directory-p rdir)
+         (make-directory rdir t))
+       (set-file-modes rdir #o700)
+       (emacs/clean-stale-server-sockets rdir adir sname)
+       (cond
+        ((and (file-exists-p std-sock)
+              (not (file-symlink-p std-sock))
+              (not (file-directory-p std-sock))
+              (emacs/server-socket-alive-p std-sock))
+         (unless (and (file-symlink-p auth-sock)
+                      (string= (file-truename auth-sock)
+                               (file-truename std-sock)))
+           (when (or (file-symlink-p auth-sock) (file-exists-p auth-sock))
+             (delete-file auth-sock))
+           (make-symbolic-link std-sock auth-sock t)))
+        ((and (file-exists-p auth-sock)
+              (not (file-symlink-p auth-sock))
+              (not (file-directory-p auth-sock))
+              (emacs/server-socket-alive-p auth-sock))
+         (unless (and (file-symlink-p std-sock)
+                      (string= (file-truename std-sock)
+                               (file-truename auth-sock)))
+           (when (or (file-symlink-p std-sock) (file-exists-p std-sock))
+             (delete-file std-sock))
+           (make-symbolic-link auth-sock std-sock t))))))))
+
+(defun emacs/on-server-start (&rest _)
+  "Synchronize server sockets immediately after server startup."
+  (unless noninteractive
+    (emacs/sync-server-sockets)))
+
+(unless noninteractive
+  (emacs/clean-stale-server-sockets)
+  (advice-add 'server-start :after #'emacs/on-server-start)
+  (when (and (not (daemonp)) (display-graphic-p))
+    (unless (server-running-p)
+      (server-start))
+    (emacs/sync-server-sockets))
+  (add-hook 'server-after-make-frame-hook #'emacs/on-server-start))
 
 ;; ================================
 ;; RESTORE GC DEFAULTS
