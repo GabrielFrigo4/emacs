@@ -19,8 +19,8 @@ import sys, re
 
 path = sys.argv[1]
 try:
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
+    with open(path, "r", encoding="utf-8", newline="") as fp:
+        content = fp.read()
 except Exception:
     sys.exit(0)
 
@@ -34,37 +34,37 @@ if not lines:
 first_line = lines[0].rstrip("\r\n")
 trimmed = first_line.strip()
 
-if trimmed.startswith("Merge ") or trimmed.startswith("Revert ") or trimmed.startswith("fixup!") or trimmed.startswith("squash!"):
+if trimmed.startswith(("Merge ", "Revert ", "fixup!", "squash!")):
     sys.exit(0)
 
-valid_types = ("add", "update", "fix", "docs", "feat", "chore", "refactor", "style", "ci", "test", "sec", "init")
+valid_types = ("add", "update", "fix", "docs", "feat", "chore", "refactor", "style", "ci", "test", "sec", "init", "build", "perf")
 
 pattern = re.compile(r"^([a-zA-Z]+)(\([a-zA-Z0-9_.-]+\))?:\s*(.*)$")
-m = pattern.match(trimmed)
+match = pattern.match(trimmed)
 
-if m:
-    t = m.group(1).lower()
-    scope = m.group(2) or ""
-    rest = m.group(3).strip()
-    if t in valid_types:
-        new_first = f"{t}{scope}: {rest}"
+if match:
+    commit_type = match.group(1).lower()
+    scope = match.group(2) or ""
+    rest = match.group(3).strip()
+    if commit_type in valid_types:
+        new_first = f"{commit_type}{scope}: {rest}"
     else:
         new_first = f"chore: {trimmed}"
 else:
     new_first = f"chore: {trimmed}"
 
-if new_first != first_line:
+if new_first != first_line or "\r\n" in content:
     nl = "\n" if (len(lines) > 1 or content.endswith("\n")) else ""
-    lines[0] = new_first + nl
-    with open(path, "w", encoding="utf-8") as f:
-        f.writelines(lines)
+    normalized = [new_first + nl] + [line.rstrip("\r\n") + ("\n" if line.endswith(("\n", "\r")) else "") for line in lines[1:]]
+    with open(path, "w", encoding="utf-8", newline="\n") as fp:
+        fp.writelines(normalized)
 ' "${_msg_file}"
 fi
 
 ### --------------------------------
 ### VALIDACAO DE SEMANTICA
 ### --------------------------------
-_clean_msg=$(grep -v '^[[:space:]]*#' "${_msg_file}" | tr '\n' ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+_clean_msg="$({ grep -v '^[[:space:]]*#' "${_msg_file}" || true; } | tr '\n' ' ' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 
 case "${_clean_msg}" in
 	Merge*|Revert*|fixup!*|squash!*)
@@ -77,20 +77,20 @@ if [ -z "${_clean_msg}" ]; then
 	exit 1
 fi
 
-_char_count=$(printf "%s" "${_clean_msg}" | wc -m)
+_char_count=$(printf "%s" "${_clean_msg}" | wc -m | tr -d '[:space:]')
 if [ "${_char_count}" -lt 8 ]; then
 	echo "❌ [commit-msg] Commit message too short (minimum 8 characters)." >&2
 	exit 1
 fi
 
-_pattern='^(add|update|fix|docs|feat|chore|refactor|style|ci|test|sec|init)(\([a-zA-Z0-9_.-]+\))?:[[:space:]]+.+'
+_pattern='^(add|update|fix|docs|feat|chore|refactor|style|ci|test|sec|init|build|perf)(\([a-zA-Z0-9_.-]+\))?:[[:space:]]+.+'
 if ! echo "${_clean_msg}" | grep -E -q "${_pattern}"; then
 	echo "❌ [commit-msg] Semantic prefix convention violated!" >&2
 	echo "   Allowed formats:" >&2
 	echo "     <type>: <description>" >&2
 	echo "     <type>(<scope>): <description>" >&2
-	echo "   Allowed types: add, update, fix, docs, feat, chore, refactor, style, ci, test, sec, init" >&2
-	echo "   Example: 'chore(submodules): update editor and environment pointers'" >&2
+	echo "   Allowed types: add, update, fix, docs, feat, chore, refactor, style, ci, test, sec, init, build, perf" >&2
+	echo "   Example: 'chore(submodules): update environment and module pointers'" >&2
 	exit 1
 fi
 

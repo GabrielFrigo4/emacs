@@ -44,8 +44,8 @@ Toda contribuição deve respeitar rigorosamente as diretrizes em [PRINCIPLES.md
     - _Comentários Explicativos/Narrativos:_ PROIBIDOS em código-fonte, configurações e blocos de código dentro de arquivos Markdown.
 
 2. **Invariante de Modos no Git Index (`0755` vs `0644`):**
-    - Scripts executáveis e ganchos Git devem manter permissão `0755` (`100755` no Git Index).
-    - Arquivos de configuração, documentações, manifestos e fontes devem manter `0644` (`100644` no Git Index).
+    - Entrypoints executáveis com shebang `#!`, scripts utilitários com `#!` e ganchos Git (`.githooks/*`) devem manter permissão `0755` (`100755` no Git Index).
+    - Bibliotecas carregadas via `source` (`.`), arquivos de configuração, código-fonte sem shebang, documentações e templates devem manter `0644` (`100644` no Git Index).
     - Permissões no índice podem ser ajustadas manualmente quando necessário:
         ```sh
         git update-index --chmod=+x scripts/util.sh
@@ -66,9 +66,9 @@ Toda contribuição deve respeitar rigorosamente as diretrizes em [PRINCIPLES.md
 O repositório adota ganchos defensivos com auto-cura ativa em `.githooks/`:
 
 - **`.githooks/pre-commit`:**
-    - _Auto-cura de Modos:_ Detecta scripts e binários ajustando permissões para `0755` no disco e no Git Index; normaliza arquivos de texto para `0644`.
-    - _Auto-cura de Formatação:_ Remove trailing whitespaces, executa Prettier em Markdowns e manifestos estruturados, corrige cabeçalhos de banners estruturais e re-adiciona ao stage.
-    - _Quality Gates Estáticos:_ Bloqueia escapes octais (`\033`), redirecionamentos não aspeados (`> /dev/null`), inconsistências de whitespace/conflito e falhas de sintaxe POSIX (`sh -n`).
+    - _Auto-cura de Modos:_ Detecta entrypoints com `#!` e ganchos ajustando permissões para `0755` no disco e no Git Index; normaliza bibliotecas `sourced`, códigos e arquivos de texto para `0644`.
+    - _Auto-cura de Formatação:_ Remove trailing whitespaces, normaliza finais de linha (`eol=lf`/`crlf`), executa Prettier em Markdowns e manifestos estruturados, corrige cabeçalhos de banners estruturais e re-adiciona ao stage.
+    - _Quality Gates Estáticos:_ Bloqueia escapes ANSI em notação octal (base-8 para `0x1b`), redirecionamentos não aspeados, inconsistências de whitespace/conflito e falhas de sintaxe de shell (`bash -n` / `zsh -n` / `sh -n`).
 - **`.githooks/commit-msg`:**
     - _Auto-cura de Prefixo:_ Valida o prefixo semântico e formata automaticamente a mensagem com `chore:` se o tipo for omitido ou inválido.
     - _Validação de Comprimento:_ Garante mensagens significativas com comprimento mínimo de 8 caracteres.

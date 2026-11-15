@@ -202,8 +202,8 @@ Para assegurar longevidade, determinismo, idempotência e soberania técnica, to
 ### 3. Invariante Out-of-the-Box (Zero Manual Tweaks Post-Clone) & Permissões Octais Canônicas
 
 - Repositórios clonados devem operar imediatamente sem requerer ajustes manuais pós-clone. Modos de permissão POSIX devem estar rigorosamente registrados no índice do Git:
-    - `chmod 0755` para diretórios, scripts executáveis e ganchos de automação.
-    - `chmod 0644` para arquivos de configuração, código-fonte e documentação.
+    - `chmod 0755` para diretórios, ganchos de automação (`.githooks/*`) e scripts ou entrypoints executáveis iniciados com shebang `#!` (`.scripts/*`, utilitários CLI).
+    - `chmod 0644` para bibliotecas carregadas via `source` (`.`), arquivos de configuração, código-fonte, templates e documentação Markdown.
     - `chmod 0700` / `chmod 0600` para diretórios e arquivos de segurança crítica e credenciais privadas.
 - Scripts e utilitários devem aplicar auto-cura de permissões em tempo de execução caso clonados sob sistemas de arquivos que não preservam bits octais POSIX.
 
@@ -239,13 +239,14 @@ O código adota estritamente três categorias formais de comentários, com banim
 
 - Scripts portáveis de automação utilizam interpretador POSIX `sh` com shebang universal `#!/usr/bin/env sh`.
 - Bashismos (`[[ ]]`, `&>`, arrays, diretiva `source`) são banidos em scripts `sh`.
-- **Banimento de Octais em Caracteres e Escapes ANSI:** Nunca utilize notação octal (`\033`, `\001`) para caracteres de escape de terminal. Utilize `$'\e'` ou notação hexadecimal (`\x1b`). A notação octal é reservada com exclusividade para permissões POSIX (`chmod 0755`, `chmod 0644`, `umask`).
+- **Banimento de Octais em Caracteres e Escapes ANSI:** Nunca utilize notação octal base-8 (como o escape octal de `ESC`/`0x1b` ou `SOH`/`0x01`) para caracteres de controle de terminal. Utilize `$'\e'` ou notação hexadecimal (`\x1b`). A notação octal é reservada com exclusividade para permissões POSIX (`chmod 0755`, `chmod 0644`, `umask`).
 
 ### 8. Quoting Defensivo, Redirecionamentos Seguros & Elevação Antifrágil
 
 - Variáveis e caminhos devem ser sistematicamente envolvidos por aspas duplas (`"$VAR"`, `"$PATH_DIR"`), prevenindo expansões acidentais e quebras por espaços em branco.
 - Redirecionamentos devem proteger alvos com aspas duplas: `> "/dev/null" 2>&1`.
 - Detecção e elevação de privilégios devem validar o identificador de usuário defensivamente, prevenindo falhas sob `set -e`:
+
     ```sh
     #!/usr/bin/env sh
     # ----------------------------------------------------------------
@@ -264,6 +265,7 @@ O código adota estritamente três categorias formais de comentários, com banim
 
     [ "$#" -ge 1 ] && shift 1
     ```
+
 - Comandos `shift` sob `set -e` devem ser previamente protegidos com validação de parâmetros (`[ "$#" -ge N ] && shift N`), prevenindo o término fatal exigido pelo padrão POSIX para _special built-ins_.
 
 ### 9. Refatoração Sem Legado (Clean-Break / Zero-Cruft Invariant)

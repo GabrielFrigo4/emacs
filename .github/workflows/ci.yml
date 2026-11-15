@@ -1,10 +1,10 @@
-name: Universal Emacs CI
+name: CI
 
 on:
     push:
-        branches: [main]
+        branches: [main, master]
     pull_request:
-        branches: [main]
+        branches: [main, master]
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,25 +14,318 @@ env:
     FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-    validate:
-        name: 🔍 Emacs Configuration Validation
+    quality-gate:
+        name: 🛡️ Universal Quality Gate
         runs-on: ubuntu-latest
+
         steps:
-            - name: Checkout Code
+            - name: Checkout Repository
               uses: actions/checkout@v7
               with:
-                  submodules: recursive
+                  fetch-depth: 0
 
-            - name: Install GNU Emacs 30+
-              uses: purcell/setup-emacs@master
+            - name: Validate Submodules Integrity
+              if: hashFiles('.gitmodules') != ''
+              run: |
+                  git submodule sync --recursive
+                  git submodule update --init --recursive || echo "⚠️ Some private submodules could not be initialized without SSH credentials."
+                  git submodule status | while read -r sha path rest; do
+                    case "$sha" in
+                      U*)
+                        echo "❌ Submodule $path has merge conflicts!" >&2
+                        exit 1
+                        ;;
+                    esac
+                  done
+
+            - name: Install Shell Interpreters
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y zsh fish
+
+            - name: Check Whitespace & Conflict Markers
+              run: |
+                  git diff --check HEAD~1..HEAD 2> "/dev/null" || git diff --check
+                  python3 -c '
+                  import os, subprocess, sys
+                  out = subprocess.check_output(["git", "-c", "core.quotePath=false", "ls-files", "-z"]).split(b"\0")
+                  errors = []
+                  for raw in out:
+                      if not raw:
+                          continue
+                      p = raw.decode("utf-8", "replace")
+                      if "/OSS/" in p or p.startswith("OSS/") or not os.path.isfile(p):
+                          continue
+                      if p.endswith((".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".zip", ".gz", ".bin", ".o", ".a", ".so")):
+                          continue
+                      try:
+                          with open(p, "r", encoding="utf-8", errors="ignore") as fp:
+                              for idx, line in enumerate(fp, 1):
+                                  if line.startswith(("<<<<<<< ", ">>>>>>> ")):
+                                      errors.append(f"{p}:{idx}")
+                      except OSError:
+                          pass
+                  if errors:
+                      print("❌ Unresolved conflict markers:", errors, file=sys.stderr)
+                      sys.exit(1)
+                  '
+
+            - name: Audit Git Index Modes (Regra 4a) & EOL (LF)
+              run: |
+                  python3 -c '
+                  import os, subprocess, sys
+
+                  repo_name = os.path.basename(os.getcwd())
+                  is_vault = repo_name.lower() == "vault"
+                  non_exec_exts = {
+                      ".md", ".txt", ".json", ".jsonc", ".yml", ".yaml", ".toml", ".ini", ".conf",
+                      ".css", ".scss", ".html", ".svg", ".tex", ".bib", ".cls", ".sty", ".pdf",
+                      ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".ico", ".bmp", ".tiff",
+                      ".ps1", ".cmd", ".bat", ".reg", ".sln", ".vcxproj", ".desktop", ".profile",
+                      ".terminfo", ".pub", ".env", ".org", ".texi", ".kdl", ".xml", ".csv",
+                      ".c", ".h", ".cpp", ".hpp", ".cc", ".rs", ".go", ".java", ".js", ".mjs",
+                      ".cjs", ".ts", ".jsx", ".tsx", ".svelte", ".el", ".lisp", ".vim", ".nix",
+                      ".typ", ".glsl", ".vert", ".frag", ".sql", ".fish", ".nu"
+                  }
+                  non_exec_names = {
+                      ".gitignore", ".gitmodules", ".gitattributes", ".editorconfig", ".prettierrc",
+                      ".clang-format", ".stylua.toml", ".clangd", ".luarc.json", "Makefile",
+                      "GNUmakefile", "BSDmakefile", "CMakeLists.txt", "Dockerfile", "Containerfile",
+                      "Bastillefile", "Justfile", "justfile", "Procfile", "Vagrantfile",
+                      "LICENSE", "VERSION", "editrc", "Xresources", "authinfo", "extensions.txt"
+                  }
+
+                  def is_entrypoint(path):
+                      if not os.path.isfile(path):
+                          return False
+                      if path.startswith(".githooks/"):
+                          return True
+                      base = os.path.basename(path)
+                      _, ext = os.path.splitext(path)
+                      if base in non_exec_names or ext.lower() in non_exec_exts:
+                          return False
+                      with open(path, "rb") as fp:
+                          return fp.read(2) == b"#!"
+
+                  stage_out = subprocess.check_output(["git", "-c", "core.quotePath=false", "ls-files", "-z", "--stage"]).split(b"\0")
+                  tracked, mode_errors = [], []
+                  for row in stage_out:
+                      if not row or b"\t" not in row:
+                          continue
+                      meta, raw_path = row.split(b"\t", 1)
+                      mode = meta.split()[0].decode("ascii", "replace")
+                      path = raw_path.decode("utf-8", "replace")
+                      if mode in ("120000", "160000"):
+                          continue
+                      tracked.append(path)
+                      if os.path.isfile(path) and not is_vault:
+                          expected = "100755" if is_entrypoint(path) else "100644"
+                          if mode != expected:
+                              mode_errors.append(f"{path}: {mode} != {expected}")
+
+                  proc = subprocess.Popen(
+                      ["git", "-c", "core.quotePath=false", "check-attr", "-z", "--stdin", "eol", "filter"],
+                      stdin=subprocess.PIPE,
+                      stdout=subprocess.PIPE,
+                  )
+                  payload = b"\0".join(p.encode("utf-8") for p in tracked) + b"\0" if tracked else b""
+                  out, _ = proc.communicate(payload)
+                  tokens = [t.decode("utf-8", "replace") for t in out.split(b"\0")]
+                  attrs, idx = {}, 0
+                  while idx + 2 < len(tokens):
+                      attrs.setdefault(tokens[idx], {})[tokens[idx + 1]] = tokens[idx + 2]
+                      idx += 3
+
+                  crlf_errors = []
+                  for path in tracked:
+                      info = attrs.get(path, {})
+                      if info.get("filter") == "git-crypt" or not os.path.isfile(path):
+                          continue
+                      if info.get("eol") == "lf":
+                          with open(path, "rb") as fp:
+                              if b"\r\n" in fp.read():
+                                  crlf_errors.append(path)
+
+                  if mode_errors:
+                      print("❌ Regra 4a index permission mismatches:", mode_errors, file=sys.stderr)
+                      sys.exit(1)
+                  if crlf_errors:
+                      print("❌ CRLF line endings found in eol=lf files:", crlf_errors, file=sys.stderr)
+                      sys.exit(1)
+                  print("✅ Regra 4a modes and LF line endings verified.")
+                  '
+
+            - name: Run Static Policy Audit
+              run: |
+                  python3 -c '
+                  import os, re, subprocess, sys
+
+                  tracked = [p.decode("utf-8", "replace") for p in subprocess.check_output(["git", "-c", "core.quotePath=false", "ls-files", "-z"]).split(b"\0") if p]
+                  octal_033 = chr(92) + "033"
+                  octal_001 = chr(92) + "001"
+                  redir_rx = re.compile(">" + r"\s*/dev/null")
+                  user_prefix = "gab" + "riel"
+                  path_rx = re.compile(rf"(/home/{user_prefix}|/Users/{user_prefix}|C:\\\\Users\\\\{user_prefix}|{user_prefix}f@)", re.IGNORECASE)
+                  leaked_rx = re.compile(r"(\.DS_Store|vault_env_.*\.bat|\.bak$|~$|\.tmp$|\.swp$|Thumbs\.db)")
+                  errors = []
+
+                  for path in tracked:
+                      if "/OSS/" in path or path.startswith("OSS/") or "node_modules/" in path or ".venv/" in path or not os.path.isfile(path):
+                          continue
+                      if leaked_rx.search(os.path.basename(path)) or "vault_env_" in path:
+                          errors.append(f"{path}: prohibited temporary/backup file tracked")
+                          continue
+                      _, ext = os.path.splitext(path)
+                      ext_l = ext.lower()
+                      is_shell_src = ext_l in (".sh", ".bash", ".zsh", ".ksh") or path.startswith(".githooks/")
+                      is_code = (
+                          ext_l in (".sh", ".bash", ".zsh", ".ksh", ".fish", ".nu", ".ps1", ".cmd", ".lua", ".py", ".yml", ".yaml")
+                          or path in ("Makefile", "GNUmakefile", "BSDmakefile")
+                          or path.startswith((".githooks/", ".scripts/", ".github/"))
+                      )
+                      if is_code:
+                          with open(path, "rb") as fp:
+                              first = fp.readline()
+                          if first.startswith(b"#!") and not first.startswith(b"#!/usr/bin/env"):
+                              errors.append(f"{path}: non-portable shebang")
+                      if not is_code or path.startswith(".scripts/audit/") or path == ".githooks/pre-commit":
+                          continue
+                      with open(path, "r", encoding="utf-8", errors="replace") as fp:
+                          lines = fp.read().splitlines()
+                      for idx, line in enumerate(lines):
+                          if ext_l != ".md" and (octal_033 in line or octal_001 in line):
+                              errors.append(f"{path}:{idx + 1}: octal ANSI escape")
+                          if is_shell_src and redir_rx.search(line):
+                              errors.append(f"{path}:{idx + 1}: unquoted /dev/null redirect")
+                          if path_rx.search(line):
+                              errors.append(f"{path}:{idx + 1}: hardcoded personal OS path")
+                          stripped = line.lstrip()
+                          if stripped in ("### --------------------------------", "### ================================"):
+                              if idx + 1 < len(lines) and lines[idx + 1].lstrip().startswith("### "):
+                                  title = lines[idx + 1].lstrip()[4:]
+                                  if len(title) > 32 or title != title.upper() or "(" in title or ")" in title:
+                                      errors.append(f"{path}:{idx + 2}: banner {title!r}")
+
+                  if errors:
+                      print("❌ Static policy violations:", *errors[:40], sep="\n  - ", file=sys.stderr)
+                      sys.exit(1)
+                  print("✅ Static policy audit passed cleanly.")
+                  '
+
+            - name: Validate Shell & Python Syntax
+              run: |
+                  PYTHONDONTWRITEBYTECODE=1 python3 -c '
+                  import os, py_compile, shutil, subprocess, sys
+
+                  def resolve_shell(name):
+                      for cand in (shutil.which(name), f"/usr/bin/{name}", f"/bin/{name}"):
+                          if cand and os.path.isfile(cand):
+                              r = subprocess.run([cand, "-n", "-c", ":"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                              if r.returncode == 0:
+                                  return cand
+                      return None
+
+                  out = subprocess.check_output(["git", "-c", "core.quotePath=false", "ls-files", "-z"]).split(b"\0")
+                  sh_compat = subprocess.run(["sh", "-c", "f-f() { :; }"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+                  bash_targets, zsh_targets, sh_targets, ksh_targets, fish_targets, py_targets = [], [], [], [], [], []
+                  for raw in out:
+                      if not raw:
+                          continue
+                      p = raw.decode("utf-8", "replace")
+                      if "/OSS/" in p or p.startswith("OSS/") or "node_modules/" in p or ".venv/" in p or not os.path.isfile(p):
+                          continue
+                      if p.endswith(".py"):
+                          py_targets.append(p)
+                          continue
+                      if p.endswith(".fish"):
+                          fish_targets.append(p)
+                          continue
+                      if p.endswith(".ksh"):
+                          ksh_targets.append(p)
+                          continue
+                      if p.endswith(".zsh"):
+                          zsh_targets.append(p)
+                          continue
+                      if p.endswith(".bash"):
+                          bash_targets.append(p)
+                          continue
+                      if not (p.endswith(".sh") or p.startswith(".githooks/")):
+                          continue
+                      with open(p, "rb") as fp:
+                          first = fp.readline().decode("utf-8", "replace").strip()
+                      if p.startswith(".githooks/") or first == "#!/usr/bin/env sh" or first == "#!/bin/sh":
+                          sh_targets.append(p)
+                      if "zsh" in first:
+                          zsh_targets.append(p)
+                      elif "bash" in first:
+                          bash_targets.append(p)
+                      elif "ksh" in first:
+                          ksh_targets.append(p)
+                      elif "python" in first or "fish" in first:
+                          continue
+                      else:
+                          segs = f"/{p}"
+                          if "/bash/" not in segs and not p.endswith("bash.sh") and "/ksh/" not in segs and not p.endswith("ksh.sh"):
+                              zsh_targets.append(p)
+                          if "/zsh/" not in segs and not p.endswith("zsh.sh") and "/ksh/" not in segs and not p.endswith("ksh.sh"):
+                              bash_targets.append(p)
+                          if "/ksh/" in segs or p.endswith("ksh.sh") or p.startswith(("core/", "library/")):
+                              ksh_targets.append(p)
+                          if sh_compat and ("/zsh/" not in segs and "/bash/" not in segs and "/ksh/" not in segs and not p.endswith(("zsh.sh", "bash.sh", "ksh.sh"))):
+                              if p not in sh_targets:
+                                  sh_targets.append(p)
+
+                  for shell_bin, targets in ((resolve_shell("bash"), bash_targets), (resolve_shell("zsh"), zsh_targets), (resolve_shell("sh"), sh_targets), (resolve_shell("ksh") or resolve_shell("oksh"), ksh_targets), (resolve_shell("fish"), fish_targets)):
+                      if shell_bin and targets:
+                          for i in range(0, len(targets), 100):
+                              r = subprocess.run([shell_bin, "-n", *targets[i:i + 100]])
+                              if r.returncode != 0:
+                                  sys.exit(r.returncode)
+
+                  for p in py_targets:
+                      py_compile.compile(p, doraise=True)
+                  print("✅ Shell and Python syntax checks passed.")
+                  '
+
+            - name: Setup Node.js & Prettier
+              uses: actions/setup-node@v7
               with:
-                  version: 30.1
+                  node-version: "22"
 
-            - name: Validate Shell Scripts
+            - name: Validate Formatting (Prettier)
               run: |
-                  find . -name "*.sh" -not -path "./.git/*" -exec sh -n {} +
-                  find .githooks -type f -exec sh -n {} +
+                  npm install -g prettier
+                  python3 -c '
+                  import os, subprocess, sys
+                  out = subprocess.check_output(["git", "-c", "core.quotePath=false", "ls-files", "-z"]).split(b"\0")
+                  all_files = [r.decode("utf-8", "replace") for r in out if r]
+                  proc = subprocess.Popen(
+                      ["git", "-c", "core.quotePath=false", "check-attr", "-z", "--stdin", "filter"],
+                      stdin=subprocess.PIPE,
+                      stdout=subprocess.PIPE,
+                  )
+                  payload = b"\0".join(p.encode("utf-8") for p in all_files) + b"\0" if all_files else b""
+                  attr_out, _ = proc.communicate(payload)
+                  tokens = [t.decode("utf-8", "replace") for t in attr_out.split(b"\0")]
+                  encrypted = {tokens[i] for i in range(0, len(tokens) - 2, 3) if tokens[i + 1] == "filter" and tokens[i + 2] == "git-crypt"}
+                  targets = [
+                      p for p in all_files
+                      if p not in encrypted
+                      and "/OSS/" not in p
+                      and not p.startswith("OSS/")
+                      and "node_modules/" not in p
+                      and ".venv/" not in p
+                      and os.path.isfile(p)
+                      and p.endswith((".md", ".json", ".jsonc", ".yml", ".yaml"))
+                  ]
+                  for i in range(0, len(targets), 100):
+                      r = subprocess.run(["prettier", "--check", "--", *targets[i:i + 100]])
+                      if r.returncode != 0:
+                          sys.exit(r.returncode)
+                  '
 
-            - name: Test Emacs Batch Initialization
+            - name: Run Architecture Audit Suite
+              if: hashFiles('.scripts/audit/all.py') != ''
               run: |
-                  emacs -Q --batch -l early-init.el -l init.el --eval '(message "Emacs CI load OK")'
+                  PYTHONDONTWRITEBYTECODE=1 python3 .scripts/audit/all.py

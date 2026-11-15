@@ -1,6 +1,6 @@
-# ----------------------------------------------------------------
-# Default Behavior & Line Ending Normalization
-# ----------------------------------------------------------------
+# ================================================================
+# DEFAULT BEHAVIOR & LINE ENDING NORMALIZATION
+# ================================================================
 *                 text=auto
 
 # ================================================================
@@ -12,6 +12,11 @@
 *.ksh             text eol=lf
 *.fish            text eol=lf
 *.nu              text eol=lf
+.githooks/*       text eol=lf
+commit-msg        text eol=lf
+pre-commit        text eol=lf
+.scripts/*        text eol=lf
+.scripts/*.py     text eol=lf diff=python
 
 # ================================================================
 # MAKEFILES & BUILD SYSTEMS GNU, BSD, NMAKE & AUTOTOOLS
@@ -93,6 +98,25 @@ vimrc             text eol=lf
 .gitignore        text eol=lf
 .gitattributes    text eol=lf
 .editorconfig     text eol=lf
+
+# ================================================================
+# TOOLING, DOTFILES & EXTENSIONLESS TEXT
+# ================================================================
+.prettierrc       text eol=lf
+.clang-format     text eol=lf
+.stylua.toml      text eol=lf
+.clangd           text eol=lf
+.luarc.json       text eol=lf
+LICENSE           text eol=lf
+VERSION           text eol=lf
+editrc            text eol=lf
+Xresources        text eol=lf
+authinfo          text eol=lf
+extensions.txt    text eol=lf
+*.desktop         text eol=lf
+*.profile         text eol=lf
+*.terminfo        text eol=lf
+*.pub             text eol=lf
 
 # ================================================================
 # WINDOWS ENVIRONMENT FORCE CRLF
