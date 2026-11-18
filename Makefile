@@ -88,7 +88,7 @@ test-filter:
 test-guards:
 	echo "🧪 Validando guardas de PGTK, temas GTK3 e sockets do daemon..."
 	if command -v emacs > "/dev/null" 2>&1; then \
-		GTK_THEME="Emacs-Doom-Dark" emacs -Q --batch -l early-init.el -l init.el -l test/test-runtime-guards.el --eval '(when (emacs/legacy-gtk-theme-p (getenv "GTK_THEME")) (error "GTK_THEME legacy não sanitizado: %s" (getenv "GTK_THEME")))' > "/dev/null" 2>&1 || { echo "❌ Falha nos testes de guarda de runtime do Emacs."; exit 1; }; \
+		out=$$(GTK_THEME="Emacs-Doom-Dark" emacs -Q --batch -l early-init.el -l init.el -l test/test-runtime-guards.el --eval '(when (emacs/legacy-gtk-theme-p (getenv "GTK_THEME")) (error "GTK_THEME legacy não sanitizado: %s" (getenv "GTK_THEME")))' 2>&1) || { printf '%s\n' "$$out"; echo "❌ Falha nos testes de guarda de runtime do Emacs."; exit 1; }; \
 		echo "  ✅ Guardas de PGTK, GTK3 e sockets íntegros."; \
 	else \
 		echo "ℹ️  emacs não encontrado no PATH; ignorando teste de guardas."; \
