@@ -78,9 +78,13 @@
   (aweshell/set-theme 'multi))
 
 (when-unix
- (setq-default explicit-shell-file-name (or (executable-find "zsh") (executable-find "bash") (executable-find "sh") "sh"))
- (setq-default shell-file-name "zsh")
- (setq-default shell-command-switch "-c"))
+ (let ((resolved-shell (or (executable-find "zsh")
+                           (executable-find "bash")
+                           (executable-find "sh")
+                           "sh")))
+   (setq-default explicit-shell-file-name resolved-shell)
+   (setq-default shell-file-name resolved-shell)
+   (setq-default shell-command-switch "-c")))
 
 (when-windows
  (setq-default w32-quote-process-args t))
