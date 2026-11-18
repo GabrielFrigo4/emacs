@@ -23,9 +23,9 @@ Este repositório contém a configuração pessoal do **GNU Emacs (versão 30+, 
 - **Gerenciador Elpaca:** Gestão assíncrona e declarativa de pacotes.
 - **Modos Elisp Vendor In-Tree:** Extensões locais versionadas diretamente no repositório em `usr/local/` (`aweshell` com os 3 temas canônicos do Universal Shell — `multi`, `pill` e `micro` — adaptativos entre GUI/PTY e Raw TTY, além de `aweww` para navegação web soberana).
 - **Tipografia Homologada:** Projetado e calibrado para **`JetBrainsMono NF`** (`:height 120`), proporcionando proporção equilibrada em Org-mode, mode-line e ícones de buffer, com geometria inicial centrada (`81x27`).
-- **Arquitetura de Interface & Estabilidade de Cursor:** Supressão incondicional da `tool-bar` (`interface/apply-tool-bar` configurando `tool-bar-lines 0` e `tool-bar-mode -1` em GUI, EWM e TTY bruto, preservando `menu-bar` exclusivamente em modos gráficos). Rastreamento contínuo de movimentação de mouse desativado em todos os buffers (inclusive no Dashboard), garantindo seleção e cliques com mouse 100% estáveis sem seleções indesejadas pós-clique.
+- **Arquitetura de Interface, Isolamento Per-Frame & Estabilidade de Cursor:** Isolamento 100% per-frame do `Emacs Server` / `emacsclient` via `after-make-frame-functions` e `server-after-make-frame-hook` (`interface/setup-frame`, `typography/init`), mantendo fontes, faces, barras e cursores independentes entre frames GUI e TTY simultâneos. Supressão incondicional da `tool-bar` (`interface/apply-tool-bar` configurando `tool-bar-lines 0` e `tool-bar-mode -1` em GUI, EWM e TTY bruto, preservando `menu-bar` exclusivamente em modos gráficos). Rastreamento contínuo de movimentação de mouse desativado em todos os buffers (inclusive no Dashboard), garantindo seleção e cliques com mouse 100% estáveis sem seleções indesejadas pós-clique.
 - **Arquitetura Quádrupla de Terminais (`aweshell`, `eat`, `vterm`, `term`):** Ecossistema integrado de 4 camadas para terminal e REPL:
-    - **`aweshell`:** Terminal primário baseado no Eshell com biblioteca semântica `_ui_*` (paridade 1:1 com `Shell/library/ui.sh`), 3 temas canônicos (`multi`, `pill`, `micro`), sugestões históricas Zsh-style ghost completion e isolamento de preview.
+    - **`aweshell`:** Terminal primário baseado no Eshell com biblioteca semântica `_ui_*` (paridade 1:1 com `Shell/core/ui.sh`), 3 temas canônicos (`multi`, `pill`, `micro`), sugestões históricas Zsh-style ghost completion e isolamento de preview.
     - **`eat` (`Emulate A Terminal`):** Emulador moderno acelerado em puro Elisp (upstream Codeberg) com TrueColor 24-bit, Sixel, rastreamento de mouse e cascata de interpretadores (`zsh -> bash -> sh`). Opera em modo dual: standalone (`M-x eat`) com integração modal Evil (`eat-semi-char-mode` em Evil Insert e `eat-emacs-mode` em Evil Normal) e acoplado ao `aweshell` via `eat-eshell-mode` e `eat-eshell-visual-command-mode`, executando comandos visuais e TUIs interativas (`agy`, `btop`, `nvim`, `yazi`, `lazygit`, `tmux`, etc.) _in-place_ dentro do próprio buffer do Eshell sem corrupção gráfica.
     - **`vterm`:** Terminal nativo de alta performance compilado sobre a biblioteca C `libvterm` via `emacsmirror/vterm` (branch `master`).
     - **`term` / `ansi-term`:** Emulador ANSI POSIX clássico embutido no core do Emacs, atuando como retaguarda universal.
@@ -287,7 +287,7 @@ esh
 Para configurar o ambiente de desenvolvimento local, ativar os quality gates automáticos e validar a integridade da suíte:
 
 - **`make hooks`**: Configura `.githooks` e permissões canônicas.
-- **`make test`**: Valida inicialização limpa em modo batch (`make batch`).
+- **`make test`**: Executa `batch`, `test-filter` (`test/test-obsolete-filter.el`) e `test-guards` (`test/test-runtime-guards.el`, validando PGTK, GTK3 e sockets do daemon).
 - **`make treesit`**: Compila gramáticas Tree-sitter essenciais.
 - **`make ci`**: Bateria completa de validação local.
 

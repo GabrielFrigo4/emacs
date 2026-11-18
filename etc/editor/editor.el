@@ -70,35 +70,41 @@
         evil-replace-state-cursor    '(hbar . 4)
         evil-operator-state-cursor   '(hbar . 4))
 
-  (defun emacs/ensure-sanitized-linux-terminfo ()
-    "Ensure a sanitized ~/.terminfo/l/linux entry exists to prevent terminfo cnorm/cvvis from clobbering cursor shape."
-    (when (and (string-equal (or (getenv "TERM") "") "linux")
-               (executable-find "tic")
-               (not (file-exists-p (expand-file-name "~/.terminfo/l/linux"))))
-      (let ((default-directory (expand-file-name "~"))
-            (source "linux|linux console with sanitized cursor,\n\tcnorm=\\E[?25h,\n\tcvvis=\\E[?25h,\n\tcivis=\\E[?25l,\n\tuse=linux,\n"))
-        (ignore-errors
-          (make-directory (expand-file-name "~/.terminfo") t)
-          (with-temp-buffer
-            (insert source)
-            (call-process-region (point-min) (point-max) "tic" nil nil nil "-o" (expand-file-name "~/.terminfo") "-"))))))
+  (defun emacs/ensure-sanitized-linux-terminfo (&optional frame)
+    "Ensure a sanitized ~/.terminfo/l/linux entry exists for FRAME when TERM=linux."
+    (let* ((target (or frame (selected-frame)))
+           (term (or (and (frame-live-p target) (fboundp 'tty-type) (tty-type target))
+                     (getenv "TERM" target)
+                     "")))
+      (when (and (string-equal term "linux")
+                 (executable-find "tic")
+                 (not (file-exists-p (expand-file-name "~/.terminfo/l/linux"))))
+        (let ((default-directory (expand-file-name "~"))
+              (source "linux|linux console with sanitized cursor,\n\tcnorm=\\E[?25h,\n\tcvvis=\\E[?25h,\n\tcivis=\\E[?25l,\n\tuse=linux,\n"))
+          (ignore-errors
+            (make-directory (expand-file-name "~/.terminfo") t)
+            (with-temp-buffer
+              (insert source)
+              (call-process-region (point-min) (point-max) "tic" nil nil nil "-o" (expand-file-name "~/.terminfo") "-")))))))
 
   (emacs/ensure-sanitized-linux-terminfo)
 
-  (defun emacs/theme-background-color ()
-    "Resolve active theme background color or fallback based on background-mode."
-    (let ((bg (ignore-errors (face-attribute 'default :background nil t))))
+  (defun emacs/theme-background-color (&optional frame)
+    "Resolve active theme background color on FRAME or fallback by background mode."
+    (let* ((target (or frame (selected-frame)))
+           (bg (ignore-errors (face-attribute 'default :background target t))))
       (cond
        ((and (stringp bg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" bg)) bg)
-       ((eq (frame-parameter nil 'background-mode) 'light) "#ffffff")
+       ((eq (frame-parameter target 'background-mode) 'light) "#ffffff")
        (t "#000000"))))
 
-  (defun emacs/scale-color-tone (color alpha)
-    "Blend hex COLOR (#rrggbb) with theme background by ALPHA (float 0.0 to 1.0)."
-    (let* ((bg (emacs/theme-background-color))
+  (defun emacs/scale-color-tone (color alpha &optional frame)
+    "Blend hex COLOR (#rrggbb) with FRAME theme background by ALPHA (0.0 to 1.0)."
+    (let* ((target (or frame (selected-frame)))
+           (bg (emacs/theme-background-color target))
            (cur (if (and (stringp color) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" color))
                     color
-                  (if (eq (frame-parameter nil 'background-mode) 'light) "#000000" "#ffffff"))))
+                  (if (eq (frame-parameter target 'background-mode) 'light) "#000000" "#ffffff"))))
       (let* ((cr (string-to-number (substring cur 1 3) 16))
              (cg (string-to-number (substring cur 3 5) 16))
              (cb (string-to-number (substring cur 5 7) 16))
@@ -113,77 +119,89 @@
   (defvar emacs/base-cursor-color nil
     "Base unblended cursor color from the active theme.")
 
-  (defun emacs/theme-cursor-color ()
-    "Resolve active theme base cursor color or default foreground."
-    (or emacs/base-cursor-color
-        (let ((bg (or (and (bound-and-true-p doom-themes--colors)
-                           (cadr (or (assq 'cursor doom-themes--colors)
-                                     (assq 'highlight doom-themes--colors))))
-                      (cl-some (lambda (f)
-                                 (when (display-graphic-p f)
-                                   (face-attribute 'cursor :background f t)))
-                               (frame-list))
-                      (ignore-errors (face-attribute 'cursor :background nil t))))
-              (fg (ignore-errors (face-attribute 'default :foreground nil t))))
-          (let ((resolved
-                 (cond
-                  ((and (stringp bg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" bg)
-                        (not (string-equal bg "unspecified"))) bg)
-                  ((and (stringp fg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" fg)) fg)
-                  (t (if (eq (frame-parameter nil 'background-mode) 'light) "#000000" "#ffffff")))))
-            (when (or (bound-and-true-p doom-themes--colors)
-                      (cl-some #'display-graphic-p (frame-list))
-                      (and (stringp bg)
-                           (string-match-p "^#[0-9a-fA-F]\\{6\\}$" bg)
-                           (not (member (downcase bg) '("#000000" "#ffffff")))))
-              (setq emacs/base-cursor-color resolved))
-            resolved))))
+  (defun emacs/theme-cursor-color (&optional frame)
+    "Resolve active theme base cursor color for FRAME or default foreground."
+    (let ((target (or frame (selected-frame))))
+      (or (and (not (and (fboundp 'display-raw-tty-p) (display-raw-tty-p target)))
+               emacs/base-cursor-color)
+          (let ((bg (or (and (bound-and-true-p doom-themes--colors)
+                             (cadr (or (assq 'cursor doom-themes--colors)
+                                       (assq 'highlight doom-themes--colors))))
+                        (cl-some (lambda (f)
+                                   (when (display-graphic-p f)
+                                     (face-attribute 'cursor :background f t)))
+                                 (frame-list))
+                        (ignore-errors (face-attribute 'cursor :background target t))))
+                (fg (ignore-errors (face-attribute 'default :foreground target t))))
+            (let ((resolved
+                   (cond
+                    ((and (stringp bg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" bg)
+                          (not (string-equal bg "unspecified"))) bg)
+                    ((and (stringp fg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" fg)) fg)
+                    (t (if (eq (frame-parameter target 'background-mode) 'light) "#000000" "#ffffff")))))
+              (when (and (not (and (fboundp 'display-raw-tty-p) (display-raw-tty-p target)))
+                         (or (bound-and-true-p doom-themes--colors)
+                             (cl-some #'display-graphic-p (frame-list))
+                             (and (stringp bg)
+                                  (string-match-p "^#[0-9a-fA-F]\\{6\\}$" bg)
+                                  (not (member (downcase bg) '("#000000" "#ffffff"))))))
+                (setq emacs/base-cursor-color resolved))
+              resolved)))))
 
   (advice-add 'load-theme :after (lambda (&rest _) (setq emacs/base-cursor-color nil)))
   (advice-add 'enable-theme :after (lambda (&rest _) (setq emacs/base-cursor-color nil)))
   (add-hook 'elpaca-after-init-hook (lambda () (setq emacs/base-cursor-color nil)))
 
-  (defun emacs/set-terminal-cursor (linux-code pty-shape factor)
-    "Send dynamic cursor escape sequences in PTY and FreeBSD TTY scaled by FACTOR, and static hardware shape in Linux TTY."
-    (unless (or (and (fboundp 'daemonp) (daemonp) (equal (terminal-name (frame-terminal (selected-frame))) "initial_terminal"))
-                (equal (terminal-name (frame-terminal (selected-frame))) "initial_terminal"))
-      (let* ((tone (emacs/scale-color-tone (emacs/theme-cursor-color) factor))
-             (osc (format "\e]12;%s\a" tone)))
-        (if (display-graphic-p (selected-frame))
-            (ignore-errors (set-cursor-color tone))
-          (let* ((term (or (and (fboundp 'tty-type) (tty-type (selected-frame)))
-                           (getenv "TERM")))
-                 (raw-tty (and (fboundp 'display-raw-tty-p)
-                               (display-raw-tty-p (selected-frame)))))
-            (ignore-errors
-              (cond
-               ((and term (string-equal term "linux"))
-                (send-string-to-terminal linux-code))
-               ((and raw-tty osc)
-                (send-string-to-terminal osc))
-               ((not raw-tty)
-                (send-string-to-terminal (concat pty-shape osc))))))))))
+  (defun emacs/set-terminal-cursor (linux-code pty-shape factor &optional frame)
+    "Send dynamic cursor sequences on FRAME scaled by FACTOR using LINUX-CODE or PTY-SHAPE."
+    (let* ((target (or frame (selected-frame)))
+           (term-obj (and (frame-live-p target)
+                          (fboundp 'frame-terminal)
+                          (frame-terminal target)))
+           (term-name (and term-obj
+                           (fboundp 'terminal-name)
+                           (terminal-name term-obj))))
+      (when (and (frame-live-p target)
+                 (not (equal term-name "initial_terminal")))
+        (let* ((tone (emacs/scale-color-tone (emacs/theme-cursor-color target) factor target))
+               (osc (format "\e]12;%s\a" tone)))
+          (if (display-graphic-p target)
+              (with-selected-frame target
+                (ignore-errors (set-cursor-color tone)))
+            (let* ((term (or (and (fboundp 'tty-type) (tty-type target))
+                             (getenv "TERM" target)))
+                   (raw-tty (and (fboundp 'display-raw-tty-p)
+                                 (display-raw-tty-p target))))
+              (ignore-errors
+                (cond
+                 ((and term (string-equal term "linux"))
+                  (send-string-to-terminal linux-code term-obj))
+                 ((and raw-tty osc)
+                  (send-string-to-terminal osc term-obj))
+                 ((not raw-tty)
+                  (send-string-to-terminal (concat pty-shape osc) term-obj))))))))))
 
-  (defun emacs/sync-evil-terminal-cursor (&rest _)
-    "Synchronize terminal cursor shape and dynamic theme tone with current Evil state."
-    (cond
-     ((minibufferp)
-      (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" 0.84))
-     ((evil-emacs-state-p)
-      (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0))
-     ((not (bound-and-true-p evil-local-mode))
-      (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0))
-     ((evil-insert-state-p)
-      (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" 0.92))
-     ((or (evil-replace-state-p)
-          (evil-operator-state-p)
-          (eq (bound-and-true-p evil-force-cursor) 'replace)
-          (eq (bound-and-true-p evil-force-cursor) 'hollow))
-      (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" 0.76))
-     ((evil-visual-state-p)
-      (emacs/set-terminal-cursor "\e[?5c" "\e[1 q" 0.68))
-     (t
-      (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0))))
+  (defun emacs/sync-evil-terminal-cursor (&optional frame &rest _)
+    "Synchronize terminal cursor shape and dynamic theme tone on FRAME with Evil state."
+    (let ((target (if (framep frame) frame (selected-frame))))
+      (cond
+       ((minibufferp)
+        (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" 0.84 target))
+       ((evil-emacs-state-p)
+        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0 target))
+       ((not (bound-and-true-p evil-local-mode))
+        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0 target))
+       ((evil-insert-state-p)
+        (emacs/set-terminal-cursor "\e[?2c" "\e[5 q" 0.92 target))
+       ((or (evil-replace-state-p)
+            (evil-operator-state-p)
+            (eq (bound-and-true-p evil-force-cursor) 'replace)
+            (eq (bound-and-true-p evil-force-cursor) 'hollow))
+        (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" 0.76 target))
+       ((evil-visual-state-p)
+        (emacs/set-terminal-cursor "\e[?5c" "\e[1 q" 0.68 target))
+       (t
+        (emacs/set-terminal-cursor "\e[?6c" "\e[1 q" 1.0 target)))))
 
   (add-hook 'evil-emacs-state-entry-hook    #'emacs/sync-evil-terminal-cursor)
   (add-hook 'evil-insert-state-entry-hook   #'emacs/sync-evil-terminal-cursor)
@@ -207,13 +225,14 @@
   (advice-add 'evil-refresh-cursor :after   #'emacs/sync-evil-terminal-cursor)
   (advice-add 'evil-replace :around
               (lambda (orig-fun &rest args)
-                (let ((old-cursor cursor-type))
+                (let ((old-cursor cursor-type)
+                      (target (selected-frame)))
                   (setq-local cursor-type '(hbar . 4))
-                  (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" 0.76)
+                  (emacs/set-terminal-cursor "\e[?4c" "\e[3 q" 0.76 target)
                   (unwind-protect
                       (apply orig-fun args)
                     (setq-local cursor-type old-cursor)
-                    (emacs/sync-evil-terminal-cursor)))))
+                    (emacs/sync-evil-terminal-cursor target)))))
   (add-hook 'minibuffer-setup-hook          #'emacs/sync-evil-terminal-cursor)
   (add-hook 'minibuffer-exit-hook           #'emacs/sync-evil-terminal-cursor)
   (add-hook 'buffer-list-update-hook        #'emacs/sync-evil-terminal-cursor)
@@ -221,34 +240,54 @@
   (add-hook 'tty-setup-hook                 #'emacs/sync-evil-terminal-cursor)
   (add-hook 'after-make-frame-functions
             (lambda (frame)
-              (if (display-graphic-p frame)
-                  (when (bound-and-true-p blink-cursor-mode)
-                    (with-selected-frame frame
-                      (blink-cursor-check)))
-                (with-selected-frame frame
-                  (emacs/sync-evil-terminal-cursor)))))
+              (when (frame-live-p frame)
+                (if (display-graphic-p frame)
+                    (when (bound-and-true-p blink-cursor-mode)
+                      (with-selected-frame frame
+                        (blink-cursor-check)))
+                  (with-selected-frame frame
+                    (emacs/ensure-sanitized-linux-terminfo frame)
+                    (emacs/sync-evil-terminal-cursor frame))))))
   (add-hook 'server-after-make-frame-hook
-            (lambda ()
-              (if (display-graphic-p)
-                  (when (bound-and-true-p blink-cursor-mode)
-                    (blink-cursor-check))
-                (emacs/sync-evil-terminal-cursor))))
+            (lambda (&optional frame)
+              (let ((target (or frame (selected-frame))))
+                (when (frame-live-p target)
+                  (if (display-graphic-p target)
+                      (when (bound-and-true-p blink-cursor-mode)
+                        (with-selected-frame target
+                          (blink-cursor-check)))
+                    (with-selected-frame target
+                      (emacs/ensure-sanitized-linux-terminfo target)
+                      (emacs/sync-evil-terminal-cursor target)))))))
   (add-hook 'delete-frame-functions
             (lambda (frame)
-              (unless (display-graphic-p frame)
-                (ignore-errors
-                  (let ((term (and (fboundp 'frame-terminal) (frame-terminal frame))))
-                    (send-string-to-terminal "\e[1 q\e]112\a\e]112\e\\" term))))))
+              (when (and (frame-live-p frame)
+                         (not (display-graphic-p frame)))
+                (let* ((term (and (fboundp 'frame-terminal) (frame-terminal frame)))
+                       (term-name (and term (fboundp 'terminal-name) (terminal-name term)))
+                       (tty (or (and (fboundp 'tty-type) (tty-type frame))
+                                (getenv "TERM" frame) "")))
+                  (unless (equal term-name "initial_terminal")
+                    (ignore-errors
+                      (if (string-equal tty "linux")
+                          (send-string-to-terminal "\e%G\e[?16;238;0c" term)
+                        (send-string-to-terminal "\e[1 q\e]112\a\e]112\e\\" term))))))))
   (add-hook 'suspend-hook
             (lambda ()
-              (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" 1.0)
-              (unless (or (daemonp) (display-graphic-p))
-                (ignore-errors (send-string-to-terminal "\e[1 q\e]112\a\e]112\e\\")))))
+              (let* ((target (selected-frame))
+                     (term (and (fboundp 'frame-terminal) (frame-terminal target)))
+                     (term-name (and term (fboundp 'terminal-name) (terminal-name term))))
+                (unless (or (daemonp) (display-graphic-p target) (equal term-name "initial_terminal"))
+                  (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" 1.0 target)
+                  (ignore-errors (send-string-to-terminal "\e[1 q\e]112\a\e]112\e\\" term))))))
   (add-hook 'kill-emacs-hook
             (lambda ()
-              (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" 1.0)
-              (unless (or (daemonp) (display-graphic-p))
-                (ignore-errors (send-string-to-terminal "\e[1 q\e]112\a\e]112\e\\"))))))
+              (let* ((target (selected-frame))
+                     (term (and (fboundp 'frame-terminal) (frame-terminal target)))
+                     (term-name (and term (fboundp 'terminal-name) (terminal-name term))))
+                (unless (or (daemonp) (display-graphic-p target) (equal term-name "initial_terminal"))
+                  (emacs/set-terminal-cursor "\e%G\e[?16;238;0c" "\e[1 q" 1.0 target)
+                  (ignore-errors (send-string-to-terminal "\e[1 q\e]112\a\e]112\e\\" term)))))))
 
 (use-package evil-tutor
   :defer t

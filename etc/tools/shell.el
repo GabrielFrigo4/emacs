@@ -188,14 +188,51 @@
   (defalias 'eshell/esh  'aweshell/new)
   (defalias 'eshell/aweshell 'aweshell/new))
 
-(defun shell/sanitize-tty-environment (&rest _)
-  "Strip raw TTY flags from process environment when running in a graphical session."
-  (when (display-graphic-p)
-    (dolist (var '("RAW_TTY" "LC_RAW_TTY" "UNIVERSAL_RAW_TTY"))
-      (let ((prefix (concat var "=")))
-        (setq process-environment
-              (seq-filter (lambda (env) (not (string-prefix-p prefix env)))
-                          process-environment))))))
+(defun shell--filter-env-vars (env-list vars)
+  "Return copy of ENV-LIST removing entries matching any variable in VARS."
+  (seq-remove (lambda (entry)
+                (seq-some (lambda (var)
+                            (or (string= entry var)
+                                (string-prefix-p (concat var "=") entry)))
+                          vars))
+              env-list))
+
+(defun shell/with-frame-process-environment (orig-fun &rest args)
+  "Invoke ORIG-FUN with ARGS using per-frame isolated `process-environment'."
+  (let* ((frame (selected-frame))
+         (raw-tty (and (fboundp 'display-raw-tty-p) (display-raw-tty-p frame)))
+         (env (copy-sequence process-environment))
+         (process-environment
+          (if raw-tty
+              (let ((unset-vars '("DISPLAY" "WAYLAND_DISPLAY" "COLORTERM"
+                                  "MICRO_TRUECOLOR" "TERM_PROGRAM"
+                                  "KONSOLE_VERSION" "WT_SESSION"))
+                    (set-vars '("RAW_TTY" "LC_RAW_TTY"
+                                "UNIVERSAL_RAW_TTY" "FORCE_RAW_TTY")))
+                (append '("RAW_TTY=1"
+                          "LC_RAW_TTY=1"
+                          "UNIVERSAL_RAW_TTY=1"
+                          "FORCE_RAW_TTY=1")
+                        unset-vars
+                        (shell--filter-env-vars env (append unset-vars set-vars))))
+            (let* ((unset-vars '("RAW_TTY" "LC_RAW_TTY"
+                                 "UNIVERSAL_RAW_TTY" "FORCE_RAW_TTY"
+                                 "NVIM_NOTTYFAST"))
+                   (set-vars '("COLORTERM" "MICRO_TRUECOLOR"))
+                   (frame-vars '("DISPLAY" "WAYLAND_DISPLAY" "TERM_PROGRAM"
+                                 "KONSOLE_VERSION" "WT_SESSION"))
+                   (filtered (shell--filter-env-vars env (append unset-vars set-vars)))
+                   (extra nil))
+              (dolist (var frame-vars)
+                (let ((val (getenv var frame)))
+                  (when (and (stringp val) (not (string= val "")))
+                    (setq filtered (shell--filter-env-vars filtered (list var)))
+                    (push (concat var "=" val) extra))))
+              (append '("COLORTERM=truecolor" "MICRO_TRUECOLOR=1")
+                      (nreverse extra)
+                      unset-vars
+                      filtered)))))
+    (apply orig-fun args)))
 
 (defun shell/disable-line-numbers ()
   "Disable line numbers unconditionally in terminal and REPL buffers."
@@ -239,17 +276,24 @@
   (add-hook hook #'shell/disable-line-numbers))
 
 (add-hook 'eat-mode-hook #'shell/configure-eat-mode)
-(add-hook 'vterm-mode-hook  #'shell/sanitize-tty-environment)
-(add-hook 'eat-mode-hook    #'shell/sanitize-tty-environment)
-(add-hook 'term-mode-hook   #'shell/sanitize-tty-environment)
 (add-hook 'eshell-mode-hook #'eat-eshell-mode)
 (add-hook 'eshell-mode-hook #'eat-eshell-visual-command-mode)
-(add-hook 'eshell-mode-hook #'shell/sanitize-tty-environment)
-(advice-add 'vterm :before  #'shell/sanitize-tty-environment)
-(advice-add 'eat   :before  #'shell/sanitize-tty-environment)
-(advice-add 'term  :before  #'shell/sanitize-tty-environment)
-(advice-add 'eshell :before #'shell/sanitize-tty-environment)
-(with-eval-after-load 'aweshell
-  (advice-add 'aweshell/new :before #'shell/sanitize-tty-environment))
+
+(dolist (fn '(eat
+              eat-exec
+              eat-eshell-exec
+              eat--eshell-exec-visual
+              vterm
+              term
+              ansi-term
+              shell
+              eshell
+              eshell-gather-process-output
+              eshell-exec-visual
+              aweshell/new
+              aweshell-exec-visual
+              aweshell/exec-in-term
+              shell--run-terminal-command))
+  (advice-add fn :around #'shell/with-frame-process-environment))
 
 (provide 'feature-shell)

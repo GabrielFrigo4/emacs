@@ -9,39 +9,49 @@
       use-dialog-box nil
       use-file-dialog nil)
 
-;; --------------------------------
-;; ICONS
-;; --------------------------------
+;;; --------------------------------
+;;; ICONS
+;;; --------------------------------
+
+(defun interface/nerd-icons-set-font-a (orig-fn &optional font-family frame)
+  "Run ORIG-FN with FONT-FAMILY only when FRAME is a graphical display."
+  (let ((target (or frame (selected-frame))))
+    (when (and (frame-live-p target) (display-graphic-p target))
+      (funcall orig-fn font-family target))))
 
 (use-package nerd-icons
   :ensure (:type git :host github :repo "emacsmirror/nerd-icons" :branch "master")
-  :custom (nerd-icons-scale-factor 1.2))
+  :custom (nerd-icons-scale-factor 1.2)
+  :config
+  (when (fboundp 'nerd-icons-set-font)
+    (advice-add 'nerd-icons-set-font :around #'interface/nerd-icons-set-font-a)))
 
-;; --------------------------------
-;; THEMES
-;; --------------------------------
+;;; --------------------------------
+;;; THEMES
+;;; --------------------------------
 
 (setq frame-background-mode 'dark)
 
 (defun interface/ensure-dark-background (&optional frame)
-  "Ensure FRAME uses dark background mode for perfect contrast."
+  "Ensure FRAME uses dark background mode for optimal contrast."
   (let ((target (or frame (selected-frame))))
     (when (frame-live-p target)
       (set-frame-parameter target 'background-mode 'dark)
-      (set-frame-parameter target 'background-color "#1e1e1e")
-      (set-frame-parameter target 'foreground-color "#d4d4d4")
+      (unless (and (fboundp 'display-raw-tty-p) (display-raw-tty-p target))
+        (set-frame-parameter target 'background-color "#1e1e1e")
+        (set-frame-parameter target 'foreground-color "#d4d4d4"))
       (when (fboundp 'frame-set-background-mode)
         (frame-set-background-mode target)))))
 
 (add-hook 'tty-setup-hook #'interface/ensure-dark-background)
 (add-hook 'after-make-frame-functions #'interface/ensure-dark-background)
 
-(defun interface/menu-face-colors ()
-  "Return (BG . FG) colors for menu and tool-bar based on desktop flavor."
+(defun interface/menu-face-colors (&optional frame)
+  "Return (BG . FG) colors for menu and tool-bar on FRAME desktop flavor."
   (let ((flv (if (fboundp 'emacs/detect-desktop-environment)
                  (emacs/detect-desktop-environment)
                "adwaita"))
-        (theme (or (getenv "GTK_THEME") "")))
+        (theme (or (getenv "GTK_THEME" frame) "")))
     (cond
      ((or (string-match-p "breeze" (downcase theme)) (member flv '("kde" "lxqt")))
       '("#232629" . "#eff0f1"))
@@ -84,6 +94,8 @@
       (set-face-attribute 'menu nil :background (car colors) :foreground (cdr colors)))
     (when (facep 'scroll-bar)
       (set-face-attribute 'scroll-bar nil :background "#1e1e1e" :foreground "#333333")))
+  (when (fboundp 'interface/apply-tty-faces)
+    (interface/apply-tty-faces))
   (add-hook 'org-mode-hook #'doom-themes-org-config))
 
 (defun interface/apply-theme (&optional frame)
@@ -92,9 +104,12 @@
     (when (frame-live-p target)
       (with-selected-frame target
         (interface/ensure-dark-background target)
-        (when (custom-theme-p 'doom-dark+)
-          (enable-theme 'doom-dark+))
-        (let ((colors (interface/menu-face-colors)))
+        (when (and (custom-theme-p 'doom-dark+)
+                   (not (memq 'doom-dark+ custom-enabled-themes)))
+          (enable-theme 'doom-dark+)
+          (when (fboundp 'interface/apply-tty-faces)
+            (interface/apply-tty-faces)))
+        (let ((colors (interface/menu-face-colors target)))
           (when (facep 'tool-bar)
             (set-face-attribute 'tool-bar target :background (car colors) :foreground (cdr colors) :box nil))
           (when (facep 'menu)
@@ -102,11 +117,19 @@
           (when (facep 'scroll-bar)
             (set-face-attribute 'scroll-bar target :background "#1e1e1e" :foreground "#333333")))))))
 
+(defun interface/doom-modeline-per-frame-icons-a (orig-fn &rest args)
+  "Invoke ORIG-FN with ARGS disabling `doom-modeline-icon' on raw TTY frames."
+  (let ((doom-modeline-icon
+         (and doom-modeline-icon
+              (not (and (fboundp 'display-raw-tty-p)
+                        (display-raw-tty-p (selected-frame)))))))
+    (apply orig-fn args)))
+
 (use-package doom-modeline
   :ensure (:type git :host github :repo "emacsmirror/doom-modeline" :branch "master")
   :init (doom-modeline-mode 1)
   :custom
-  (doom-modeline-icon (not (display-raw-tty-p)))
+  (doom-modeline-icon t)
   (doom-modeline-height 26)
   (doom-modeline-bar-width 4)
   (doom-modeline-buffer-file-name-style 'truncate-upto-project)
@@ -115,6 +138,16 @@
   (doom-modeline-indent-info nil)
   (doom-modeline-minor-modes nil)
   :config
+  (dolist (fn '(doom-modeline-icon-displayable-p
+                doom-modeline-icon
+                doom-modeline-icon-for-buffer))
+    (when (fboundp fn)
+      (advice-add fn :around #'interface/doom-modeline-per-frame-icons-a)))
+  (when (boundp 'doom-modeline--modelines)
+    (dolist (entry doom-modeline--modelines)
+      (let ((fmt-fn (intern-soft (format "doom-modeline-format--%s" (car entry)))))
+        (when (functionp fmt-fn)
+          (advice-add fmt-fn :around #'interface/doom-modeline-per-frame-icons-a)))))
   (add-to-list 'doom-modeline-mode-alist '(ewm-surface-mode . special))
   (add-to-list 'doom-modeline-mode-alist '(exwm-mode . special))
   (when (member (getenv "EMACS_OS_MODE") '("x11" "wayland"))
@@ -124,7 +157,7 @@
     (ignore-errors (display-battery-mode 1))))
 
 (defun interface/apply-modeline (&optional frame)
-  "Ensure doom-modeline is properly initialized on FRAME."
+  "Ensure `doom-modeline' is properly initialized on FRAME."
   (let ((target (or frame (selected-frame))))
     (when (frame-live-p target)
       (with-selected-frame target
@@ -133,9 +166,9 @@
         (when (fboundp 'force-mode-line-update)
           (force-mode-line-update t))))))
 
-;; --------------------------------
-;; DASHBOARD FRAME ADAPTER
-;; --------------------------------
+;;; --------------------------------
+;;; DASHBOARD FRAME ADAPTER
+;;; --------------------------------
 
 (defvar dashboard-startup-banner 'logo)
 (defvar dashboard-display-icons-p t)
@@ -168,10 +201,11 @@
 (defun interface/dashboard-adapt-to-frame (&optional frame)
   "Adapt dashboard banner and icons to FRAME (GUI logo vs. terminal ASCII).
 Evaluated per client frame so a daemon started without a display still
-renders the graphical logo on GUI frames created by emacsclient."
+renders the graphical logo on GUI frames created by `emacsclient'."
   (let* ((target (or frame (selected-frame)))
-         (raw-tty (display-raw-tty-p target)))
-    (setq dashboard-startup-banner (if (display-graphic-p target) 'logo 2)
+         (graphic (and (frame-live-p target) (display-graphic-p target)))
+         (raw-tty (and (frame-live-p target) (display-raw-tty-p target))))
+    (setq dashboard-startup-banner (if graphic 'logo 2)
           dashboard-display-icons-p (not raw-tty)
           dashboard-icon-type (if raw-tty 'text 'nerd-icons)
           dashboard-set-heading-icons (not raw-tty)
@@ -181,13 +215,15 @@ renders the graphical logo on GUI frames created by emacsclient."
   "Return the *dashboard* buffer rendered for FRAME."
   (let* ((target (or frame (selected-frame)))
          (previous-banner (bound-and-true-p dashboard-startup-banner))
-         (previous-icons (bound-and-true-p dashboard-display-icons-p)))
+         (previous-icons (bound-and-true-p dashboard-display-icons-p))
+         (previous-icon-type (bound-and-true-p dashboard-icon-type)))
     (interface/dashboard-adapt-to-frame target)
     (when (and (fboundp 'dashboard-insert-startupify-lists)
                (or (daemonp)
                    (not (get-buffer "*dashboard*"))
                    (not (equal previous-banner (bound-and-true-p dashboard-startup-banner)))
-                   (not (eq previous-icons (bound-and-true-p dashboard-display-icons-p)))))
+                   (not (eq previous-icons (bound-and-true-p dashboard-display-icons-p)))
+                   (not (eq previous-icon-type (bound-and-true-p dashboard-icon-type)))))
       (with-current-buffer (get-buffer-create "*dashboard*")
         (when (fboundp 'dashboard-mode)
           (dashboard-mode))
@@ -239,14 +275,14 @@ renders the graphical logo on GUI frames created by emacsclient."
               (setq-local display-line-numbers-type nil)
               (display-line-numbers-mode -1))))
 
-;; --------------------------------
-;; TTY HIGH-CONTRAST FACE ADAPTER
-;; --------------------------------
+;;; --------------------------------
+;;; TTY HIGH-CONTRAST FACE ADAPTER
+;;; --------------------------------
 
 (defun interface/apply-tty-faces (&optional frame)
   "Apply high-contrast 16-color faces when FRAME is a raw TTY (< 256 colors)."
   (dolist (target (if frame (list frame) (frame-list)))
-    (when (display-raw-tty-p target)
+    (when (and (frame-live-p target) (display-raw-tty-p target))
       (with-selected-frame target
         (dolist (spec '((default                       :foreground "white"   :background "unspecified-bg")
                         (cursor                        :background "white"   :foreground "black")
@@ -315,18 +351,12 @@ renders the graphical logo on GUI frames created by emacsclient."
 (add-hook 'after-make-frame-functions #'interface/apply-tty-faces)
 (add-hook 'server-after-make-frame-hook #'interface/apply-tty-faces)
 
-;; --------------------------------
-;; MENU & TOOL BAR & TTY MOUSE
-;; --------------------------------
+;;; --------------------------------
+;;; MENU & TOOL BAR & TTY MOUSE
+;;; --------------------------------
 
 (when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
 (when (fboundp 'horizontal-scroll-bar-mode) (horizontal-scroll-bar-mode -1))
-(if (display-graphic-p)
-    (progn
-      (when (fboundp 'menu-bar-mode) (menu-bar-mode 1))
-      (when (fboundp 'scroll-bar-mode) (scroll-bar-mode 1)))
-  (when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
-  (when (fboundp 'scroll-bar-mode) (scroll-bar-mode -1)))
 (when (facep 'scroll-bar)
   (set-face-attribute 'scroll-bar nil :background "#1e1e1e" :foreground "#333333"))
 (when (fboundp 'window-divider-mode)
@@ -353,7 +383,7 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
          (raw-tty (and (fboundp 'display-raw-tty-p) (display-raw-tty-p target)))
          (is-linux (eq system-type 'gnu/linux))
          (term (or (and (fboundp 'tty-type) (tty-type target))
-                   (getenv "TERM") "")))
+                   (getenv "TERM" target) "")))
     (cond
      (is-graphic 1)
      ((or (and is-linux raw-tty) (string-equal term "linux")) 0)
@@ -369,18 +399,15 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
     (tool-bar-mode -1)))
 
 (defun interface/apply-menu-bar (&optional frame)
-  "Apply menu-bar visibility to FRAME."
-  (let* ((target (or frame (selected-frame))))
-    (interface/apply-tool-bar target)
-    (let ((lines (interface/menu-bar-lines-for-frame target)))
-      (set-frame-parameter target 'menu-bar-lines lines)
-      (if (> lines 0)
-          (when (fboundp 'menu-bar-mode) (menu-bar-mode 1))
-        (unless (display-graphic-p)
-          (when (fboundp 'menu-bar-mode) (menu-bar-mode -1)))))))
+  "Apply menu-bar visibility per-frame to FRAME without global mutation."
+  (let ((target (or frame (selected-frame))))
+    (when (frame-live-p target)
+      (interface/apply-tool-bar target)
+      (set-frame-parameter target 'menu-bar-lines
+                           (interface/menu-bar-lines-for-frame target)))))
 
 (defun interface/apply-scroll-bar (&optional frame)
-  "Apply scroll-bar state and colors to FRAME."
+  "Apply scroll-bar state and colors per-frame to FRAME."
   (let ((target (or frame (selected-frame))))
     (when (frame-live-p target)
       (if (display-graphic-p target)
@@ -390,16 +417,9 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
             (set-frame-parameter target 'scroll-bar-background "#1e1e1e")
             (set-frame-parameter target 'scroll-bar-foreground "#333333")
             (when (facep 'scroll-bar)
-              (set-face-attribute 'scroll-bar target :background "#1e1e1e" :foreground "#333333"))
-            (when (fboundp 'scroll-bar-mode)
-              (scroll-bar-mode 1)))
+              (set-face-attribute 'scroll-bar target :background "#1e1e1e" :foreground "#333333")))
         (set-frame-parameter target 'vertical-scroll-bars nil)
-        (set-frame-parameter target 'horizontal-scroll-bars nil)
-        (unless (display-graphic-p)
-          (when (fboundp 'scroll-bar-mode)
-            (scroll-bar-mode -1))))))
-  (when (fboundp 'horizontal-scroll-bar-mode)
-    (horizontal-scroll-bar-mode -1)))
+        (set-frame-parameter target 'horizontal-scroll-bars nil)))))
 
 (interface/apply-tool-bar)
 (interface/apply-menu-bar)
@@ -413,12 +433,14 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
                 (unless (or (daemonp) (display-graphic-p))
                   (xterm-mouse-mode 1)
                   (ignore-errors (send-string-to-terminal "\e[?1003l"))))))
-  (when (and (fboundp 'gpm-mouse-start) (string-equal (or (getenv "TERM") "") "linux"))
+  (when (and (fboundp 'gpm-mouse-start)
+             (string-equal (or (and (fboundp 'tty-type) (tty-type (selected-frame)))
+                               (getenv "TERM" (selected-frame)) "") "linux"))
     (ignore-errors (gpm-mouse-mode 1)))
   (interface/apply-tty-faces))
 
 (defun interface/setup-frame (&optional frame)
-  "Apply complete visual state to newly created FRAME."
+  "Apply complete per-frame visual state to newly created FRAME."
   (let ((target (or frame (selected-frame))))
     (when (frame-live-p target)
       (with-selected-frame target
@@ -428,21 +450,13 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
         (interface/apply-scroll-bar target)
         (if (display-graphic-p target)
             (progn
-              (when (fboundp 'menu-bar-mode) (menu-bar-mode 1))
-              (when (fboundp 'scroll-bar-mode) (scroll-bar-mode 1))
-              (set-frame-parameter target 'menu-bar-lines 1)
-              (set-frame-parameter target 'vertical-scroll-bars 'right)
-              (set-frame-parameter target 'scroll-bar-background "#1e1e1e")
-              (set-frame-parameter target 'scroll-bar-foreground "#333333")
-              (when (facep 'scroll-bar)
-                (set-face-attribute 'scroll-bar target :background "#1e1e1e" :foreground "#333333"))
               (interface/apply-theme target)
               (interface/apply-modeline target))
           (when (fboundp 'xterm-mouse-mode)
             (xterm-mouse-mode 1)
             (ignore-errors (send-string-to-terminal "\e[?1003l" target)))
           (let ((term (or (and (fboundp 'tty-type) (tty-type target))
-                          (getenv "TERM") "")))
+                          (getenv "TERM" target) "")))
             (when (and (fboundp 'gpm-mouse-start) (string-equal term "linux"))
               (ignore-errors (gpm-mouse-mode 1))))
           (interface/apply-tty-faces target))

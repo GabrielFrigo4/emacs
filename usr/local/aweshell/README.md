@@ -97,7 +97,7 @@ O Aweshell atua como console de despacho para a suíte nativa de leitura de docu
 
 ### Biblioteca Semântica de UI (`_ui_*`)
 
-O Aweshell incorpora nativamente a biblioteca semântica de mensagens `_ui_*`, assegurando paridade 1:1 com os scripts do Universal Shell (`Shell/library/ui.sh`). As funções detectam suporte a cores em tempo de execução (`aweshell--ui-color-p`), aplicando realce tipográfico em terminais gráficos/PTY e fallback limpo em ASCII puro:
+O Aweshell incorpora nativamente a biblioteca semântica de mensagens `_ui_*`, assegurando paridade 1:1 com os scripts do Universal Shell (`Shell/core/ui.sh`). As funções detectam suporte a cores em tempo de execução (`aweshell--ui-color-p`), aplicando realce tipográfico em terminais gráficos/PTY e fallback limpo em ASCII puro:
 
 | Comando Aweshell      |          Glifo (Cores)          |   Fallback ASCII   | Finalidade Semântica                                         |
 | :-------------------- | :-----------------------------: | :----------------: | :----------------------------------------------------------- |

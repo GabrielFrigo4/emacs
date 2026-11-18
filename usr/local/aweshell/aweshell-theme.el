@@ -191,8 +191,10 @@ Set to t to restrict Git inspection to local directories only."
 
 (defun aweshell/theme--context ()
   "Collect common prompt metadata for Universal Shell themes."
-  (let* ((is-raw (or (and (fboundp 'display-raw-tty-p) (display-raw-tty-p))
-                     (< (display-color-cells) 256)))
+  (let* ((frame (selected-frame))
+         (cells (display-color-cells frame))
+         (is-raw (or (and (fboundp 'display-raw-tty-p) (display-raw-tty-p frame))
+                     (and (> cells 0) (< cells 256))))
          (is-root (= (user-uid) 0))
          (user (if is-root
                    "root"

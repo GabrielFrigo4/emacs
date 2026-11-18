@@ -11,60 +11,60 @@
 (defalias 'bash-mode 'sh-mode)
 (defalias 'zsh-mode  'sh-mode)
 
-;; ================================
-;; TERMINAL KEY DECODING
-;; ================================
+;;; ================================
+;;; TERMINAL KEY DECODING
+;;; ================================
 
 (defun emacs/setup-input-decode (&optional frame)
-  "Configure terminal key decoding and prevent CSI/SS3 prefix hijacking."
-  (with-selected-frame (or frame (selected-frame))
-    (when (fboundp 'normal-erase-is-backspace-mode)
-      (normal-erase-is-backspace-mode (if (display-graphic-p) 1 0)))
-    (define-key input-decode-map "\e[3~" [deletechar])
-    (define-key input-decode-map "\e[3;2~" [S-delete])
-    (define-key input-decode-map "\x7f" [backspace])
-    (define-key input-decode-map "\C-h" [backspace])
-    (define-key input-decode-map "\e[1;5D" [C-left])
-    (define-key input-decode-map "\e[1;5C" [C-right])
-    (define-key input-decode-map "\e[5D"   [C-left])
-    (define-key input-decode-map "\e[5C"   [C-right])
-    (define-key input-decode-map "\eOd"    [C-left])
-    (define-key input-decode-map "\eOc"    [C-right])
-    (unless (display-graphic-p)
-      (dolist (pair '(("\e[A"  . [up])      ("\eOA"  . [up])
-                      ("\e[B"  . [down])    ("\eOB"  . [down])
-                      ("\e[C"  . [right])   ("\eOC"  . [right])
-                      ("\e[D"  . [left])    ("\eOD"  . [left])
-                      ("\e[H"  . [home])    ("\eOH"  . [home])
-                      ("\e[F"  . [end])     ("\eOF"  . [end])
-                      ("\e[1~" . [home])    ("\e[7~" . [home])
-                      ("\e[4~" . [end])     ("\e[8~" . [end])
-                      ("\e[2~" . [insert])
-                      ("\e[5~" . [prior])   ("\e[6~" . [next])
-                      ("\e[1;2A" . [S-up])    ("\e[1;2B" . [S-down])
-                      ("\e[1;2C" . [S-right]) ("\e[1;2D" . [S-left])
-                      ("\e[1;5A" . [C-up])    ("\e[1;5B" . [C-down])
-                      ("\e[1;5C" . [C-right]) ("\e[1;5D" . [C-left])
-                      ("\e[5A"   . [C-up])    ("\e[5B"   . [C-down])
-                      ("\e[5C"   . [C-right]) ("\e[5D"   . [C-left])
-                      ("\eOa"    . [C-up])    ("\eOb"    . [C-down])
-                      ("\eOc"    . [C-right]) ("\eOd"    . [C-left])
-                      ("\e[1;3A" . [M-up])    ("\e[1;3B" . [M-down])
-                      ("\e[1;3C" . [M-right]) ("\e[1;3D" . [M-left])))
-        (define-key input-decode-map (car pair) (cdr pair)))
-      (global-unset-key (kbd "M-["))
-      (global-unset-key (kbd "M-O"))
-      (with-eval-after-load 'evil
-        (define-key evil-normal-state-map (kbd "M-[") nil)
-        (define-key evil-normal-state-map (kbd "M-O") nil)
-        (define-key evil-motion-state-map (kbd "M-[") nil)
-        (define-key evil-motion-state-map (kbd "M-O") nil)
-        (define-key evil-insert-state-map (kbd "M-[") nil)
-        (define-key evil-insert-state-map (kbd "M-O") nil)))))
+  "Configure terminal key decoding and backspace mapping on FRAME."
+  (let ((target (or frame (selected-frame))))
+    (when (frame-live-p target)
+      (with-selected-frame target
+        (let* ((term-obj (and (fboundp 'frame-terminal) (frame-terminal target)))
+               (term-name (and term-obj (fboundp 'terminal-name) (terminal-name term-obj)))
+               (graphic-p (display-graphic-p target)))
+          (when (and term-obj (fboundp 'set-terminal-parameter))
+            (set-terminal-parameter term-obj 'normal-erase-is-backspace (if graphic-p 1 0)))
+          (when (and (fboundp 'normal-erase-is-backspace-mode)
+                     (not (equal term-name "initial_terminal")))
+            (normal-erase-is-backspace-mode (if graphic-p 1 0)))
+          (define-key input-decode-map "\e[3~" [deletechar])
+          (define-key input-decode-map "\e[3;2~" [S-delete])
+          (define-key input-decode-map "\x7f" [backspace])
+          (define-key input-decode-map "\C-h" [backspace])
+          (define-key input-decode-map "\e[1;5D" [C-left])
+          (define-key input-decode-map "\e[1;5C" [C-right])
+          (define-key input-decode-map "\e[5D"   [C-left])
+          (define-key input-decode-map "\e[5C"   [C-right])
+          (define-key input-decode-map "\eOd"    [C-left])
+          (define-key input-decode-map "\eOc"    [C-right])
+          (unless graphic-p
+            (dolist (pair '(("\e[A"  . [up])      ("\eOA"  . [up])
+                            ("\e[B"  . [down])    ("\eOB"  . [down])
+                            ("\e[C"  . [right])   ("\eOC"  . [right])
+                            ("\e[D"  . [left])    ("\eOD"  . [left])
+                            ("\e[H"  . [home])    ("\eOH"  . [home])
+                            ("\e[F"  . [end])     ("\eOF"  . [end])
+                            ("\e[1~" . [home])    ("\e[7~" . [home])
+                            ("\e[4~" . [end])     ("\e[8~" . [end])
+                            ("\e[2~" . [insert])
+                            ("\e[5~" . [prior])   ("\e[6~" . [next])
+                            ("\e[1;2A" . [S-up])    ("\e[1;2B" . [S-down])
+                            ("\e[1;2C" . [S-right]) ("\e[1;2D" . [S-left])
+                            ("\e[1;5A" . [C-up])    ("\e[1;5B" . [C-down])
+                            ("\e[1;5C" . [C-right]) ("\e[1;5D" . [C-left])
+                            ("\e[5A"   . [C-up])    ("\e[5B"   . [C-down])
+                            ("\e[5C"   . [C-right]) ("\e[5D"   . [C-left])
+                            ("\eOa"    . [C-up])    ("\eOb"    . [C-down])
+                            ("\eOc"    . [C-right]) ("\eOd"    . [C-left])
+                            ("\e[1;3A" . [M-up])    ("\e[1;3B" . [M-down])
+                            ("\e[1;3C" . [M-right]) ("\e[1;3D" . [M-left])))
+              (define-key input-decode-map (car pair) (cdr pair)))))))))
 
 (emacs/setup-input-decode)
 (add-hook 'tty-setup-hook #'emacs/setup-input-decode)
 (add-hook 'after-make-frame-functions #'emacs/setup-input-decode)
+(add-hook 'server-after-make-frame-hook #'emacs/setup-input-decode)
 (add-hook 'elpaca-after-init-hook #'emacs/setup-input-decode)
 
 ;; ================================
@@ -92,7 +92,7 @@
 (global-set-key (kbd "M-s r")    'replace-string)
 
 (defun emacs/escape-dwim ()
-  "Exit Evil non-normal/non-emacs state if active; otherwise run `keyboard-escape-quit'."
+  "Exit Evil non-normal state if active, else run `keyboard-escape-quit'."
   (interactive)
   (cond
    ((and (bound-and-true-p evil-local-mode)
@@ -108,8 +108,12 @@
    (t
     (keyboard-escape-quit))))
 
-(when (display-graphic-p)
-  (global-set-key (kbd "<escape>") #'emacs/escape-dwim))
+(global-set-key
+ (kbd "<escape>")
+ `(menu-item "" emacs/escape-dwim
+             :filter ,(lambda (cmd)
+                        (when (display-graphic-p (selected-frame))
+                          cmd))))
 
 (global-set-key [backspace]           #'backward-delete-char-untabify)
 (global-set-key (kbd "<backspace>")   #'backward-delete-char-untabify)
@@ -147,9 +151,9 @@
 (global-set-key (kbd "C-c C-s")  'shell-command)
 (global-set-key (kbd "C-c C-a")  'aweshell/toggle)
 
-;; ================================
-;; APPLICATION & OPEN LAUNCHERS (C-c o)
-;; ================================
+;;; ================================
+;;; APPLICATION & OPEN LAUNCHERS
+;;; ================================
 (global-set-key (kbd "C-c o o") 'emacs/universal-open)
 (global-set-key (kbd "C-c o f") 'emacs/universal-open)
 (global-set-key (kbd "C-c o b") 'emacs/open-browser)

@@ -33,109 +33,119 @@
     "Symbola")
   "Prioritized list of symbol and Nerd Font fallback fonts.")
 
-;; ================================
-;; DISCOVERY & RESOLUTION
-;; ================================
+;;; ================================
+;;; DISCOVERY & RESOLUTION
+;;; ================================
 
-(defun typography/find-first-font (fonts)
-  "Find the first available font from FONTS on a graphical display."
-  (when (and (display-graphic-p) (fboundp 'font-family-list))
-    (let ((available (font-family-list)))
-      (seq-find (lambda (font) (member font available)) fonts))))
+(defun typography/find-first-font (fonts &optional frame)
+  "Find the first available font from FONTS on graphical FRAME."
+  (let ((target (or frame (selected-frame))))
+    (when (and (frame-live-p target)
+               (display-graphic-p target)
+               (fboundp 'font-family-list))
+      (let ((available (font-family-list target)))
+        (seq-find (lambda (font) (member font available)) fonts)))))
 
-;; ================================
-;; WINDOWS DIRECTWRITE BACKEND
-;; ================================
+;;; ================================
+;;; WINDOWS DIRECTWRITE BACKEND
+;;; ================================
 
-(defun typography/setup-w32-directwrite ()
-  "Configure DirectWrite font backend on Windows for crisp rendering."
-  (when (eq window-system 'w32)
-    (setq-default w32-use-visible-system-caret t)
-    (add-to-list 'default-frame-alist '(font-backend directwrite gdi))
-    (when (display-graphic-p)
-      (set-frame-parameter nil 'font-backend '(directwrite gdi)))))
+(defun typography/setup-w32-directwrite (&optional frame)
+  "Configure DirectWrite font backend on Windows FRAME for crisp rendering."
+  (let ((target (or frame (selected-frame))))
+    (when (and (frame-live-p target)
+               (display-w32-p target))
+      (setq-default w32-use-visible-system-caret t)
+      (add-to-list 'default-frame-alist '(font-backend directwrite gdi))
+      (set-frame-parameter target 'font-backend '(directwrite gdi)))))
 
-;; ================================
-;; HARFBUZZ LIGATURES
-;; ================================
+;;; ================================
+;;; HARFBUZZ LIGATURES
+;;; ================================
 
-(defun typography/setup-ligatures ()
-  "Enable ligatures for programming modes via composition-function-table."
-  (when (and (display-graphic-p) (fboundp 'set-char-table-range))
-    (let ((alist '((?! . "[!=]+")
-                   (?# . "[#]+")
-                   (?$ . "[>]")
-                   (?% . "[%]+")
-                   (?& . "[&]+")
-                   (?* . "[*]+")
-                   (?+ . "[+]+")
-                   (?- . "[-~=>]+")
-                   (?/ . "[/*]+")
-                   (?: . "[:=]+")
-                   (?< . "[<=|>-]+")
-                   (?= . "[=>]+")
-                   (?> . "[=>-]+")
-                   (?^ . "[=]+")
-                   (?| . "[|=>]+")
-                   (?~ . "[~>]+"))))
-      (dolist (char-regex alist)
-        (set-char-table-range composition-function-table
-                              (car char-regex)
-                              `([,(cdr char-regex) 0 font-shape-gstring]))))))
+(defvar typography/ligatures-configured-p nil
+  "Non-nil once HarfBuzz composition ligatures have been configured.")
 
-;; ================================
-;; GUI FONT & GLYPH CONFIGURATION
-;; ================================
+(defun typography/setup-ligatures (&optional frame)
+  "Enable ligatures for programming modes when graphical FRAME initializes."
+  (let ((target (or frame (selected-frame))))
+    (when (and (not typography/ligatures-configured-p)
+               (frame-live-p target)
+               (display-graphic-p target)
+               (fboundp 'set-char-table-range))
+      (let ((alist '((?! . "[!=]+")
+                     (?# . "[#]+")
+                     (?$ . "[>]")
+                     (?% . "[%]+")
+                     (?& . "[&]+")
+                     (?* . "[*]+")
+                     (?+ . "[+]+")
+                     (?- . "[-~=>]+")
+                     (?/ . "[/*]+")
+                     (?: . "[:=]+")
+                     (?< . "[<=|>-]+")
+                     (?= . "[=>]+")
+                     (?> . "[=>-]+")
+                     (?^ . "[=]+")
+                     (?| . "[|=>]+")
+                     (?~ . "[~>]+"))))
+        (dolist (char-regex alist)
+          (set-char-table-range composition-function-table
+                                (car char-regex)
+                                `([,(cdr char-regex) 0 font-shape-gstring]))))
+      (setq typography/ligatures-configured-p t))))
+
+;;; ================================
+;;; GUI FONT & GLYPH CONFIGURATION
+;;; ================================
 
 (defun typography/setup-gui-fonts (&optional frame)
   "Configure primary monospace font and glyph fallbacks for FRAME."
   (let ((target-frame (or frame (selected-frame))))
-    (when (display-graphic-p target-frame)
+    (when (and (frame-live-p target-frame)
+               (display-graphic-p target-frame))
       (with-selected-frame target-frame
-        (when-let* ((primary (typography/find-first-font typography/primary-fonts)))
+        (when-let* ((primary (typography/find-first-font typography/primary-fonts target-frame)))
           (let ((height 120))
             (set-face-attribute 'default target-frame :family primary :height height)
-            (add-to-list 'default-frame-alist `(font . ,(format "%s-%d" primary (/ height 10))))))
+            (set-frame-parameter target-frame 'font (format "%s-%d" primary (/ height 10)))))
         (when (fboundp 'set-fontset-font)
-          (when-let* ((emoji (typography/find-first-font typography/emoji-fonts)))
-            (set-fontset-font t 'emoji (font-spec :family emoji) nil 'prepend))
-          (when-let* ((symbol (typography/find-first-font typography/symbol-fonts)))
-            (set-fontset-font t 'symbol (font-spec :family symbol) nil 'append)))))))
+          (when-let* ((emoji (typography/find-first-font typography/emoji-fonts target-frame)))
+            (set-fontset-font t 'emoji (font-spec :family emoji) target-frame 'prepend))
+          (when-let* ((symbol (typography/find-first-font typography/symbol-fonts target-frame)))
+            (set-fontset-font t 'symbol (font-spec :family symbol) target-frame 'append)))))))
 
-;; ================================
-;; TTY CONSOLE FALLBACK
-;; ================================
+;;; ================================
+;;; TTY CONSOLE FALLBACK
+;;; ================================
 
 (defun typography/setup-tty (&optional frame)
-  "Configure clean, resilient ANSI terminal typography."
+  "Configure clean, non-destructive ANSI terminal typography for FRAME."
   (let ((target (or frame (selected-frame))))
-    (unless (display-graphic-p target)
-      (when (display-raw-tty-p target)
-        (setq-default nerd-icons-font-family nil)
-        (setq-default doom-modeline-icon nil)
-        (setq-default dashboard-display-icons-p nil)
-        (setq-default dashboard-icon-type 'text)
-        (setq-default org-modern-mode nil))
+    (when (and (frame-live-p target)
+               (not (display-graphic-p target)))
+      (set-frame-parameter target 'is-raw-tty (display-raw-tty-p target))
       (when (fboundp 'set-terminal-parameter)
         (set-terminal-parameter (frame-terminal target) 'background-mode 'dark)))))
 
-;; ================================
-;; ENGINE INITIALIZATION
-;; ================================
+;;; ================================
+;;; ENGINE INITIALIZATION
+;;; ================================
 
 (defun typography/init (&optional frame)
-  "Initialize adaptive typography engine based on active display environment."
+  "Initialize adaptive typography engine on FRAME based on its display type."
   (let ((target (or frame (selected-frame))))
-    (if (display-graphic-p target)
-        (progn
-          (when (eq window-system 'w32)
-            (typography/setup-w32-directwrite))
-          (typography/setup-gui-fonts target)
-          (typography/setup-ligatures))
-      (typography/setup-tty target))))
+    (when (frame-live-p target)
+      (if (display-graphic-p target)
+          (progn
+            (typography/setup-w32-directwrite target)
+            (typography/setup-gui-fonts target)
+            (typography/setup-ligatures target))
+        (typography/setup-tty target)))))
 
-(if (daemonp)
-    (add-hook 'after-make-frame-functions #'typography/init)
-  (typography/init))
+(add-hook 'after-make-frame-functions #'typography/init)
+(add-hook 'server-after-make-frame-hook #'typography/init)
+(unless (daemonp)
+  (typography/init (selected-frame)))
 
 (provide 'init-typography)

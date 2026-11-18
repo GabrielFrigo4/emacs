@@ -121,39 +121,77 @@
 ;;; HARDWARE & DISPLAY DETECTION
 ;;; ================================
 
-(defun display-pgtk-p ()
-  "Return non-nil if running Pure GTK (PGTK) build under Wayland."
-  (featurep 'pgtk))
+(defun display-pgtk-p (&optional frame)
+  "Return non-nil if FRAME is running Pure GTK (PGTK) under Wayland."
+  (let ((target (or frame (selected-frame))))
+    (and (frame-live-p target)
+         (eq (framep target) 'pgtk))))
 
-(defun display-x11-p ()
-  "Return non-nil if running under X11 window system."
-  (eq window-system 'x))
+(defun display-x11-p (&optional frame)
+  "Return non-nil if FRAME is running under the X11 window system."
+  (let ((target (or frame (selected-frame))))
+    (and (frame-live-p target)
+         (eq (framep target) 'x))))
 
-(defun display-w32-p ()
-  "Return non-nil if running under Windows native GUI (w32)."
-  (eq window-system 'w32))
+(defun display-w32-p (&optional frame)
+  "Return non-nil if FRAME is running under Windows native GUI (w32)."
+  (let ((target (or frame (selected-frame))))
+    (and (frame-live-p target)
+         (eq (framep target) 'w32))))
 
-(defun display-tty-p ()
-  "Return non-nil if running in a text terminal (TTY, no window system)."
-  (not window-system))
+(defun display-tty-p (&optional frame)
+  "Return non-nil if FRAME is running in a text terminal (TTY, no window system)."
+  (let ((target (or frame (selected-frame))))
+    (and (frame-live-p target)
+         (not (display-graphic-p target)))))
 
 (defun display-raw-tty-p (&optional frame)
-  "Return non-nil if FRAME is running in a raw kernel console TTY (16-color/no PUA)."
-  (let* ((target (or frame (selected-frame)))
-         (term (or (and (fboundp 'tty-type) (tty-type target))
-                   (getenv "TERM")
-                   ""))
-         (cells (display-color-cells target)))
-    (and (not (display-graphic-p target))
-         (or (and (> cells 0) (< cells 256))
-             (member (getenv "RAW_TTY") '("1" "true" "yes"))
-             (member (getenv "LC_RAW_TTY") '("1" "true" "yes"))
-             (member (getenv "UNIVERSAL_RAW_TTY") '("1" "true" "yes"))
-             (member term '("linux" "cons25" "vt100" "vt220"))))))
+  "Return non-nil if FRAME is running in a raw kernel console TTY."
+  (let ((target (or frame (selected-frame))))
+    (when (and (frame-live-p target)
+               (not (display-graphic-p target)))
+      (let* ((env-truthy-p
+              (lambda (var)
+                (let ((val (getenv var target)))
+                  (and (stringp val)
+                       (member (downcase val) '("1" "true" "yes"))))))
+             (env-nonempty-p
+              (lambda (var)
+                (let ((val (getenv var target)))
+                  (and (stringp val)
+                       (not (string= val ""))))))
+             (raw-env-p (or (funcall env-truthy-p "RAW_TTY")
+                            (funcall env-truthy-p "LC_RAW_TTY")
+                            (funcall env-truthy-p "UNIVERSAL_RAW_TTY")))
+             (gui-env-p (or (funcall env-nonempty-p "DISPLAY")
+                            (funcall env-nonempty-p "WAYLAND_DISPLAY")
+                            (funcall env-nonempty-p "TERM_PROGRAM")
+                            (funcall env-nonempty-p "KONSOLE_VERSION")
+                            (funcall env-nonempty-p "WT_SESSION")))
+             (tty-dev (and (fboundp 'frame-terminal)
+                           (fboundp 'terminal-name)
+                           (terminal-name (frame-terminal target))))
+             (term (or (and (fboundp 'tty-type) (tty-type target))
+                       (getenv "TERM" target)
+                       ""))
+             (cells (display-color-cells target)))
+        (cond
+         ((funcall env-truthy-p "FORCE_RAW_TTY") t)
+         ((and gui-env-p (not raw-env-p)) nil)
+         (raw-env-p t)
+         ((and (stringp tty-dev)
+               (string-match-p "^/dev/\\(?:ttyv\\|tty[0-9]\\|console\\)" tty-dev))
+          t)
+         ((and (> cells 0) (< cells 256)) t)
+         ((member term '("linux" "cons25" "vt100" "vt220")) t)
+         (t nil))))))
 
-(defun display-graphic-p* ()
-  "Return non-nil if running in any graphical window system."
-  (and window-system t))
+(defun display-graphic-p* (&optional frame)
+  "Return non-nil if FRAME is running in any graphical window system."
+  (let ((target (or frame (selected-frame))))
+    (and (frame-live-p target)
+         (display-graphic-p target)
+         t)))
 
 (defun native-compile-p ()
   "Return non-nil if native compilation (libgccjit) is available."

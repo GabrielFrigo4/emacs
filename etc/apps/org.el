@@ -57,13 +57,20 @@
   (set-face-attribute 'org-checkbox nil :weight 'bold)
   (font-lock-add-keywords 'org-mode '(("^ *[-+*] +\\[X\\] \\(.*\\)" (1 'shadow prepend))))
 
-  ;; --------------------------------
-  ;; SOURCE FACES
-  ;; --------------------------------
-  (when (display-graphic-p)
-    (set-face-attribute 'org-block-begin-line nil :underline "#646260" :foreground "#10CFFC" :background "#41403F" :extend t)
-    (set-face-attribute 'org-block nil :background "#3A3938" :extend t)
-    (set-face-attribute 'org-block-end-line nil :underline "#646260" :foreground "#10CFFC" :background "#41403F" :extend t))
+  ;;; --------------------------------
+  ;;; SOURCE FACES
+  ;;; --------------------------------
+  (defun org/apply-source-faces (&optional frame)
+    "Apply graphical Org source block faces to FRAME."
+    (let ((target (or frame (selected-frame))))
+      (when (and (frame-live-p target) (display-graphic-p target))
+        (set-face-attribute 'org-block-begin-line target :underline "#646260" :foreground "#10CFFC" :background "#41403F" :extend t)
+        (set-face-attribute 'org-block target :background "#3A3938" :extend t)
+        (set-face-attribute 'org-block-end-line target :underline "#646260" :foreground "#10CFFC" :background "#41403F" :extend t))))
+
+  (dolist (frame (frame-list))
+    (org/apply-source-faces frame))
+  (add-hook 'after-make-frame-functions #'org/apply-source-faces)
 
   ;; --------------------------------
   ;; LANGUAGES
@@ -96,12 +103,29 @@
      (lisp . t) (js . t) (css . t) (emacs-lisp . t) (shell . t) (eshell . t)
      (makefile . t) (org . t) (mermaid . t) (latex . t))))
 
+(defun org/setup-modern (&optional frame)
+  "Toggle `org-modern-mode' locally on Org buffers based on FRAME display."
+  (let* ((target (or frame (selected-frame)))
+         (raw-tty (and (frame-live-p target)
+                       (fboundp 'display-raw-tty-p)
+                       (display-raw-tty-p target))))
+    (if (derived-mode-p 'org-mode)
+        (when (require 'org-modern nil t)
+          (org-modern-mode (if raw-tty -1 1)))
+      (when (fboundp 'org-modern-mode)
+        (dolist (win (window-list target 'no-minibuf))
+          (with-current-buffer (window-buffer win)
+            (when (derived-mode-p 'org-mode)
+              (org-modern-mode (if raw-tty -1 1)))))))))
+
 (use-package org-modern
   :ensure (:type git :host github :repo "emacsmirror/org-modern" :branch "master")
-  :hook (org-mode . org-modern-mode)
+  :defer t
   :init
   (setq-default org-modern-fold-stars
-                '(("▶" . "▼") ("▷" . "▽") ("►" . "◆") ("▻" . "◇") ("▸" . "▾") ("▹" . "▿"))))
+                '(("▶" . "▼") ("▷" . "▽") ("►" . "◆") ("▻" . "◇") ("▸" . "▾") ("▹" . "▿")))
+  (add-hook 'org-mode-hook #'org/setup-modern)
+  (add-hook 'after-make-frame-functions #'org/setup-modern))
 
 
 (use-package ob-mermaid

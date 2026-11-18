@@ -204,44 +204,93 @@ If this function affects you, disable this option."
 ;;; CUSTOM FUNCTIONS
 ;;; ================================
 
-(defun aweshell/update-custom-color ()
-  "Update custom colors with theme colors safely."
+(defvar-local aweshell--last-color-context nil
+  "Cached frame display context used for local Aweshell highlight colors.")
+
+(defun aweshell--resolve-colors (&optional frame)
+  "Resolve syntax highlight color plist for FRAME."
+  (let* ((target (or frame (selected-frame)))
+         (cells (if (frame-live-p target) (display-color-cells target) 0))
+         (raw-p (or (and (fboundp 'display-raw-tty-p) (display-raw-tty-p target))
+                    (and (> cells 0) (< cells 256)))))
+    (if raw-p
+        (list :possible "yellow"
+              :valid    "green"
+              :neutral  "white"
+              :invalid  "red"
+              :sep      "cyan"
+              :const    "magenta"
+              :string   "yellow"
+              :scape    "cyan"
+              :mode     'raw)
+      (let ((get-color (lambda (face fallback)
+                         (let ((color (face-foreground face target t)))
+                           (if (or (null color)
+                                   (not (stringp color))
+                                   (string= color "unspecified-fg")
+                                   (string= color "unspecified-bg"))
+                               fallback
+                             color)))))
+        (list :possible (funcall get-color 'warning "#e0af68")
+              :valid    (funcall get-color 'success "#9ece6a")
+              :neutral  (funcall get-color 'default "#c0caf5")
+              :invalid  (funcall get-color 'error "#f7768e")
+              :sep      (funcall get-color 'font-lock-constant-face "#7dcfff")
+              :const    (funcall get-color 'font-lock-constant-face "#bb9af7")
+              :string   (funcall get-color 'font-lock-string-face "#e0af68")
+              :scape    (funcall get-color 'font-lock-escape-face "#ff9e64")
+              :mode     'rich)))))
+
+(defun aweshell/update-custom-color (&optional frame)
+  "Update custom colors with theme colors safely for FRAME."
   (interactive)
-  (if (or (and (fboundp 'display-raw-tty-p) (display-raw-tty-p))
-          (< (display-color-cells) 256))
-      (setq-default aweshell/possible-command-color "yellow"
-                    aweshell/valid-command-color    "green"
-                    aweshell/neutral-command-color  "white"
-                    aweshell/invalid-command-color  "red"
-                    aweshell/valid-separator-color  "cyan"
-                    aweshell/valid-constant-color   "magenta"
-                    aweshell/valid-string-color     "yellow"
-                    aweshell/valid-scape-color      "cyan")
-    (let ((get-color (lambda (face fallback)
-                       (let ((color (face-foreground face nil t)))
-                         (if (or (null color)
-                                 (not (stringp color))
-                                 (string= color "unspecified-fg")
-                                 (string= color "unspecified-bg"))
-                             fallback
-                           color)))))
-      (setq-default aweshell/possible-command-color (funcall get-color 'warning "#e0af68"))
-      (setq-default aweshell/valid-command-color    (funcall get-color 'success "#9ece6a"))
-      (setq-default aweshell/neutral-command-color  (funcall get-color 'default "#c0caf5"))
-      (setq-default aweshell/invalid-command-color  (funcall get-color 'error "#f7768e"))
-      (setq-default aweshell/valid-separator-color  (funcall get-color 'font-lock-constant-face "#7dcfff"))
-      (setq-default aweshell/valid-constant-color   (funcall get-color 'font-lock-constant-face "#bb9af7"))
-      (setq-default aweshell/valid-string-color     (funcall get-color 'font-lock-string-face "#e0af68"))
-      (setq-default aweshell/valid-scape-color      (funcall get-color 'font-lock-escape-face "#ff9e64")))))
+  (let* ((target (or frame (selected-frame)))
+         (palette (aweshell--resolve-colors target))
+         (mode (plist-get palette :mode))
+         (has-raw nil)
+         (has-rich nil))
+    (dolist (f (frame-list))
+      (when (frame-live-p f)
+        (if (or (and (fboundp 'display-raw-tty-p) (display-raw-tty-p f))
+                (let ((c (display-color-cells f)))
+                  (and (> c 0) (< c 256))))
+            (setq has-raw t)
+          (setq has-rich t))))
+    (if (derived-mode-p 'eshell-mode)
+        (progn
+          (setq-local aweshell/possible-command-color (plist-get palette :possible))
+          (setq-local aweshell/valid-command-color    (plist-get palette :valid))
+          (setq-local aweshell/neutral-command-color  (plist-get palette :neutral))
+          (setq-local aweshell/invalid-command-color  (plist-get palette :invalid))
+          (setq-local aweshell/valid-separator-color  (plist-get palette :sep))
+          (setq-local aweshell/valid-constant-color   (plist-get palette :const))
+          (setq-local aweshell/valid-string-color     (plist-get palette :string))
+          (setq-local aweshell/valid-scape-color      (plist-get palette :scape))
+          (setq-local aweshell--last-color-context mode))
+      (when (and (not (and has-raw has-rich))
+                 (not (and (daemonp) (eq mode 'raw))))
+        (setq-default aweshell/possible-command-color (plist-get palette :possible)
+                      aweshell/valid-command-color    (plist-get palette :valid)
+                      aweshell/neutral-command-color  (plist-get palette :neutral)
+                      aweshell/invalid-command-color  (plist-get palette :invalid)
+                      aweshell/valid-separator-color  (plist-get palette :sep)
+                      aweshell/valid-constant-color   (plist-get palette :const)
+                      aweshell/valid-string-color     (plist-get palette :string)
+                      aweshell/valid-scape-color      (plist-get palette :scape))))))
 
 (aweshell/update-custom-color)
 (advice-add 'load-theme :after (lambda (&rest _)
                                  (run-at-time (expt 2 -1) nil #'aweshell/update-custom-color)))
 
 (defun aweshell/update-custom-color-on-frame (frame)
-  "Update custom colors with theme colors when a new frame is created."
-  (with-selected-frame frame
-    (aweshell/update-custom-color)))
+  "Update custom colors with theme colors when FRAME is created."
+  (when (frame-live-p frame)
+    (with-selected-frame frame
+      (aweshell/update-custom-color frame)
+      (dolist (win (window-list frame 'no-minibuf))
+        (with-current-buffer (window-buffer win)
+          (when (derived-mode-p 'eshell-mode)
+            (aweshell/update-custom-color frame)))))))
 (add-hook 'after-make-frame-functions #'aweshell/update-custom-color-on-frame)
 (add-hook 'eshell-mode-hook #'aweshell/update-custom-color)
 
@@ -819,8 +868,15 @@ Otherwise return nil."
              (aweshell/on-input-line-p))
     (let ((inhibit-modification-hooks t)
           (inhibit-read-only t))
-      (unless aweshell/valid-command-color
-        (aweshell/update-custom-color))
+      (let* ((frame (selected-frame))
+             (cells (display-color-cells frame))
+             (cur-mode (if (or (and (fboundp 'display-raw-tty-p) (display-raw-tty-p frame))
+                               (and (> cells 0) (< cells 256)))
+                           'raw
+                         'rich)))
+        (unless (and aweshell/valid-command-color
+                     (eq aweshell--last-color-context cur-mode))
+          (aweshell/update-custom-color frame)))
       (aweshell/highlight-prompt)
       (aweshell/highlight-command)
       (aweshell/highlight-separator)
@@ -952,7 +1008,7 @@ Available Universal Shell themes:
 
 (defun aweshell--ui-color-p ()
   "Return non-nil if current frame or terminal supports color."
-  (and (fboundp 'display-color-p) (display-color-p)))
+  (and (fboundp 'display-color-p) (display-color-p (selected-frame))))
 
 (defun eshell/_ui_step (&rest args)
   "Emit step UI message."
@@ -1135,18 +1191,46 @@ suppressing minibuffer write messages."
 
 (add-hook 'eshell-input-filter-functions #'aweshell/invalidate-history-cache)
 
+(defun aweshell--eshell-process-env-a (orig-fun &rest args)
+  "Invoke ORIG-FUN with ARGS binding Aweshell pager and color env per frame."
+  (let* ((frame (selected-frame))
+         (raw-tty (and (fboundp 'display-raw-tty-p) (display-raw-tty-p frame)))
+         (vars '("FORCE_COLOR" "CLICOLOR_FORCE"
+                 "PAGER" "GIT_PAGER" "SYSTEMD_PAGER" "MANPAGER"))
+         (env (seq-remove
+               (lambda (entry)
+                 (seq-some (lambda (var)
+                             (or (string= entry var)
+                                 (string-prefix-p (concat var "=") entry)))
+                           vars))
+               (copy-sequence process-environment)))
+         (process-environment
+          (append '("PAGER=cat"
+                    "GIT_PAGER=cat"
+                    "SYSTEMD_PAGER=cat"
+                    "MANPAGER=cat")
+                  (if raw-tty
+                      '("FORCE_COLOR" "CLICOLOR_FORCE")
+                    '("FORCE_COLOR=1" "CLICOLOR_FORCE=1"))
+                  env)))
+    (apply orig-fun args)))
+
 (defun aweshell/setup-environment ()
-  "Setup environment variables for Aweshell."
-  (unless (and (fboundp 'display-raw-tty-p) (display-raw-tty-p))
-    (setq-local eshell-term-name "xterm-256color"))
-  (setenv "FORCE_COLOR" "1")
-  (setenv "CLICOLOR_FORCE" "1")
-  (setenv "PAGER" "cat")
-  (setenv "GIT_PAGER" "cat")
-  (setenv "SYSTEMD_PAGER" "cat")
-  (setenv "MANPAGER" "cat"))
+  "Configure buffer-local terminal naming for Aweshell on active frame."
+  (let ((frame (selected-frame)))
+    (if (and (fboundp 'display-raw-tty-p) (display-raw-tty-p frame))
+        (setq-local eshell-term-name
+                    (or (and (fboundp 'tty-type) (tty-type frame))
+                        (getenv "TERM" frame)
+                        "linux"))
+      (setq-local eshell-term-name "xterm-256color"))))
 
 (add-hook 'eshell-mode-hook #'aweshell/setup-environment)
+(dolist (fn '(eshell-gather-process-output
+              eshell-exec-visual
+              aweshell-exec-visual
+              aweshell/exec-in-term))
+  (advice-add fn :around #'aweshell--eshell-process-env-a))
 
 (defun aweshell/set-userland (mode)
   "Switch userland mode to gnu, bsd, or default."
@@ -1639,7 +1723,7 @@ suppressing minibuffer write messages."
 
 (defun aweshell/setup-region-face ()
   "Locally remap region face in eshell."
-  (let ((bg (face-background 'region nil t)))
+  (let ((bg (face-background 'region (selected-frame) t)))
     (when (or (null bg)
               (string= bg "unspecified-bg")
               (string= bg "unspecified"))

@@ -16,28 +16,32 @@
 ;; SETUP APPLICATIONS
 ;; ================================
 
-(defun eaf-setup ()
-  "Setup Emacs Application Framework (EAF)."
+(defun eaf-setup (&optional frame)
+  "Setup Emacs Application Framework (EAF) when FRAME is graphical."
   (interactive)
-  (unless (featurep 'eaf)
-    (add-to-list 'load-path (expand-file-name "eaf/emacs-application-framework" opt-dir))
-    (advice-add 'eaf-start-process :override #'ignore)
-    (require 'eaf)
-    (let ((eaf-apps '(eaf-browser eaf-pdf-viewer eaf-music-player
-                                  eaf-video-player eaf-image-viewer eaf-file-manager
-                                  eaf-pyqterminal eaf-terminal eaf-camera eaf-git)))
-      (dolist (app eaf-apps)
-        (require app)))
-    (setq eaf-pdf-extension-list (delete "pdf" eaf-pdf-extension-list))
-    (if-windows
-     (run-at-time "2.4 sec" nil (lambda () (advice-remove 'eaf-start-process #'ignore)))
-     (run-at-time "1.6 sec" nil (lambda () (advice-remove 'eaf-start-process #'ignore))))
-    (eaf-kill-process)))
+  (let ((target (or frame (selected-frame))))
+    (when (and (frame-live-p target)
+               (display-graphic-p target)
+               (not (featurep 'eaf)))
+      (add-to-list 'load-path (expand-file-name "eaf/emacs-application-framework" opt-dir))
+      (advice-add 'eaf-start-process :override #'ignore)
+      (require 'eaf)
+      (let ((eaf-apps '(eaf-browser eaf-pdf-viewer eaf-music-player
+                                    eaf-video-player eaf-image-viewer eaf-file-manager
+                                    eaf-pyqterminal eaf-terminal eaf-camera eaf-git)))
+        (dolist (app eaf-apps)
+          (require app)))
+      (setq eaf-pdf-extension-list (delete "pdf" eaf-pdf-extension-list))
+      (if-windows
+       (run-at-time "2.4 sec" nil (lambda () (advice-remove 'eaf-start-process #'ignore)))
+       (run-at-time "1.6 sec" nil (lambda () (advice-remove 'eaf-start-process #'ignore))))
+      (eaf-kill-process))))
 
 (when eaf/enable
-  (when (display-graphic-p)
-    (eaf-setup))
+  (when (display-graphic-p (selected-frame))
+    (eaf-setup (selected-frame)))
 
+  (add-hook 'after-make-frame-functions #'eaf-setup)
   (add-hook 'server-after-make-frame-hook #'eaf-setup))
 
 ;; ================================
