@@ -272,13 +272,24 @@ TYPE is the entity type string."
 ;;; FRAME & UI GEOMETRY
 ;;; ================================
 
+(setq xterm-extra-capabilities nil
+      xterm-update-cursor nil)
+
 (let ((alist '((width . 81) (height . 27) (background-mode . dark)
-               (background-color . "#1e1e1e") (foreground-color . "#d4d4d4")
                (scroll-bar-background . "#1e1e1e") (scroll-bar-foreground . "#333333")
-               (horizontal-scroll-bars . nil) (tool-bar-lines . 0))))
+               (horizontal-scroll-bars . nil) (menu-bar-lines . 0) (tool-bar-lines . 0))))
   (setq default-frame-alist (append alist default-frame-alist)
         initial-frame-alist (append alist initial-frame-alist)))
 
+(dolist (ws '(x pgtk w32 ns haiku))
+  (let* ((entry (assq ws window-system-default-frame-alist))
+         (gui-alist '((background-color . "#1e1e1e")
+                      (foreground-color . "#d4d4d4"))))
+    (if entry
+        (setcdr entry (append gui-alist (cdr entry)))
+      (push (cons ws gui-alist) window-system-default-frame-alist))))
+
+(when (fboundp 'menu-bar-mode) (menu-bar-mode -1))
 (when (fboundp 'tool-bar-mode) (tool-bar-mode -1))
 (when (fboundp 'horizontal-scroll-bar-mode) (horizontal-scroll-bar-mode -1))
 

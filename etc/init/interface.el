@@ -37,7 +37,7 @@
   (let ((target (or frame (selected-frame))))
     (when (frame-live-p target)
       (set-frame-parameter target 'background-mode 'dark)
-      (unless (and (fboundp 'display-raw-tty-p) (display-raw-tty-p target))
+      (when (display-graphic-p target)
         (set-frame-parameter target 'background-color "#1e1e1e")
         (set-frame-parameter target 'foreground-color "#d4d4d4"))
       (when (fboundp 'frame-set-background-mode)
@@ -48,22 +48,33 @@
 
 (defun interface/menu-face-colors (&optional frame)
   "Return (BG . FG) colors for menu and tool-bar on FRAME desktop flavor."
-  (let ((flv (if (fboundp 'emacs/detect-desktop-environment)
-                 (emacs/detect-desktop-environment)
-               "adwaita"))
-        (theme (or (getenv "GTK_THEME" frame) "")))
+  (let* ((target (and (frame-live-p frame) frame))
+         (de (downcase (or (getenv "XDG_CURRENT_DESKTOP" target)
+                           (getenv "XDG_SESSION_DESKTOP" target)
+                           (getenv "DESKTOP_SESSION" target)
+                           "")))
+         (flv (or (seq-some (lambda (pair)
+                              (and (string-match-p (car pair) de) (cdr pair)))
+                            '(("kde\\|plasma" . "kde") ("gnome" . "gnome") ("mate" . "mate")
+                              ("cinnamon" . "cinnamon") ("xfce" . "xfce") ("lxqt" . "lxqt")
+                              ("lxde" . "lxde") ("budgie" . "budgie") ("pantheon" . "pantheon")
+                              ("deepin\\|dde" . "deepin") ("cosmic" . "cosmic")))
+                  (and (fboundp 'emacs/detect-desktop-environment)
+                       (emacs/detect-desktop-environment))
+                  "adwaita"))
+         (theme (downcase (or (getenv "GTK_THEME" target) ""))))
     (cond
-     ((or (string-match-p "breeze" (downcase theme)) (member flv '("kde" "lxqt")))
+     ((or (string-match-p "breeze" theme) (member flv '("kde" "lxqt")))
       '("#232629" . "#eff0f1"))
-     ((or (string-match-p "greybird" (downcase theme)) (equal flv "xfce"))
+     ((or (string-match-p "greybird" theme) (equal flv "xfce"))
       '("#393f3f" . "#e0e0e0"))
-     ((or (string-match-p "mint" (downcase theme)) (equal flv "cinnamon"))
+     ((or (string-match-p "mint" theme) (equal flv "cinnamon"))
       '("#2f2f2f" . "#f0f0f0"))
-     ((or (string-match-p "mate\\|blackmate" (downcase theme)) (equal flv "mate"))
+     ((or (string-match-p "mate\\|blackmate" theme) (equal flv "mate"))
       '("#2d2d2d" . "#dfdfdf"))
-     ((or (string-match-p "cosmic" (downcase theme)) (equal flv "cosmic"))
+     ((or (string-match-p "cosmic" theme) (equal flv "cosmic"))
       '("#22242b" . "#fbfbfe"))
-     ((or (string-match-p "deepin" (downcase theme)) (equal flv "deepin"))
+     ((or (string-match-p "deepin" theme) (equal flv "deepin"))
       '("#252525" . "#e8e8e8"))
      (t
       '("#1e1e1e" . "#d4d4d4")))))
@@ -170,6 +181,7 @@
 ;;; DASHBOARD FRAME ADAPTER
 ;;; --------------------------------
 
+(defvar dashboard-buffer-name "*dashboard*")
 (defvar dashboard-startup-banner 'logo)
 (defvar dashboard-display-icons-p t)
 (defvar dashboard-icon-type 'nerd-icons)
@@ -198,51 +210,111 @@
       (setq args (cdr args)))
     found))
 
+(defun interface/frame-visual-class (&optional frame)
+  "Return visual class symbol (`gui', `tty', or `pty') for FRAME."
+  (let ((target (or frame (selected-frame))))
+    (cond
+     ((not (frame-live-p target)) 'pty)
+     ((display-graphic-p target) 'gui)
+     ((and (fboundp 'display-raw-tty-p) (display-raw-tty-p target)) 'tty)
+     (t 'pty))))
+
+(defun interface/dashboard-buffer-name (&optional frame)
+  "Return dedicated dashboard buffer name for FRAME visual class."
+  (pcase (interface/frame-visual-class frame)
+    ('gui "*dashboard-gui*")
+    ('tty "*dashboard-tty*")
+    (_ "*dashboard-pty*")))
+
+(defun interface/server-pending-file-p (&optional frame)
+  "Return non-nil if `server-clients' has pending buffers for FRAME."
+  (let ((target (or frame (selected-frame))))
+    (and (boundp 'server-clients)
+         (seq-some (lambda (proc)
+                     (and (processp proc)
+                          (or (null (process-get proc 'frame))
+                              (eq (process-get proc 'frame) target))
+                          (process-get proc 'buffers)))
+                   server-clients))))
+
 (defun interface/dashboard-adapt-to-frame (&optional frame)
-  "Adapt dashboard banner and icons to FRAME (GUI logo vs. terminal ASCII).
-Evaluated per client frame so a daemon started without a display still
-renders the graphical logo on GUI frames created by `emacsclient'."
+  "Return per-frame dashboard configuration plist for FRAME without global mutation."
   (let* ((target (or frame (selected-frame)))
-         (graphic (and (frame-live-p target) (display-graphic-p target)))
-         (raw-tty (and (frame-live-p target) (display-raw-tty-p target))))
-    (setq dashboard-startup-banner (if graphic 'logo 2)
-          dashboard-display-icons-p (not raw-tty)
-          dashboard-icon-type (if raw-tty 'text 'nerd-icons)
-          dashboard-set-heading-icons (not raw-tty)
-          dashboard-set-file-icons (not raw-tty))))
+         (class (interface/frame-visual-class target))
+         (graphic (eq class 'gui))
+         (raw-tty (eq class 'tty)))
+    (list :buffer-name (interface/dashboard-buffer-name target)
+          :banner (if graphic 'logo 2)
+          :display-icons (not raw-tty)
+          :icon-type (if raw-tty 'text 'nerd-icons)
+          :heading-icons (not raw-tty)
+          :file-icons (not raw-tty))))
 
 (defun interface/dashboard-buffer-for-frame (&optional frame)
-  "Return the *dashboard* buffer rendered for FRAME."
+  "Return the class-specific dashboard buffer rendered for FRAME."
   (let* ((target (or frame (selected-frame)))
-         (previous-banner (bound-and-true-p dashboard-startup-banner))
-         (previous-icons (bound-and-true-p dashboard-display-icons-p))
-         (previous-icon-type (bound-and-true-p dashboard-icon-type)))
-    (interface/dashboard-adapt-to-frame target)
+         (cfg (interface/dashboard-adapt-to-frame target))
+         (buf-name (plist-get cfg :buffer-name))
+         (dashboard-buffer-name buf-name)
+         (dashboard-startup-banner (plist-get cfg :banner))
+         (dashboard-display-icons-p (plist-get cfg :display-icons))
+         (dashboard-icon-type (plist-get cfg :icon-type))
+         (dashboard-set-heading-icons (plist-get cfg :heading-icons))
+         (dashboard-set-file-icons (plist-get cfg :file-icons))
+         (buf (get-buffer-create buf-name)))
     (when (and (fboundp 'dashboard-insert-startupify-lists)
-               (or (daemonp)
-                   (not (get-buffer "*dashboard*"))
-                   (not (equal previous-banner (bound-and-true-p dashboard-startup-banner)))
-                   (not (eq previous-icons (bound-and-true-p dashboard-display-icons-p)))
-                   (not (eq previous-icon-type (bound-and-true-p dashboard-icon-type)))))
-      (with-current-buffer (get-buffer-create "*dashboard*")
+               (with-current-buffer buf
+                 (or (not (derived-mode-p 'dashboard-mode))
+                     (zerop (buffer-size)))))
+      (with-current-buffer buf
         (when (fboundp 'dashboard-mode)
           (dashboard-mode))
         (dashboard-insert-startupify-lists t)))
-    (get-buffer-create "*dashboard*")))
+    buf))
+
+(defun interface/dashboard-resize-a (orig-fn &optional frame)
+  "Bind per-frame dashboard settings around ORIG-FN for FRAME."
+  (let* ((target (if (framep frame) frame (selected-frame)))
+         (cfg (interface/dashboard-adapt-to-frame target))
+         (dashboard-buffer-name (plist-get cfg :buffer-name))
+         (dashboard-startup-banner (plist-get cfg :banner))
+         (dashboard-display-icons-p (plist-get cfg :display-icons))
+         (dashboard-icon-type (plist-get cfg :icon-type))
+         (dashboard-set-heading-icons (plist-get cfg :heading-icons))
+         (dashboard-set-file-icons (plist-get cfg :file-icons)))
+    (when (get-buffer-window dashboard-buffer-name target)
+      (funcall orig-fn frame))))
+
+(defun interface/dashboard-initialize-a (orig-fn &rest args)
+  "Bind per-frame dashboard settings around ORIG-FN with ARGS."
+  (let* ((target (selected-frame))
+         (cfg (interface/dashboard-adapt-to-frame target))
+         (dashboard-buffer-name (plist-get cfg :buffer-name))
+         (dashboard-startup-banner (plist-get cfg :banner))
+         (dashboard-display-icons-p (plist-get cfg :display-icons))
+         (dashboard-icon-type (plist-get cfg :icon-type))
+         (dashboard-set-heading-icons (plist-get cfg :heading-icons))
+         (dashboard-set-file-icons (plist-get cfg :file-icons)))
+    (apply orig-fn args)))
 
 (defun interface/show-dashboard (&optional frame)
-  "Display the *dashboard* buffer on FRAME when sitting on *scratch*."
+  "Display the class-specific dashboard buffer on FRAME when appropriate."
   (interactive)
   (let ((target (or frame (selected-frame))))
     (when (frame-live-p target)
       (with-selected-frame target
-        (unless (interface/has-file-arg-p)
-          (let ((cur-buf (window-buffer (selected-window))))
-            (when (or (called-interactively-p 'any)
-                      (member (buffer-name cur-buf) '("*scratch*" "*Messages*")))
-              (let ((buf (interface/dashboard-buffer-for-frame target)))
-                (when (buffer-live-p buf)
-                  (set-window-buffer (selected-window) buf))))))))))
+        (let* ((cur-buf (window-buffer (selected-window)))
+               (cur-name (buffer-name cur-buf))
+               (file-p (buffer-file-name cur-buf)))
+          (when (or (called-interactively-p 'any)
+                    (and (not file-p)
+                         (not (interface/has-file-arg-p))
+                         (not (interface/server-pending-file-p target))
+                         (or (member cur-name '("*scratch*" "*Messages*" "*dashboard*"))
+                             (string-prefix-p "*dashboard-" cur-name))))
+            (let ((buf (interface/dashboard-buffer-for-frame target)))
+              (when (and (buffer-live-p buf) (not (eq cur-buf buf)))
+                (set-window-buffer (selected-window) buf)))))))))
 
 (defalias 'dashboard-open 'interface/show-dashboard)
 
@@ -263,7 +335,10 @@ renders the graphical logo on GUI frames created by `emacsclient'."
            (,"" "Files" "Gerenciador de Arquivos" (lambda (&rest _) (when (fboundp 'emacs/open-file-manager) (emacs/open-file-manager))))))
         dashboard-items '((recents  . 5)
                           (projects . 5)))
-  (interface/dashboard-adapt-to-frame)
+  (when (fboundp 'dashboard-resize-on-hook)
+    (advice-add 'dashboard-resize-on-hook :around #'interface/dashboard-resize-a))
+  (when (fboundp 'dashboard-initialize)
+    (advice-add 'dashboard-initialize :around #'interface/dashboard-initialize-a))
   (add-hook 'elpaca-after-init-hook
             (lambda ()
               (dolist (f (frame-list))
@@ -338,7 +413,11 @@ renders the graphical logo on GUI frames created by `emacsclient'."
                         (vertico-current               :background "blue"    :foreground "white"  :weight bold :extend t)
                         (company-tooltip               :background "black"   :foreground "white")
                         (company-tooltip-selection     :background "blue"    :foreground "white"  :weight bold)
-                        (company-tooltip-common        :foreground "yellow"  :weight bold)))
+                        (company-tooltip-common        :foreground "yellow"  :weight bold)
+                        (ansi-color-bright-black       :foreground "white"   :background "black")
+                        (term-color-bright-black       :foreground "white"   :background "black")
+                        (eat-term-color-8              :foreground "white"   :background "black")
+                        (vterm-color-bright-black      :foreground "white"   :background "black")))
           (let ((face (car spec))
                 (attrs (cdr spec)))
             (when (facep face)
@@ -346,10 +425,11 @@ renders the graphical logo on GUI frames created by `emacsclient'."
                 (apply #'set-face-attribute face target attrs)))))))))
 
 (add-hook 'elpaca-after-init-hook #'interface/apply-tty-faces)
-(add-hook 'tty-setup-hook #'interface/apply-tty-faces)
 (add-hook 'window-setup-hook #'interface/apply-tty-faces)
-(add-hook 'after-make-frame-functions #'interface/apply-tty-faces)
 (add-hook 'server-after-make-frame-hook #'interface/apply-tty-faces)
+(dolist (mod '(ansi-color term eat vterm))
+  (with-eval-after-load mod
+    (interface/apply-tty-faces)))
 
 ;;; --------------------------------
 ;;; MENU & TOOL BAR & TTY MOUSE
@@ -369,34 +449,11 @@ renders the graphical logo on GUI frames created by `emacsclient'."
     (set-face-attribute 'window-divider-last-pixel nil :inherit 'window-divider))
   (window-divider-mode 1))
 
-(defcustom interface/enable-tty-menu-bar nil
-  "Whether to display the menu-bar in text terminals (TTY).
-Defaults to nil on both Linux and FreeBSD. Can be customized to t
-on FreeBSD to test mouse interaction with moused/syscons/vt."
-  :type 'boolean
-  :group 'interface)
-
-(defun interface/menu-bar-lines-for-frame (&optional frame)
-  "Return desired menu-bar-lines for FRAME based on display type and OS."
-  (let* ((target (or frame (selected-frame)))
-         (is-graphic (display-graphic-p target))
-         (raw-tty (and (fboundp 'display-raw-tty-p) (display-raw-tty-p target)))
-         (is-linux (eq system-type 'gnu/linux))
-         (term (or (and (fboundp 'tty-type) (tty-type target))
-                   (getenv "TERM" target) "")))
-    (cond
-     (is-graphic 1)
-     ((or (and is-linux raw-tty) (string-equal term "linux")) 0)
-     (interface/enable-tty-menu-bar 1)
-     (t 0))))
-
 (defun interface/apply-tool-bar (&optional frame)
   "Ensure tool-bar is unconditionally disabled on FRAME across GUI and TTY."
   (let ((target (or frame (selected-frame))))
     (when (frame-live-p target)
-      (set-frame-parameter target 'tool-bar-lines 0)))
-  (when (fboundp 'tool-bar-mode)
-    (tool-bar-mode -1)))
+      (set-frame-parameter target 'tool-bar-lines 0))))
 
 (defun interface/apply-menu-bar (&optional frame)
   "Apply menu-bar visibility per-frame to FRAME without global mutation."
@@ -404,7 +461,7 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
     (when (frame-live-p target)
       (interface/apply-tool-bar target)
       (set-frame-parameter target 'menu-bar-lines
-                           (interface/menu-bar-lines-for-frame target)))))
+                           (if (display-graphic-p target) 1 0)))))
 
 (defun interface/apply-scroll-bar (&optional frame)
   "Apply scroll-bar state and colors per-frame to FRAME."
@@ -426,17 +483,7 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
 (interface/apply-scroll-bar)
 
 (unless (display-graphic-p)
-  (when (fboundp 'xterm-mouse-mode)
-    (setq mouse-wheel-tilt-scroll nil)
-    (add-hook 'emacs-startup-hook
-              (lambda ()
-                (unless (or (daemonp) (display-graphic-p))
-                  (xterm-mouse-mode 1)
-                  (ignore-errors (send-string-to-terminal "\e[?1003l"))))))
-  (when (and (fboundp 'gpm-mouse-start)
-             (string-equal (or (and (fboundp 'tty-type) (tty-type (selected-frame)))
-                               (getenv "TERM" (selected-frame)) "") "linux"))
-    (ignore-errors (gpm-mouse-mode 1)))
+  (setq mouse-wheel-tilt-scroll nil)
   (interface/apply-tty-faces))
 
 (defun interface/setup-frame (&optional frame)
@@ -450,22 +497,18 @@ on FreeBSD to test mouse interaction with moused/syscons/vt."
         (interface/apply-scroll-bar target)
         (if (display-graphic-p target)
             (progn
+              (set-frame-parameter target 'background-color "#1e1e1e")
+              (set-frame-parameter target 'foreground-color "#d4d4d4")
               (interface/apply-theme target)
               (interface/apply-modeline target))
-          (when (fboundp 'xterm-mouse-mode)
-            (xterm-mouse-mode 1)
-            (ignore-errors (send-string-to-terminal "\e[?1003l" target)))
-          (let ((term (or (and (fboundp 'tty-type) (tty-type target))
-                          (getenv "TERM" target) "")))
-            (when (and (fboundp 'gpm-mouse-start) (string-equal term "linux"))
-              (ignore-errors (gpm-mouse-mode 1))))
           (interface/apply-tty-faces target))
-        (interface/show-dashboard target)))))
+        (when (and (not (daemonp))
+                   (not (interface/has-file-arg-p))
+                   (not (interface/server-pending-file-p target)))
+          (interface/show-dashboard target))))))
 
-(add-hook 'tty-setup-hook #'interface/apply-tool-bar)
 (add-hook 'window-setup-hook #'interface/apply-tool-bar)
-(add-hook 'server-after-make-frame-hook #'interface/setup-frame)
-(add-hook 'after-make-frame-functions #'interface/setup-frame)
+(add-hook 'after-make-frame-functions #'interface/setup-frame t)
 
 ;; --------------------------------
 ;; FRAME MANAGEMENT

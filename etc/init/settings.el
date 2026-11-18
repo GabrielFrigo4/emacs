@@ -97,18 +97,48 @@
 (setq-default visible-bell nil)
 (setq-default ring-bell-function #'ignore)
 (setq use-short-answers t)
+(defun settings/patch-xterm-mouse-seq (seq)
+  "Replace 1003 any-motion mouse tracking with 1002 button-event tracking in SEQ."
+  (if (stringp seq)
+      (replace-regexp-in-string (regexp-quote "\e[?1003") "\e[?1002" seq t t)
+    seq))
+
+(with-eval-after-load 'xt-mouse
+  (defun settings/xterm-mouse-tracking-sequence-a (orig-fn suffix)
+    "Filter ORIG-FN output for SUFFIX to use 1002 instead of 1003."
+    (mapcar #'settings/patch-xterm-mouse-seq (funcall orig-fn suffix)))
+  (unless (advice-member-p #'settings/xterm-mouse-tracking-sequence-a
+                           'xterm-mouse--tracking-sequence)
+    (advice-add 'xterm-mouse--tracking-sequence :around
+                #'settings/xterm-mouse-tracking-sequence-a)))
+
 (defun settings/setup-tty-mouse (&optional frame)
   "Enable TTY mouse tracking per-frame on non-graphical FRAME."
-  (let ((target (or frame (selected-frame))))
+  (let* ((target (or frame (selected-frame)))
+         (term-obj (and (frame-live-p target)
+                        (fboundp 'frame-terminal)
+                        (frame-terminal target)))
+         (term-name (and term-obj
+                         (fboundp 'terminal-name)
+                         (terminal-name term-obj))))
     (when (and (frame-live-p target)
                (not (display-graphic-p target))
-               (not (equal (and (fboundp 'frame-terminal)
-                                (fboundp 'terminal-name)
-                                (terminal-name (frame-terminal target)))
-                           "initial_terminal")))
+               (not (equal term-name "initial_terminal")))
       (with-selected-frame target
+        (setq mouse-wheel-tilt-scroll nil)
+        (require 'xt-mouse nil t)
         (when (fboundp 'xterm-mouse-mode)
           (xterm-mouse-mode 1))
+        (when term-obj
+          (let ((set-strings (terminal-parameter term-obj 'tty-mode-set-strings))
+                (reset-strings (terminal-parameter term-obj 'tty-mode-reset-strings)))
+            (when set-strings
+              (set-terminal-parameter term-obj 'tty-mode-set-strings
+                                      (mapcar #'settings/patch-xterm-mouse-seq set-strings)))
+            (when reset-strings
+              (set-terminal-parameter term-obj 'tty-mode-reset-strings
+                                      (mapcar #'settings/patch-xterm-mouse-seq reset-strings)))
+            (ignore-errors (send-string-to-terminal "\e[?1003l\e[?1002h" term-obj))))
         (let ((term (or (and (fboundp 'tty-type) (tty-type target))
                         (getenv "TERM" target) "")))
           (when (and (fboundp 'gpm-mouse-start) (string-equal term "linux"))

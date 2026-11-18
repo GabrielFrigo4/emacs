@@ -116,41 +116,44 @@
              (nb (min 255 (max 0 (round (+ (* cb alpha) (* bb (- 1.0 alpha))))))))
         (format "#%02x%02x%02x" nr ng nb))))
 
-  (defvar emacs/base-cursor-color nil
-    "Base unblended cursor color from the active theme.")
-
   (defun emacs/theme-cursor-color (&optional frame)
     "Resolve active theme base cursor color for FRAME or default foreground."
     (let ((target (or frame (selected-frame))))
-      (or (and (not (and (fboundp 'display-raw-tty-p) (display-raw-tty-p target)))
-               emacs/base-cursor-color)
+      (or (and (frame-live-p target)
+               (not (and (fboundp 'display-raw-tty-p) (display-raw-tty-p target)))
+               (frame-parameter target 'emacs-base-cursor-color))
           (let ((bg (or (and (bound-and-true-p doom-themes--colors)
                              (cadr (or (assq 'cursor doom-themes--colors)
                                        (assq 'highlight doom-themes--colors))))
-                        (cl-some (lambda (f)
-                                   (when (display-graphic-p f)
-                                     (face-attribute 'cursor :background f t)))
-                                 (frame-list))
-                        (ignore-errors (face-attribute 'cursor :background target t))))
-                (fg (ignore-errors (face-attribute 'default :foreground target t))))
+                        (and (frame-live-p target)
+                             (ignore-errors (face-attribute 'cursor :background target t)))))
+                (fg (and (frame-live-p target)
+                         (ignore-errors (face-attribute 'default :foreground target t)))))
             (let ((resolved
                    (cond
                     ((and (stringp bg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" bg)
                           (not (string-equal bg "unspecified"))) bg)
                     ((and (stringp fg) (string-match-p "^#[0-9a-fA-F]\\{6\\}$" fg)) fg)
                     (t (if (eq (frame-parameter target 'background-mode) 'light) "#000000" "#ffffff")))))
-              (when (and (not (and (fboundp 'display-raw-tty-p) (display-raw-tty-p target)))
+              (when (and (frame-live-p target)
+                         (not (and (fboundp 'display-raw-tty-p) (display-raw-tty-p target)))
                          (or (bound-and-true-p doom-themes--colors)
-                             (cl-some #'display-graphic-p (frame-list))
+                             (display-graphic-p target)
                              (and (stringp bg)
                                   (string-match-p "^#[0-9a-fA-F]\\{6\\}$" bg)
                                   (not (member (downcase bg) '("#000000" "#ffffff"))))))
-                (setq emacs/base-cursor-color resolved))
+                (set-frame-parameter target 'emacs-base-cursor-color resolved))
               resolved)))))
 
-  (advice-add 'load-theme :after (lambda (&rest _) (setq emacs/base-cursor-color nil)))
-  (advice-add 'enable-theme :after (lambda (&rest _) (setq emacs/base-cursor-color nil)))
-  (add-hook 'elpaca-after-init-hook (lambda () (setq emacs/base-cursor-color nil)))
+  (defun emacs/reset-base-cursor-color (&rest _)
+    "Clear cached per-frame base cursor colors across all live frames."
+    (dolist (f (frame-list))
+      (when (frame-live-p f)
+        (set-frame-parameter f 'emacs-base-cursor-color nil))))
+
+  (advice-add 'load-theme :after #'emacs/reset-base-cursor-color)
+  (advice-add 'enable-theme :after #'emacs/reset-base-cursor-color)
+  (add-hook 'elpaca-after-init-hook #'emacs/reset-base-cursor-color)
 
   (defun emacs/set-terminal-cursor (linux-code pty-shape factor &optional frame)
     "Send dynamic cursor sequences on FRAME scaled by FACTOR using LINUX-CODE or PTY-SHAPE."

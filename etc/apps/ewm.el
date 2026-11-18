@@ -58,16 +58,12 @@ so enabling it does not skew client geometry."
 
 (defun ewm--preserve-menu-bar (&optional frame)
   "Keep the graphical menu-bar enabled and tool-bar disabled on EWM FRAME."
-  (let ((target (or frame (selected-frame))))
+  (dolist (target (if frame (list frame) (frame-list)))
     (when (and (frame-live-p target) (display-graphic-p target))
       (set-frame-parameter target 'menu-bar-lines 1)
-      (when (fboundp 'menu-bar-mode)
-        (menu-bar-mode 1))
-      (when (fboundp 'interface/apply-menu-bar)
-        (interface/apply-menu-bar target))
       (set-frame-parameter target 'tool-bar-lines 0)
-      (when (fboundp 'tool-bar-mode)
-        (tool-bar-mode -1)))))
+      (when (fboundp 'interface/apply-menu-bar)
+        (interface/apply-menu-bar target)))))
 
 (defun ewm--sync-output-frames (&rest _)
   "Ensure EWM output frames have menu-bar and *dashboard* displayed."
