@@ -9,7 +9,7 @@
 [![macOS](https://img.shields.io/badge/macOS-Supported-black?logo=apple&logoColor=white)](https://apple.com/)
 [![Windows](<https://img.shields.io/badge/Windows_(MSYS2)-Supported-purple?logo=gitforwindows&logoColor=white>)](https://msys2.org/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue?logo=gnu&logoColor=white)](https://www.gnu.org/licenses/gpl-3.0)
-[![Roadmap](https://img.shields.io/badge/🗺️_Roadmap-TODO.md-teal)](TODO.md)
+[![Roadmap](https://img.shields.io/badge/🗺️_Roadmap-TODO.md-teal)](../../../TODO.md)
 [![Contributing](https://img.shields.io/badge/🤝_Contributing-CONTRIBUTING.md-orange)](../../../CONTRIBUTING.md)
 
 ---
@@ -26,7 +26,7 @@ O **`aweshell`** transforma o shell embutido do Emacs (`Eshell`) em um terminal 
 flowchart TD
     CORE["🐚 aweshell.el<br/>(Core, Buffer Manager & IDE Window)"]
 
-    THEME["🎨 aweshell-theme.el<br/>(Pipeline, Zshrc, Lambda, Dakrone)"]
+    THEME["🎨 aweshell-theme.el<br/>(Multi, Pill, Micro)"]
     DYM["💡 aweshell-did-you-mean.el<br/>(Correção Levenshtein de Comandos)"]
     HIST["📜 aweshell-history.el<br/>(Auto-Sugestões Fish & Histórico Unificado)"]
     UP["🚀 aweshell-up.el<br/>(Navegação Rápida entre Diretórios Pais)"]
@@ -52,7 +52,7 @@ flowchart TD
 | **Heredocs & Redirecionamento** | Suporte a heredocs interativos (`cat << EOF > out`) e redirecionamento de entrada (`< in`).      |
 | **Validação Sintática**         | Feedback visual em tempo real colorindo comandos existentes vs comandos inválidos.               |
 | **Did You Mean?**               | Sugestões automáticas baseadas em distância Levenshtein para comandos digitados incorretamente.  |
-| **Temas Integrados**            | Paridade 1:1 com os temas do Universal Shell (`multi`, `pill`, `micro`, `zshrc`).                |
+| **Temas Integrados**            | Paridade 1:1 com os temas do Universal Shell (`multi`, `pill`, `micro`).                         |
 | **Aliases Universais**          | Sincronização direta com os aliases do Quarteto (`agyc`, `upall`, `upsh`, `ll`, `e`, `dired`).   |
 
 ---
@@ -76,7 +76,7 @@ O **Aweshell** atua como a camada de projeção e interoperabilidade do [Univers
 | **Sincronização** | `upsh`                  | `update-shell`                          | Atualiza repositório do Shell e recarrega                                       |
 | **Sincronização** | `uped`                  | `update-editors`                        | Atualiza suíte de editores e Elisp                                              |
 | **Sincronização** | `uprc`                  | `update-profile`                        | Atualiza dotfiles e skills                                                      |
-| **Sincronização** | `upmodes`               | `update-emacs-modes`                    | Sincroniza submódulos de modos locais do Emacs                                  |
+| **Sincronização** | `upmodes`               | `update-emacs-modes`                    | Atualiza os modos Elisp vendor in-tree (`usr/local/*`)                          |
 | **Emacs Buffer**  | `e <alvo>`              | `find-file`                             | Abre arquivo no buffer corrente do Emacs                                        |
 | **Emacs Buffer**  | `ee <alvo>`             | `find-file-other-window`                | Abre arquivo dividindo a janela                                                 |
 | **Emacs Buffer**  | `d` / `dired`           | `dired`                                 | Abre navegação de diretórios Dired                                              |
@@ -126,22 +126,18 @@ O Aweshell opera harmonizado com as diretrizes de performance e consistência vi
 
 ## 🎨 Catálogo de Temas de Prompt
 
-O Aweshell integra temas visuais prontos para uso através de `aweshell-theme`:
+O Aweshell integra 3 temas canônicos prontos para uso através de `aweshell-theme` (com renderização adaptativa entre GUI/PTY e Raw TTY):
 
-| Tema                                             | Características                                                                    |
-| :----------------------------------------------- | :--------------------------------------------------------------------------------- |
-| **`aweshell/theme-multi`**                       | **(Padrão)** Réplica canônica do prompt Powerline multi-linha do Universal Shell.  |
-| **`aweshell/theme-pill`**                        | Estilo cápsula moderno, com auto-adaptação para caracteres ASCII sob Raw TTY.      |
-| **`aweshell/theme-micro`**                       | Prompt ultra-minimalista de linha única para máxima densidade vertical.            |
-| **`aweshell/theme-theme-zshrc`**                 | Réplica alternativa no estilo Zsh com identificação de OS, data/hora e branch.     |
-| **`aweshell/theme-theme-lambda`**                | Prompt minimalista com glifo lambda (`λ`) limpo e foco total na área de digitação. |
-| **`aweshell/theme-theme-dakrone`**               | Minimalismo funcional com encurtamento inteligente de diretórios profundos.        |
-| **`aweshell/theme-theme-multiline-with-status`** | Multi-linha com exibição de código de retorno e tempo decorrido do último comando. |
+| Tema                       | Características                                                                                                    |
+| :------------------------- | :----------------------------------------------------------------------------------------------------------------- |
+| **`aweshell/theme-multi`** | **(Padrão)** Réplica canônica do prompt Powerline de 3 linhas do Universal Shell (auto-adapta para `pill` em TTY). |
+| **`aweshell/theme-pill`**  | Estilo cápsula arredondada de linha única em GUI/PTY, com auto-adaptação tipográfica para ASCII sob Raw TTY.       |
+| **`aweshell/theme-micro`** | Prompt ultra-minimalista de linha única para máxima densidade vertical em GUI/PTY e Raw TTY.                       |
 
 Para definir seu tema favorito:
 
 ```elisp
-(setq aweshell/theme 'aweshell/theme-theme-zshrc)
+(setq aweshell/theme 'aweshell/theme-multi)
 ```
 
 ---
@@ -171,6 +167,17 @@ Para definir seu tema favorito:
 | **`aweshell/prev`**          | Salta para a sessão anterior do Aweshell             |
 | **`aweshell/switch-buffer`** | Menu interativo de seleção de sessões ativas         |
 
+### Atalhos de Terminais (`eat`) e Ciclo de Vida de TUIs
+
+| Atalho        | Comando | Ação                                                                   |
+| :------------ | :------ | :--------------------------------------------------------------------- |
+| **`C-c C-e`** | `eat`   | Abre sessão standalone do emulador `eat` (paridade global com `C-c E`) |
+| **`C-c E`**   | `eat`   | Abre sessão standalone do emulador `eat`                               |
+| **`C-c M-e`** | `eat`   | Atalho alternativo para sessão standalone do `eat`                     |
+| **`C-c o e`** | `eat`   | Lançador do terminal `eat` pelo prefixo global de aplicativos          |
+
+**Ciclo de Vida Determinístico de TUIs:** Comandos visuais e aplicações interativas (`btop`, `htop`, `nvim`, `lazygit`, `yazi`, `tog`, `agy`, etc.) executados no Eshell/Aweshell rodam _in-place_ via `eat-eshell-mode` / `eat-eshell-visual-command-mode` (ou via `aweshell/dispatch-visual` / `aweshell-exec-visual`), e comandos dedicados `M-x agy*` operam em buffer `eat` próprio. Ao encerrar qualquer TUI — independentemente do código de saída ou sinal recebido (como `q` ou `C-c`) —, a rotina `aweshell/cleanup-visual-buffer` fecha o buffer da TUI automaticamente e restaura de imediato a janela ao buffer Eshell/Aweshell de origem.
+
 ### Lançadores Globais de Aplicativos (`C-c o`)
 
 | Atalho                        | Comando                   | Ação                                                                             |
@@ -186,13 +193,9 @@ Para definir seu tema favorito:
 
 ## 🚀 Instalação
 
-### Modo Local / Git Submodule (Recomendado no Ecossistema)
+### Modo Vendor In-Tree (Padrão no Ecossistema)
 
-Se você utiliza o **Universal Environment** ou o **GNU Emacs Hub**, dentro do diretório `~/.emacs.d/usr/local/`:
-
-```sh
-git submodule add https://github.com/GabrielFrigo4/aweshell.git usr/local/aweshell
-```
+No **Universal Environment** e no repositório **GNU Emacs**, `usr/local/aweshell` já é integrado nativamente _in-tree_ e rastreado diretamente no Git (sem necessidade de `git submodule add`).
 
 No seu `init.el`:
 
@@ -236,7 +239,7 @@ No seu `init.el`:
   (setq-default aweshell/auto-suggestion-p t)
   (setq-default aweshell/banner-message "Welcome to the Awesome Emacs Shell\n")
   :config
-  (setq aweshell/theme 'aweshell/theme-theme-zshrc))
+  (setq aweshell/theme 'aweshell/theme-multi))
 ```
 
 ---
@@ -277,11 +280,11 @@ Após clonar o repositório, execute o comando abaixo para ativar os quality gat
 make hooks
 ```
 
-Para validar integridade, compilar e rodar a suíte completa de CI localmente:
+Para validar a suíte em modo batch (`make test`) e executar a pipeline completa de CI localmente (`make ci`, combinando `test`, `compile` e `clean`):
 
 ```sh
-make test    # Validação batch de todos os .el
-make ci      # Pipeline completo (test + compile + clean)
+make test
+make ci
 ```
 
 ---

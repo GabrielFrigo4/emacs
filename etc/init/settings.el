@@ -3,9 +3,9 @@
 ;; Module: Emacs General Settings
 ;; ----------------------------------------------------------------
 
-;; --------------------------------
-;; ENVIRONMENT
-;; --------------------------------
+;;; --------------------------------
+;;; ENVIRONMENT
+;;; --------------------------------
 
 (use-package no-littering
   :ensure (:type git :host github :repo "emacsmirror/no-littering" :branch "master")
@@ -25,6 +25,7 @@
 
   (with-eval-after-load 'tutorial
     (defun tutorial--saved-dir ()
+      "Return the custom directory path under `usr-dir' for saved tutorials."
       (expand-file-name "tutorial/" usr-dir)))
 
   (let ((clean-empty-dir (lambda (dir)
@@ -65,9 +66,9 @@
 (set-language-environment "UTF-8")
 (prefer-coding-system 'utf-8)
 
-;; --------------------------------
-;; PERFORMANCE
-;; --------------------------------
+;;; --------------------------------
+;;; PERFORMANCE
+;;; --------------------------------
 
 (global-font-lock-mode 1)
 (column-number-mode 1)
@@ -237,9 +238,9 @@
             (when (fboundp 'completion-preview-mode)
               (completion-preview-mode -1))))
 
-;; --------------------------------
-;; SPELLCHECK & DICTIONARY
-;; --------------------------------
+;;; --------------------------------
+;;; SPELLCHECK & DICTIONARY
+;;; --------------------------------
 
 (setq-default text-mode-ispell-word-completion nil
               ispell-look-p nil)
@@ -264,9 +265,9 @@
       (ispell-set-spellchecker-params)
       (ispell-hunspell-add-multi-dic "en_US,pt_BR"))))
 
-;; --------------------------------
-;; PROGRAMMING
-;; --------------------------------
+;;; --------------------------------
+;;; PROGRAMMING
+;;; --------------------------------
 
 (defun prog-mode/setup ()
   "Settings applicable to all programming modes."
@@ -295,9 +296,9 @@
 (add-hook 'nasm-mode-hook (lambda () (setq-local comment-start "; ")))
 (add-hook 'fasm-mode-hook (lambda () (setq-local comment-start "; ")))
 
-;; --------------------------------
-;; ASYNC ENCODING
-;; --------------------------------
+;;; --------------------------------
+;;; ASYNC ENCODING
+;;; --------------------------------
 
 (with-eval-after-load 'ob-async
   (add-hook 'ob-async-pre-execute-src-block-hook

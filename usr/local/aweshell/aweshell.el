@@ -25,6 +25,16 @@
 (defvar eshell-foreground-command)
 (defvar eshell-current-command)
 (defvar eshell-banner-message)
+(defvar eshell-destroy-buffer-when-process-dies)
+(defvar eshell-visual-commands)
+(defvar eshell-visual-subcommands)
+(defvar eshell-parent-buffer)
+(defvar eat-kill-buffer-on-exit)
+(defvar eat-exec-hook)
+(defvar eat-exit-hook)
+(defvar vterm-kill-buffer-on-exit)
+(defvar vterm-exit-functions)
+(defvar vterm-shell)
 
 (declare-function eshell/clear-scrollback "em-basic" ())
 (declare-function eshell/cd "em-dirs" (&rest args))
@@ -45,6 +55,13 @@
 (declare-function company-select-previous "company" ())
 (declare-function company-complete-common-or-cycle "company" ())
 (declare-function company-manual-begin "company" ())
+(declare-function eat-mode "eat" ())
+(declare-function eat-exec "eat" (buffer name command startfile switches))
+(declare-function eat-semi-char-mode "eat" ())
+(declare-function eat--kill-buffer "eat" (process))
+(declare-function eat--eshell-exec-visual "eat" (&rest args))
+(declare-function vterm "vterm" (&optional arg))
+(declare-function evil-insert-state "evil-states" (&optional arg))
 
 (defsubst aweshell--bol ()
   "Move to beginning of line safely across GNU Emacs versions."
@@ -305,6 +322,7 @@ If this function affects you, disable this option."
     counter))
 
 (defun aweshell/get-buffer-names ()
+  "Return a deduplicated list of all live `eshell-mode' buffer names across frames."
   (let (eshell-buffer-names)
     (dolist (frame (frame-list))
       (dolist (buffer (buffer-list frame))
@@ -314,6 +332,7 @@ If this function affects you, disable this option."
     eshell-buffer-names))
 
 (defun aweshell/get-buffer-index-list ()
+  "Return a sorted list of numeric indices extracted from existing Eshell buffers."
   (let ((eshell-buffer-names (aweshell/get-buffer-names)))
     (if eshell-buffer-names
         (let* ((eshell-buffer-index-strings
@@ -460,6 +479,7 @@ Create new one if no eshell buffer exists."
                (switch-to-buffer (alist-get result-buffer buffer-alist nil nil #'equal))))))))
 
 (defun aweshell/switch-buffer--annotate (candidate)
+  "Return completion annotation string for Aweshell buffer CANDIDATE."
   (let* ((buffer-alist
           (mapcar (lambda (buffer) `(,(buffer-name buffer) . ,buffer)) aweshell/buffer-list))
          (candidate-buffer (alist-get candidate buffer-alist nil nil #'equal)))
@@ -487,9 +507,10 @@ If `window' is nil, get current window."
     (- (nth 3 edges) (nth 1 edges))))
 
 (defun aweshell/dedicated-exist-p ()
+  "Return non-nil if the dedicated Aweshell buffer and window are live.
+Checks `aweshell/dedicated-buffer' and `aweshell/dedicated-window'."
   (and (aweshell/buffer-exist-p aweshell/dedicated-buffer)
-       (aweshell/window-exist-p aweshell/dedicated-window)
-       ))
+       (aweshell/window-exist-p aweshell/dedicated-window)))
 
 (defun aweshell/window-exist-p (window)
   "Return `non-nil' if WINDOW exist.
@@ -1518,44 +1539,226 @@ suppressing minibuffer write messages."
       (apply #'eshell-named-command "bench-shell" args)
     (message "Comando 'bench-shell' não encontrado.")))
 
+;;; --------------------------------
+;;; VISUAL TUI LIFECYCLE
+;;; --------------------------------
+
 (defcustom aweshell-visual-commands
   '("a" "agy" "antigravity" "agy-lx" "agy-compat" "agy-cp"
-    "htop" "btop" "btm" "top" "vim" "nvim" "hx" "less" "more" "man"
-    "tmux" "lazygit" "lazydocker" "yazi" "ranger" "ncdu" "alsamixer" "nmtui" "pulsemixer")
+    "htop" "btop" "btm" "top" "nvtop" "iotop" "iftop" "nethogs" "powertop" "glances" "s-tui"
+    "vim" "nvim" "hx" "micro" "nano" "kak"
+    "less" "more" "man" "most"
+    "tmux" "zellij" "screen"
+    "lazygit" "lazydocker" "tig" "tog"
+    "yazi" "ranger" "mc" "ncdu" "gdu" "cfdisk"
+    "alsamixer" "nmtui" "pulsemixer" "cmus"
+    "neomutt" "mutt" "lynx" "w3m" "elinks"
+    "bluetoothctl" "iwctl")
   "List of commands dispatched to visual terminal emulator."
   :type '(repeat string)
   :group 'aweshell)
 
+(defcustom aweshell-visual-subcommands
+  '(("git" "log" "diff" "show")
+    ("got" "log" "diff" "tree" "blame")
+    ("systemctl" "status" "log"))
+  "List of command subcommand entries dispatched to visual terminal."
+  :type '(repeat (repeat string))
+  :group 'aweshell)
+
+(setq-default eshell-destroy-buffer-when-process-dies t)
+(setq eshell-destroy-buffer-when-process-dies t)
+
+(defun aweshell/find-fallback-parent-buffer (&optional exclude-buf)
+  "Return a live fallback parent buffer excluding EXCLUDE-BUF."
+  (or (let ((other (other-buffer exclude-buf t)))
+        (when (and (buffer-live-p other)
+                   (not (eq other exclude-buf))
+                   (not (member (buffer-name other)
+                                '("*Messages*" "*Warnings*" "*Backtrace*"
+                                  "*Compile-Log*" "*Async-native-compile-log*"))))
+          other))
+      (cl-find-if
+       (lambda (buf)
+         (and (buffer-live-p buf)
+              (not (eq buf exclude-buf))
+              (with-current-buffer buf
+                (derived-mode-p 'eshell-mode))))
+       (buffer-list))
+      (cl-find-if
+       (lambda (buf)
+         (and (buffer-live-p buf)
+              (not (eq buf exclude-buf))
+              (not (string-prefix-p " " (buffer-name buf)))))
+       (buffer-list))
+      (let ((scratch (get-buffer-create "*scratch*")))
+        (if (eq scratch exclude-buf)
+            (get-buffer-create "*Messages*")
+          scratch))))
+
+(defun aweshell/cleanup-visual-buffer (proc-buf &optional parent-buf)
+  "Restore PARENT-BUF in windows showing PROC-BUF and kill PROC-BUF."
+  (when (and proc-buf (buffer-live-p proc-buf))
+    (let* ((origin (or (and parent-buf
+                            (buffer-live-p parent-buf)
+                            (not (eq parent-buf proc-buf))
+                            parent-buf)
+                       (with-current-buffer proc-buf
+                         (and (boundp 'eshell-parent-buffer)
+                              eshell-parent-buffer
+                              (buffer-live-p eshell-parent-buffer)
+                              (not (eq eshell-parent-buffer proc-buf))
+                              eshell-parent-buffer))))
+           (target-parent (or origin
+                              (aweshell/find-fallback-parent-buffer proc-buf))))
+      (when (buffer-live-p target-parent)
+        (let* ((wins (get-buffer-window-list proc-buf nil t))
+               (sel (selected-window))
+               (selected-has-proc (and (window-live-p sel)
+                                       (eq (window-buffer sel) proc-buf))))
+          (dolist (win wins)
+            (when (window-live-p win)
+              (set-window-buffer win target-parent)))
+          (when (eq (current-buffer) proc-buf)
+            (if (or selected-has-proc (null wins))
+                (switch-to-buffer target-parent)
+              (set-buffer target-parent)))))
+      (when-let* ((proc (get-buffer-process proc-buf)))
+        (set-process-query-on-exit-flag proc nil))
+      (let ((kill-buffer-query-functions nil))
+        (when (buffer-live-p proc-buf)
+          (kill-buffer proc-buf))))))
+
+(defun aweshell/visual-sentinel (proc &optional _msg)
+  "Unconditionally clean up the visual terminal buffer for PROC."
+  (when (and (processp proc)
+             (memq (process-status proc) '(signal exit closed failed)))
+    (let ((proc-buf (process-buffer proc)))
+      (when (and proc-buf (buffer-live-p proc-buf))
+        (aweshell/cleanup-visual-buffer proc-buf)))
+    (ignore-errors (delete-process proc))))
+
+(defun aweshell/attach-visual-cleanup (buf &optional parent-buf)
+  "Attach deterministic cleanup on BUF returning to PARENT-BUF."
+  (when (and buf (buffer-live-p buf))
+    (let ((origin (or (and parent-buf
+                           (buffer-live-p parent-buf)
+                           (not (eq parent-buf buf))
+                           parent-buf)
+                      (with-current-buffer buf
+                        (and (boundp 'eshell-parent-buffer)
+                             eshell-parent-buffer
+                             (buffer-live-p eshell-parent-buffer)
+                             (not (eq eshell-parent-buffer buf))
+                             eshell-parent-buffer)))))
+      (with-current-buffer buf
+        (when (buffer-live-p origin)
+          (setq-local eshell-parent-buffer origin))
+        (setq-local eat-kill-buffer-on-exit nil)
+        (setq-local vterm-kill-buffer-on-exit nil)
+        (remove-hook 'eat-exit-hook #'eat--kill-buffer t)
+        (add-hook 'eat-exit-hook
+                  (lambda (_proc)
+                    (aweshell/cleanup-visual-buffer buf origin))
+                  nil t)
+        (add-hook 'vterm-exit-functions
+                  (lambda (&rest _)
+                    (aweshell/cleanup-visual-buffer buf origin))
+                  nil t))
+      (when-let* ((proc (get-buffer-process buf)))
+        (set-process-query-on-exit-flag proc nil)
+        (unless (process-get proc 'aweshell-visual-sentinel)
+          (process-put proc 'aweshell-visual-sentinel t)
+          (let ((sentinel (process-sentinel proc)))
+            (if sentinel
+                (progn
+                  (add-function :after (var sentinel) #'aweshell/visual-sentinel)
+                  (set-process-sentinel proc sentinel))
+              (set-process-sentinel proc #'aweshell/visual-sentinel))))
+        (when (memq (process-status proc) '(signal exit closed failed))
+          (aweshell/cleanup-visual-buffer buf origin))))))
+
+(defun aweshell/on-eat-exec (proc)
+  "Attach deterministic visual cleanup when Eat starts PROC."
+  (when (and proc (processp proc))
+    (when-let* ((buf (process-buffer proc)))
+      (when (buffer-live-p buf)
+        (let ((parent (with-current-buffer buf
+                        (and (boundp 'eshell-parent-buffer)
+                             eshell-parent-buffer
+                             (buffer-live-p eshell-parent-buffer)
+                             eshell-parent-buffer))))
+          (when (or parent
+                    (buffer-local-value 'eat-kill-buffer-on-exit buf))
+            (aweshell/attach-visual-cleanup buf parent)))))))
+
+(defun aweshell/eat-eshell-exec-visual-a (orig-fn &rest args)
+  "Ensure visual cleanup around ORIG-FN called with ARGS."
+  (let ((parent-buf (current-buffer))
+        (succeeded nil)
+        (res nil))
+    (unwind-protect
+        (progn
+          (setq res (apply orig-fn args))
+          (setq succeeded t)
+          res)
+      (let* ((sel (selected-window))
+             (wb (and (window-live-p sel) (window-buffer sel)))
+             (target-buf (cond
+                          ((and (buffer-live-p wb) (not (eq wb parent-buf))) wb)
+                          ((and (buffer-live-p (current-buffer))
+                                (not (eq (current-buffer) parent-buf)))
+                           (current-buffer)))))
+        (when (and target-buf
+                   (with-current-buffer target-buf
+                     (derived-mode-p 'eat-mode)))
+          (if succeeded
+              (aweshell/attach-visual-cleanup target-buf parent-buf)
+            (aweshell/cleanup-visual-buffer target-buf parent-buf)))))))
+
 (defun aweshell/exec-in-term (cmd-str buf-name)
   "Execute CMD-STR in terminal buffer BUF-NAME via eat, vterm, or ansi-term."
-  (cond
-   ((and (require 'eat nil t) (fboundp 'eat-exec))
-    (let ((buf (get-buffer-create buf-name)))
-      (with-current-buffer buf
-        (unless (eq major-mode #'eat-mode)
-          (eat-mode))
-        (pop-to-buffer-same-window buf)
-        (eat-exec buf buf-name "/usr/bin/env" nil (list "sh" "-c" cmd-str))
-        (when (fboundp 'eat-semi-char-mode)
-          (eat-semi-char-mode))
-        (when (bound-and-true-p evil-mode)
-          (evil-insert-state)))
-      buf))
-   ((and (require 'vterm nil t) (fboundp 'vterm))
-    (let ((vterm-shell cmd-str))
-      (vterm buf-name)))
-   ((fboundp 'ansi-term)
-    (let ((term-buf (ansi-term (or (getenv "SHELL") (executable-find "sh") "sh")
-                               (string-trim buf-name "\\*" "\\*"))))
-      (when-let* ((proc (get-buffer-process term-buf)))
-        (process-send-string proc (concat cmd-str "\n")))
-      term-buf))
-   (t
-    (message "Nenhum emulador de terminal disponível."))))
+  (let ((parent-buf (current-buffer)))
+    (cond
+     ((and (require 'eat nil t) (fboundp 'eat-exec))
+      (let ((buf (get-buffer-create buf-name)))
+        (with-current-buffer buf
+          (unless (eq major-mode #'eat-mode)
+            (eat-mode))
+          (setq-local eshell-parent-buffer parent-buf)
+          (pop-to-buffer-same-window buf)
+          (eat-exec buf buf-name "/usr/bin/env" nil (list "sh" "-c" cmd-str))
+          (aweshell/attach-visual-cleanup buf parent-buf)
+          (when (fboundp 'eat-semi-char-mode)
+            (eat-semi-char-mode))
+          (when (bound-and-true-p evil-mode)
+            (evil-insert-state)))
+        buf))
+     ((and (require 'vterm nil t) (fboundp 'vterm))
+      (let* ((vterm-shell cmd-str)
+             (buf (vterm buf-name)))
+        (when (buffer-live-p buf)
+          (with-current-buffer buf
+            (setq-local eshell-parent-buffer parent-buf))
+          (aweshell/attach-visual-cleanup buf parent-buf))
+        buf))
+     ((fboundp 'ansi-term)
+      (let ((term-buf (ansi-term (or (getenv "SHELL") (executable-find "sh") "sh")
+                                 (string-trim buf-name "\\*" "\\*"))))
+        (when (buffer-live-p term-buf)
+          (with-current-buffer term-buf
+            (setq-local eshell-parent-buffer parent-buf))
+          (aweshell/attach-visual-cleanup term-buf parent-buf)
+          (when-let* ((proc (get-buffer-process term-buf)))
+            (process-send-string proc (concat cmd-str "; exit\n"))))
+        term-buf))
+     (t
+      (message "Nenhum emulador de terminal disponível.")))))
 
 (defun aweshell-exec-visual (&rest args)
   "Execute visual command ARGS in a separate terminal emulator buffer."
-  (let* ((program (car args))
+  (let* ((parent-buf (current-buffer))
+         (program (car args))
          (cmd-name (file-name-nondirectory (or program "")))
          (cmd-args (cdr args))
          (full-cmd (mapconcat #'shell-quote-argument (cons program cmd-args) " ")))
@@ -1566,8 +1769,10 @@ suppressing minibuffer write messages."
         (with-current-buffer buf
           (unless (eq major-mode #'eat-mode)
             (eat-mode))
+          (setq-local eshell-parent-buffer parent-buf)
           (pop-to-buffer-same-window buf)
           (eat-exec buf buf-name "/usr/bin/env" nil (list "sh" "-c" full-cmd))
+          (aweshell/attach-visual-cleanup buf parent-buf)
           (when (fboundp 'eat-semi-char-mode)
             (eat-semi-char-mode))
           (when (bound-and-true-p evil-mode)
@@ -1575,13 +1780,23 @@ suppressing minibuffer write messages."
         buf))
      ((and (require 'vterm nil t) (fboundp 'vterm))
       (let* ((buf-name (format "*vterm: %s*" cmd-name))
-             (vterm-shell full-cmd))
-        (vterm buf-name)))
+             (vterm-shell full-cmd)
+             (buf (vterm buf-name)))
+        (when (buffer-live-p buf)
+          (with-current-buffer buf
+            (setq-local eshell-parent-buffer parent-buf))
+          (aweshell/attach-visual-cleanup buf parent-buf))
+        buf))
      ((fboundp 'ansi-term)
       (let* ((buf-name (format "term: %s" cmd-name))
              (term-buf (ansi-term (or (getenv "SHELL") (executable-find "sh") "sh") buf-name)))
-        (when-let* ((proc (get-buffer-process term-buf)))
-          (process-send-string proc (concat full-cmd "\n")))))
+        (when (buffer-live-p term-buf)
+          (with-current-buffer term-buf
+            (setq-local eshell-parent-buffer parent-buf))
+          (aweshell/attach-visual-cleanup term-buf parent-buf)
+          (when-let* ((proc (get-buffer-process term-buf)))
+            (process-send-string proc (concat full-cmd "; exit\n"))))
+        term-buf))
      (t
       (message "Nenhum emulador de terminal disponível para comando visual.")))))
 
@@ -1618,7 +1833,8 @@ suppressing minibuffer write messages."
       args)))
 
 (defun aweshell/dispatch-visual (orig-fn &rest args)
-  "Execute visual command ARGS via eat in-place or fallback to dedicated terminal."
+  "Execute visual command ARGS via `eat' or ORIG-FN fallback.
+Falls back to `aweshell-exec-visual' when in-place emulation is unavailable."
   (when (not (fboundp 'eat--eshell-exec-visual))
     (require 'eat nil t))
   (let ((args (aweshell--rewrite-visual-args args)))
@@ -1631,11 +1847,27 @@ suppressing minibuffer write messages."
      (t
       (apply #'aweshell-exec-visual args)))))
 
+(with-eval-after-load 'eat
+  (setq-default eshell-destroy-buffer-when-process-dies t)
+  (setq eshell-destroy-buffer-when-process-dies t)
+  (when (boundp 'eshell-visual-commands)
+    (dolist (cmd aweshell-visual-commands)
+      (add-to-list 'eshell-visual-commands cmd)))
+  (when (boundp 'eshell-visual-subcommands)
+    (dolist (sub aweshell-visual-subcommands)
+      (add-to-list 'eshell-visual-subcommands sub)))
+  (add-hook 'eat-exec-hook #'aweshell/on-eat-exec)
+  (advice-add 'eat--eshell-visual-sentinel :override #'aweshell/visual-sentinel)
+  (advice-add 'eat--eshell-exec-visual :around #'aweshell/eat-eshell-exec-visual-a))
+
 (with-eval-after-load 'em-term
+  (setq-default eshell-destroy-buffer-when-process-dies t)
+  (setq eshell-destroy-buffer-when-process-dies t)
   (dolist (cmd aweshell-visual-commands)
     (add-to-list 'eshell-visual-commands cmd))
-  (dolist (sub '(("git" "log" "diff" "show")))
+  (dolist (sub aweshell-visual-subcommands)
     (add-to-list 'eshell-visual-subcommands sub))
+  (advice-add 'eshell-term-sentinel :override #'aweshell/visual-sentinel)
   (advice-add 'eshell-exec-visual :around #'aweshell/dispatch-visual))
 
 (defun eshell/nb (&rest args)

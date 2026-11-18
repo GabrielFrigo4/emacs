@@ -28,6 +28,7 @@
          (eshell-mode . eat-eshell-mode)
          (eshell-mode . eat-eshell-visual-command-mode))
   :bind (("C-c E"   . eat)
+         ("C-c C-e" . eat)
          ("C-c M-e" . eat))
   :init
   (setq eat-kill-buffer-on-exit t
@@ -49,10 +50,10 @@
     (when (fboundp 'eat-compile-terminfo)
       (condition-case nil
           (eat-compile-terminfo)
-        (error nil))))
-  (add-hook 'eat-mode-hook #'shell/configure-eat-mode))
+        (error nil)))))
 
 (with-eval-after-load 'eat
+  (add-hook 'eat-mode-hook #'shell/configure-eat-mode)
   (defun eat--t-line-feed ()
     "Go to the next line preserving column, scrolling if necessary."
     (eat--t-index))
@@ -84,9 +85,9 @@
 (when-windows
  (setq-default w32-quote-process-args t))
 
-;; ================================
-;; TERMINAL FEATURE
-;; ================================
+;;; ================================
+;;; TERMINAL FEATURE
+;;; ================================
 
 (defun shell--freebsd-script (name)
   "Locate FreeBSD target script NAME in XDG data or Environment/Shell."
@@ -108,29 +109,46 @@
       cmd)))
 
 (defun shell--run-terminal-command (cmd-str buf-name)
-  "Execute CMD-STR in a dedicated terminal buffer named BUF-NAME via eat, vterm, or ansi-term."
-  (cond
-   ((and (require 'eat nil t) (fboundp 'eat-exec))
-    (let ((buf (get-buffer-create buf-name)))
-      (with-current-buffer buf
-        (unless (eq major-mode #'eat-mode)
-          (eat-mode))
-        (pop-to-buffer-same-window buf)
-        (eat-exec buf buf-name "/usr/bin/env" nil (list "sh" "-c" cmd-str))
-        (when (fboundp 'eat-semi-char-mode)
-          (eat-semi-char-mode))
-        (when (bound-and-true-p evil-mode)
-          (evil-insert-state)))
-      buf))
-   ((and (require 'vterm nil t) (fboundp 'vterm))
-    (let ((vterm-shell cmd-str))
-      (vterm buf-name)))
-   (t
-    (let ((term-buf (ansi-term (or (getenv "SHELL") (executable-find "sh") "sh")
-                               (string-trim buf-name "\\*" "\\*"))))
-      (when-let* ((proc (get-buffer-process term-buf)))
-        (process-send-string proc (concat cmd-str "\n")))
-      term-buf))))
+  "Execute CMD-STR in dedicated terminal buffer BUF-NAME.
+Dispatches through `eat', `vterm', or `ansi-term' with cleanup."
+  (require 'aweshell nil t)
+  (let ((parent-buf (current-buffer)))
+    (cond
+     ((and (require 'eat nil t) (fboundp 'eat-exec))
+      (let ((buf (get-buffer-create buf-name)))
+        (with-current-buffer buf
+          (unless (eq major-mode #'eat-mode)
+            (eat-mode))
+          (setq-local eshell-parent-buffer parent-buf)
+          (pop-to-buffer-same-window buf)
+          (eat-exec buf buf-name "/usr/bin/env" nil (list "sh" "-c" cmd-str))
+          (when (fboundp 'aweshell/attach-visual-cleanup)
+            (aweshell/attach-visual-cleanup buf parent-buf))
+          (when (fboundp 'eat-semi-char-mode)
+            (eat-semi-char-mode))
+          (when (bound-and-true-p evil-mode)
+            (evil-insert-state)))
+        buf))
+     ((and (require 'vterm nil t) (fboundp 'vterm))
+      (let* ((vterm-shell cmd-str)
+             (buf (vterm buf-name)))
+        (when (buffer-live-p buf)
+          (with-current-buffer buf
+            (setq-local eshell-parent-buffer parent-buf))
+          (when (fboundp 'aweshell/attach-visual-cleanup)
+            (aweshell/attach-visual-cleanup buf parent-buf)))
+        buf))
+     (t
+      (let ((term-buf (ansi-term (or (getenv "SHELL") (executable-find "sh") "sh")
+                                 (string-trim buf-name "\\*" "\\*"))))
+        (when (buffer-live-p term-buf)
+          (with-current-buffer term-buf
+            (setq-local eshell-parent-buffer parent-buf))
+          (when (fboundp 'aweshell/attach-visual-cleanup)
+            (aweshell/attach-visual-cleanup term-buf parent-buf))
+          (when-let* ((proc (get-buffer-process term-buf)))
+            (process-send-string proc (concat cmd-str "; exit\n"))))
+        term-buf)))))
 
 ;;;###autoload
 (defun agy ()
@@ -157,11 +175,27 @@
   (shell--run-terminal-command (shell--agy-command "-c" "--dangerously-skip-permissions") "*agyca*"))
 
 (with-eval-after-load 'em-term
-  (dolist (cmd '("a" "agy" "antigravity" "agy-lx" "agy-compat" "agy-cp" "htop" "btop" "btm" "top" "vim" "nvim" "hx" "less" "more" "man"
-                 "tmux" "lazygit" "lazydocker" "yazi" "ranger" "ncdu" "alsamixer" "nmtui" "pulsemixer"))
+  (require 'aweshell nil t)
+  (setq-default eshell-destroy-buffer-when-process-dies t)
+  (setq eshell-destroy-buffer-when-process-dies t)
+  (dolist (cmd (if (boundp 'aweshell-visual-commands)
+                   aweshell-visual-commands
+                 '("a" "agy" "antigravity" "agy-lx" "agy-compat" "agy-cp"
+                   "htop" "btop" "btm" "top" "nvtop" "iotop" "iftop" "nethogs" "powertop" "glances" "s-tui"
+                   "vim" "nvim" "hx" "micro" "nano" "kak"
+                   "less" "more" "man" "most"
+                   "tmux" "zellij" "screen"
+                   "lazygit" "lazydocker" "tig" "tog"
+                   "yazi" "ranger" "mc" "ncdu" "gdu" "cfdisk"
+                   "alsamixer" "nmtui" "pulsemixer" "cmus"
+                   "neomutt" "mutt" "lynx" "w3m" "elinks"
+                   "bluetoothctl" "iwctl")))
     (add-to-list 'eshell-visual-commands cmd))
-  (dolist (sub '(("git" "log" "diff" "show")
-                 ("systemctl" "status" "log")))
+  (dolist (sub (if (boundp 'aweshell-visual-subcommands)
+                   aweshell-visual-subcommands
+                 '(("git" "log" "diff" "show")
+                   ("got" "log" "diff" "tree" "blame")
+                   ("systemctl" "status" "log"))))
     (add-to-list 'eshell-visual-subcommands sub)))
 
 (use-package eshell
@@ -274,10 +308,6 @@
                 shell-mode-hook
                 comint-mode-hook))
   (add-hook hook #'shell/disable-line-numbers))
-
-(add-hook 'eat-mode-hook #'shell/configure-eat-mode)
-(add-hook 'eshell-mode-hook #'eat-eshell-mode)
-(add-hook 'eshell-mode-hook #'eat-eshell-visual-command-mode)
 
 (dolist (fn '(eat
               eat-exec

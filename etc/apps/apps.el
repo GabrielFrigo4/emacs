@@ -3,9 +3,9 @@
 ;; Module: Emacs Applications Feature
 ;; ----------------------------------------------------------------
 
-;; ================================
-;; DOCUMENT READERS
-;; ================================
+;;; ================================
+;;; DOCUMENT READERS
+;;; ================================
 
 (setq-default doc-view-continuous t
               doc-view-resolution 192
@@ -18,13 +18,17 @@
 (add-to-list 'auto-mode-alist '("\\.\\(pdf\\|djvu\\|ps\\|eps\\|dvi\\|fb2\\|cbz\\)\\'" . doc-view-mode))
 
 (defun apps/doc-view-initiate-display-advice (orig-fun &rest args)
+  "Fallback to `doc-view-buffer-message' in batch mode.
+Otherwise apply ORIG-FUN to ARGS."
   (if (and noninteractive (not (display-graphic-p)))
       (doc-view-buffer-message)
     (apply orig-fun args)))
 
 (advice-add 'doc-view-initiate-display :around #'apps/doc-view-initiate-display-advice)
 
-(defvar-local doc-view-inverted-p nil)
+(defvar-local doc-view-inverted-p nil
+  "Non-nil when dark mode color inversion is active in `doc-view-mode'.
+Tracks inversion state for the current `doc-view-mode' buffer.")
 
 (defun doc-view-invert-colors ()
   "Toggle inverted colors (dark mode) in `doc-view-mode'."
@@ -38,6 +42,8 @@
 (defalias 'doc-view-rotate-current-page #'image-rotate)
 
 (defun apps/reader-view-hook ()
+  "Configure clean distraction-free reading state in document viewers.
+Hide cursor, line numbers, and `hl-line-mode' in reader buffers."
   (setq-local large-file-warning-threshold nil
               cursor-type nil)
   (when (fboundp 'display-line-numbers-mode)
@@ -223,6 +229,7 @@
   (setq-default nov-text-width t)
 
   (defun apps/nov-mode-hook ()
+    "Configure `visual-line-mode' and disable line numbers and header in `nov-mode'."
     (visual-line-mode 1)
     (when (fboundp 'display-line-numbers-mode)
       (display-line-numbers-mode -1))
@@ -231,6 +238,7 @@
     (setq-local header-line-format nil))
 
   (defun apps/nov-window-size-change (frame)
+    "Reflow open `nov-mode' documents across all windows on FRAME after resize."
     (dolist (win (window-list frame))
       (with-current-buffer (window-buffer win)
         (when (eq major-mode 'nov-mode)
@@ -289,9 +297,9 @@
                         (kbd "G") #'end-of-buffer
                         (kbd "q") #'quit-window))))
 
-;; ================================
-;; NATIVE APPLICATIONS
-;; ================================
+;;; ================================
+;;; NATIVE APPLICATIONS
+;;; ================================
 
 (setq-default image-auto-resize 'fit-window
               image-use-external-converter t)
@@ -312,9 +320,9 @@
 (setq-default dired-dwim-target t
               wdired-allow-to-change-permissions t)
 
-;; ================================
-;; WEB BROWSING
-;; ================================
+;;; ================================
+;;; WEB BROWSING
+;;; ================================
 
 (use-package shr-tag-pre-highlight
   :ensure (:type git :host github :repo "emacsmirror/shr-tag-pre-highlight" :branch "master")
@@ -348,9 +356,9 @@
     (autoload 'aweww-search "aweww" "Pesquisa na web via Aweww." t)
     (autoload 'aweww-doctor "aweww" "Diagnóstico do componente Aweww." t)))
 
-;; ================================
-;; UNIVERSAL OPEN & APP LAUNCHERS
-;; ================================
+;;; ================================
+;;; UNIVERSAL OPEN & APP LAUNCHERS
+;;; ================================
 
 (defun emacs/file-mime-type (file)
   "Retorna a string MIME de FILE via comando `file' do SO (libmagic) ou nil.
@@ -487,9 +495,9 @@ inspeciona os primeiros 1024 bytes procurando por byte nulo (\\0)."
 (defalias 'open 'emacs/universal-open)
 (defalias 'open-file 'emacs/universal-open)
 
-;; ================================
-;; DESKTOP OS APP COMMANDS
-;; ================================
+;;; ================================
+;;; DESKTOP OS APP COMMANDS
+;;; ================================
 
 (defun emacs/normalize-app-args (args)
   "Normalize ARGS list passed from interactive, Elisp, or Eshell calls."
@@ -1003,9 +1011,9 @@ Resolve transparentemente `chrome' e `/usr/local/bin/chrome' no FreeBSD, além d
                 (app-launcher  . emacs/os-app-launcher)))
   (defalias (intern (format "eshell/%s" (car pair))) (cdr pair)))
 
-;; ================================
-;; XDG APP LAUNCHER & OS KEYS
-;; ================================
+;;; ================================
+;;; XDG APP LAUNCHER & OS KEYS
+;;; ================================
 
 (defvar emacs/desktop-apps-cache nil
   "Cached alist of (DISPLAY-NAME . EXEC-COMMAND) from XDG .desktop files.")

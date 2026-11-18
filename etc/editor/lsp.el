@@ -29,6 +29,8 @@
     (remove-hook 'flymake-diagnostic-functions 'flymake-proc-legacy-flymake))
 
   (defun lsp/go-install-save-hooks ()
+    "Install buffer-local `before-save-hook' actions for Go via LSP.
+Configures formatting and import organization before saving."
     (setq-local apheleia-inhibit t)
     (add-hook 'before-save-hook #'lsp-organize-imports nil t)
     (add-hook 'before-save-hook #'lsp-format-buffer nil t))

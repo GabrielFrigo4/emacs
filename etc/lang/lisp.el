@@ -19,7 +19,10 @@
   :ensure nil
   :bind (("C-c C-z" . ielm)
          :map emacs-lisp-mode-map
-         ("C-c C-c" . eval-defun)
-         ("C-c C-e" . eval-last-sexp)))
+         ("C-c C-c" . eval-defun)))
+
+(with-eval-after-load 'elisp-mode
+  (define-key emacs-lisp-mode-map (kbd "C-c C-e") nil)
+  (define-key lisp-interaction-mode-map (kbd "C-c C-e") nil))
 
 (provide 'feature-lisp)

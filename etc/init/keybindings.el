@@ -3,9 +3,9 @@
 ;; Module: Emacs Keybindings & Aliases
 ;; ----------------------------------------------------------------
 
-;; ================================
-;; ALIASES
-;; ================================
+;;; ================================
+;;; ALIASES
+;;; ================================
 
 (defalias 'toml-mode 'conf-toml-mode)
 (defalias 'bash-mode 'sh-mode)
@@ -67,9 +67,9 @@
 (add-hook 'server-after-make-frame-hook #'emacs/setup-input-decode)
 (add-hook 'elpaca-after-init-hook #'emacs/setup-input-decode)
 
-;; ================================
-;; GLOBAL KEYBINDINGS
-;; ================================
+;;; ================================
+;;; GLOBAL KEYBINDINGS
+;;; ================================
 
 (global-set-key (kbd "M-]")          'other-window)
 (global-set-key (kbd "C-;")          'other-window)
@@ -146,6 +146,7 @@
 (global-set-key (kbd "C-c M-t")  'term)
 (global-set-key (kbd "C-c M-v")  'vterm)
 (global-set-key (kbd "C-c M-e")  'eat)
+(global-set-key (kbd "C-c C-e")  'eat)
 (global-set-key (kbd "C-c e")    'eshell)
 (global-set-key (kbd "C-c E")    'eat)
 (global-set-key (kbd "C-c C-s")  'shell-command)

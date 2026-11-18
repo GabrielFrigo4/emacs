@@ -41,6 +41,7 @@
                   "amsmath"))
 
   (defun tex/setup-tab-width ()
+    "Configure 4-space indentation locally for plain TeX buffers."
     (setq-local tab-width 4)
     (setq-local tex-indent-basic tab-width)
     (setq-local indent-tabs-mode nil))
@@ -49,6 +50,7 @@
     (add-hook 'latex-mode-hook #'tex/setup-tab-width))
 
   (defun TeX/setup-tab-width ()
+    "Configure 4-space indentation locally for AUCTeX and LaTeX buffers."
     (setq-local tab-width 4)
     (setq-local TeX-indent-basic tab-width)
     (setq-local TeX-brace-indent-level tab-width)
@@ -85,6 +87,7 @@
     (preview-region (point-min) (point-max)))
 
   (defun latex/preview-setup ()
+    "Trigger automatic inline LaTeX preview when `latex/preview-enable' is non-nil."
     (when (and
            (and
             (not (zerop (buffer-size)))

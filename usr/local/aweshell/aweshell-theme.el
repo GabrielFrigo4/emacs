@@ -27,9 +27,9 @@ Set to t to restrict Git inspection to local directories only."
                  (const :tag "fish-style-dir-name" fish)
                  (const :tag "full-dir-name" full)))
 
-;; ============================================================================
-;;  FACES (HIGH-CONTRAST 256/TRUECOLOR + 16-COLOR RAW TTY)
-;; ============================================================================
+;;; ================================
+;;; FACES FOR GUI AND RAW TTY
+;;; ================================
 
 (defface aweshell/theme-delimiter-face
   '((((class color) (min-colors 256)) (:foreground "#6272a4" :weight bold))
@@ -73,9 +73,9 @@ Set to t to restrict Git inspection to local directories only."
   "Face for root user and Git icon/branch in TTY."
   :group 'aweshell-theme)
 
-;; ============================================================================
-;;  PATH & TRAMP HELPERS
-;; ============================================================================
+;;; ================================
+;;; PATH AND TRAMP HELPERS
+;;; ================================
 
 (defun aweshell/theme-colorize-with-face (str face)
   "Return STR propertized with FACE."
@@ -136,9 +136,9 @@ Set to t to restrict Git inspection to local directories only."
       ('full     pwd)
       (_         (aweshell/theme-basename-path pwd)))))
 
-;; ============================================================================
-;;  GIT HELPERS
-;; ============================================================================
+;;; ================================
+;;; GIT REPOSITORY HELPERS
+;;; ================================
 
 (defun aweshell/theme-git-root ()
   "Return Git repository root directory or nil."
@@ -173,9 +173,9 @@ Set to t to restrict Git inspection to local directories only."
            (shell-command-to-string
             "git status --porcelain --ignore-submodules=dirty 2> \"/dev/null\""))))))
 
-;; ============================================================================
-;;  UNIVERSAL SHELL THEME ENGINE (`multi', `pill', `micro')
-;; ============================================================================
+;;; ================================
+;;; UNIVERSAL SHELL THEME ENGINE
+;;; ================================
 
 (defconst aweshell/theme-prompt-regexp
   "^\\(?:└─ \\|.*\\(?:\\|[#$]\\) \\)"
