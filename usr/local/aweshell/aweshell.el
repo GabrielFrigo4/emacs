@@ -666,9 +666,6 @@ Otherwise return nil."
        (or (member command '(".." "..." "...." "." "/" "~" "exit" "cd" "export" "unset" "sudo" "doas" "time" "env" "clear" "cls" "clr"))
            (and (boundp 'eshell-command-aliases-list)
                 (assoc command eshell-command-aliases-list))
-           (and (fboundp 'eshell-alias-completions)
-                (or (seq-contains-p (eshell-alias-completions "") command)
-                    (seq-contains-p (eshell-alias-completions "eshell/") command)))
            (functionp (intern-soft command))
            (functionp (intern-soft (concat "eshell/" command)))
            (and aweshell/validate-executable
@@ -1198,9 +1195,20 @@ suppressing minibuffer write messages."
 (add-hook 'eshell-mode-hook #'aweshell/setup-aliases)
 
 (defun aweshell/invalidate-history-cache (&rest _)
-  "Invalidate combined history cache on new input."
-  (aweshell/reload-shell-history))
+  "Invalidate only the in-memory combined history cache on new Eshell input."
+  (if (fboundp 'aweshell/invalidate-eshell-history-cache)
+      (aweshell/invalidate-eshell-history-cache)
+    (aweshell/reload-shell-history)))
 
+(defun aweshell/warmup-history-cache ()
+  "Warm up external shell history cache asynchronously after Eshell opens."
+  (when (and (not noninteractive)
+             (boundp 'aweshell--external-history-cache)
+             (null aweshell--external-history-cache)
+             (fboundp 'aweshell/parse-external-history))
+    (run-with-idle-timer 0.2 nil #'aweshell/parse-external-history)))
+
+(add-hook 'eshell-mode-hook #'aweshell/warmup-history-cache)
 (add-hook 'eshell-input-filter-functions #'aweshell/invalidate-history-cache)
 
 (defun aweshell--eshell-process-env-a (orig-fun &rest args)
